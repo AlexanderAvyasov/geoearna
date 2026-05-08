@@ -4,6 +4,7 @@ const balanceHandler = require('./handlers/balance');
 const { withdrawHandler, withdrawFlow } = require('./handlers/withdraw');
 const myqrHandler = require('./handlers/myqr');
 const mypinHandler = require('./handlers/mypin');
+const { startStreakTask } = require('./tasks/streak');
 
 const sessions = new Map();
 
@@ -38,5 +39,6 @@ bot.on('message:text', async (ctx) => {
 });
 
 bot.start();
+startStreakTask();
 
 module.exports = bot;

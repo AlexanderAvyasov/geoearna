@@ -2,6 +2,7 @@ const express = require('express');
 const validateTma = require('../middleware/validateTma');
 const antifraud = require('../middleware/antifraud');
 const { performCheckin } = require('../services/checkin');
+const { sendMessage } = require('../services/notify');
 
 const router = express.Router();
 
@@ -25,7 +26,15 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
       pin: pin || null,
     });
 
-    return res.json(result);
+    // Fire-and-forget Telegram notification
+    sendMessage(
+      req.user.telegram_id,
+      `🎉 *+${result.reward.toLocaleString('ru-RU')} сум* зачислено!\n\n` +
+      `📍 ${result.businessName}\n` +
+      `💼 Баланс: *${result.totalBalance.toLocaleString('ru-RU')} сум*`
+    ).catch(() => {});
+
+    return res.json({ reward: result.reward, totalBalance: result.totalBalance });
   } catch (error) {
     const code = error && error.code ? error.code : 'INTERNAL_ERROR';
     const clientErrors = ['TOO_FAR', 'INVALID_PARAMS', 'INVALID_QR_TOKEN', 'NO_ACTIVE_CAMPAIGN', 'BUSINESS_INSUFFICIENT_FUNDS', 'PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'];

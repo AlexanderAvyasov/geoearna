@@ -97,6 +97,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   return {
     reward: campaign.reward_amount,
     totalBalance: updatedUser.balance,
+    businessName: business.name,
   };
 }
 

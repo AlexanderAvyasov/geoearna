@@ -1,6 +1,7 @@
 const express = require('express');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
+const { sendMessage } = require('../services/notify');
 
 const router = express.Router();
 
@@ -27,6 +28,17 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
     }
 
     const row = Array.isArray(data) ? data[0] : data;
+
+    // Fire-and-forget notification
+    sendMessage(
+      req.user.telegram_id,
+      `✅ *Заявка на вывод принята!*\n\n` +
+      `💳 Сумма: *${amount.toLocaleString('ru-RU')} сум*\n` +
+      `📱 Payme: \`${phone}\`\n\n` +
+      `Средства поступят в течение 24 часов.\n` +
+      `Остаток баланса: *${row.new_balance.toLocaleString('ru-RU')} сум*`
+    ).catch(() => {});
+
     return res.json({ status: 'pending', totalBalance: row.new_balance });
   } catch (error) {
     console.error('POST /api/withdraw error', error);
