@@ -43,4 +43,66 @@ router.post('/api/admin/pin', validateTma, async (req, res) => {
   return res.json({ pin, expiresAt });
 });
 
+// Create top-up request
+router.post('/api/admin/topup', validateTma, async (req, res) => {
+  const telegramId = req.user.telegram_id;
+  const { amount } = req.body;
+
+  if (typeof amount !== 'number' || amount < 10000) {
+    return res.status(400).json({ error: 'INVALID_PARAMS' });
+  }
+
+  const { data: business, error: businessError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_telegram_id', telegramId)
+    .maybeSingle();
+
+  if (businessError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
+
+  const { data: request, error: insertError } = await supabase
+    .from('topup_requests')
+    .insert({ business_id: business.id, amount })
+    .select('id, amount, created_at')
+    .single();
+
+  if (insertError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+
+  return res.json({
+    request,
+    paymentDetails: {
+      cardNumber: process.env.TOPUP_CARD_NUMBER || '0000 0000 0000 0000',
+      cardHolder: process.env.TOPUP_CARD_HOLDER || 'GeoEarn',
+      bank: process.env.TOPUP_BANK || 'Payme',
+      amount,
+      comment: `GeoEarn #${request.id}`,
+    },
+  });
+});
+
+// Top-up history for business
+router.get('/api/admin/topups', validateTma, async (req, res) => {
+  const telegramId = req.user.telegram_id;
+
+  const { data: business, error: businessError } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_telegram_id', telegramId)
+    .maybeSingle();
+
+  if (businessError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
+
+  const { data: requests, error } = await supabase
+    .from('topup_requests')
+    .select('id, amount, status, note, created_at, processed_at')
+    .eq('business_id', business.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  return res.json({ requests: requests || [] });
+});
+
 module.exports = router;

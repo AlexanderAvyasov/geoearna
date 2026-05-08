@@ -64,6 +64,41 @@ CREATE TABLE IF NOT EXISTS verification_pins (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS topup_requests (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ
+);
+
+CREATE OR REPLACE FUNCTION confirm_topup(p_request_id INTEGER)
+RETURNS void AS $$
+DECLARE
+  v_amount      INTEGER;
+  v_business_id INTEGER;
+BEGIN
+  SELECT amount, business_id INTO v_amount, v_business_id
+    FROM topup_requests
+   WHERE id = p_request_id AND status = 'pending'
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'REQUEST_NOT_FOUND';
+  END IF;
+
+  UPDATE topup_requests
+     SET status = 'confirmed', processed_at = NOW()
+   WHERE id = p_request_id;
+
+  UPDATE businesses
+     SET balance = balance + v_amount
+   WHERE id = v_business_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Atomic checkin: inserts visit, increments campaign counter, adjusts balances
 CREATE OR REPLACE FUNCTION process_checkin(
   p_user_id     INTEGER,

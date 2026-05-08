@@ -8,6 +8,7 @@ const userRoutes = require('./routes/user');
 const withdrawRoutes = require('./routes/withdraw');
 const campaignsRoutes = require('./routes/campaigns');
 const adminRoutes = require('./routes/admin');
+const operatorRoutes = require('./routes/operator');
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use(userRoutes);
 app.use(withdrawRoutes);
 app.use(campaignsRoutes);
 app.use(adminRoutes);
+app.use(operatorRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });
