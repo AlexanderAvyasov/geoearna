@@ -69,20 +69,6 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
     await supabase.from('verification_pins').update({ used: true }).eq('id', pinRecord.id);
   }
 
-  // Check TOO_SOON (visited in last 20 hours)
-  const cooldownTime = new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString();
-  const { data: recentVisit } = await supabase
-    .from('visits')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('business_id', business.id)
-    .gte('created_at', cooldownTime)
-    .maybeSingle();
-
-  if (recentVisit) {
-    throw Object.assign(new Error('TOO_SOON'), { code: 'TOO_SOON' });
-  }
-
   const { error: rpcError } = await supabase.rpc('process_checkin', {
     p_user_id: userId,
     p_business_id: business.id,

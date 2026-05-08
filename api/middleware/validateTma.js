@@ -46,6 +46,14 @@ async function validateTma(req, res, next) {
       return res.status(401).json({ error: 'INVALID_SIGNATURE' });
     }
 
+    // Reject initData older than 1 hour (replay attack prevention)
+    // 5 min is for bot webhooks; Mini App sessions can last longer
+    const authDate = parseInt(payload.auth_date, 10);
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (!authDate || nowSec - authDate > 3600) {
+      return res.status(401).json({ error: 'INITDATA_EXPIRED' });
+    }
+
     let telegramUser = null;
 
     if (payload.user) {
