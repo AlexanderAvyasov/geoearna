@@ -1,0 +1,10 @@
+[service]
+  startCommand = "npm run start:all"
+
+[variables]
+  BOT_TOKEN = ""
+  BOT_USERNAME = ""
+  DATABASE_URL = ""
+  SERVICE_KEY = ""
+  PORT = "3000"
+  WEBAPP_URL = ""

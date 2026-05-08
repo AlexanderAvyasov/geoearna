@@ -1,0 +1,24 @@
+{
+  "name": "geoearn",
+  "version": "0.1.0",
+  "description": "GeoEarn backend service",
+  "main": "api/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node api/index.js",
+    "start:bot": "node bot/index.js",
+    "start:all": "node api/index.js & node bot/index.js & wait",
+    "generate-qr": "node scripts/generate-qr.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "grammy": "^1.15.0",
+    "qrcode": "^1.5.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

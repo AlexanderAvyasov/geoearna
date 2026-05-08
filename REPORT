@@ -1,0 +1,65 @@
+GeoEarn Project Report
+
+1. Overview
+
+GeoEarn is a pilot service with a Node.js backend, Telegram bot, and React mini-app. The project includes database schema, Supabase integration, Telegram WebApp validation, geolocation-based checkin, user balance and withdrawal flows, and deployment support for Railway and Vercel.
+
+2. Backend
+
+Implemented files:
+- db/schema.sql: users, businesses, campaigns, visits, withdrawals
+- db/index.js: Supabase client using DATABASE_URL and SERVICE_KEY
+- api/index.js: Express app with CORS and JSON middleware
+- api/routes/checkin.js: POST /api/checkin with validateTma and antifraud middleware
+- api/routes/user.js: GET /api/me, GET /api/visits
+- api/routes/withdraw.js: POST /api/withdraw
+- api/middleware/validateTma.js: Telegram WebApp initData HMAC-SHA256 verification, user registration
+- api/middleware/antifraud.js: prevents repeated visits in the same business within 24 hours
+- api/services/geo.js: Haversine distance calculation
+- api/services/checkin.js: business lookup, distance check, campaign selection, balance validation, atomic checkin via supabase.rpc('process_checkin', ...)
+
+3. Telegram Bot
+
+Implemented files:
+- bot/index.js: grammy Bot initialization and basic session management
+- bot/handlers/start.js: /start command, optional qr_token parameter handling, new user registration, WebApp button reply
+- bot/handlers/balance.js: /balance command, show user balance
+- bot/handlers/withdraw.js: /withdraw flow using ForceReply, phone input, amount input, withdrawal insertion, balance deduction
+
+4. Mini App
+
+Implemented files in miniapp:
+- package.json: Vite React app dependencies
+- vite.config.js: base '/', local /api proxy to http://localhost:3000
+- vercel.json: SPA routing rewrite
+- index.html: includes Telegram WebApp SDK
+- src/main.jsx, src/App.jsx
+- src/hooks/useTelegram.js: Telegram WebApp initialization and state exports
+- src/hooks/useLocation.js: geolocation handling with error and loading state
+- src/pages/Home.jsx: list campaigns from GET /api/campaigns
+- src/pages/Checkin.jsx: read ?token, get location, POST /api/checkin, display results
+- src/pages/Balance.jsx: parallel GET /api/me and GET /api/visits
+- src/pages/Withdraw.jsx: withdraw form, POST /api/withdraw
+
+5. Deployment and pilot tools
+
+Implemented files and configuration:
+- railway.toml: Railway config with startCommand and environment variables
+- miniapp/vite.config.js: Vercel-ready Vite config with API proxy
+- miniapp/vercel.json: SPA rewrite for Vercel
+- scripts/generate-qr.js: QR code generator script using qrcode package
+- scripts/seed.sql: sample data with 3 businesses in central Tashkent, active campaigns, and one test user
+- README.md: step-by-step launch, Railway deploy, Vercel deploy, BotFather setup, QR generation, pilot testing, monitoring SQL queries
+
+6. Validation and checks
+
+- Backend and bot files syntax verified with node -c
+- Mini app successfully built with npm run build in miniapp
+- QR generator script syntax validated
+
+7. Notes
+
+- The backend uses Supabase RPC `process_checkin` for atomic transaction processing.
+- The Telegram bot stores session state in-memory; this is acceptable for pilot deployment.
+- The mini-app relies on Telegram WebApp initData header for API authorization.
+- README includes monitoring SQL queries for visit count, pending withdrawals, and top users.
