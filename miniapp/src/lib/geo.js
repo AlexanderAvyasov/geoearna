@@ -25,3 +25,17 @@ export function normalizePhone(raw) {
   if (!cleaned.startsWith('+')) cleaned = '+' + cleaned;
   return cleaned;
 }
+
+export function haversineMeters(a, b) {
+  const R = 6371000;
+  const toRad = x => x * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+}
+
+export function formatDistance(meters) {
+  if (meters < 1000) return `${Math.round(meters)} м`;
+  return `${(meters / 1000).toFixed(1)} км`;
+}

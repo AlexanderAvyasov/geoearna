@@ -14,9 +14,13 @@ router.get('/api/campaigns', validateTma, async (req, res) => {
         max_visits,
         visits_count,
         ends_at,
+        task_type,
+        requires_pin,
         businesses (
           name,
-          address
+          address,
+          lat,
+          lng
         )
       `)
       .eq('active', true);
@@ -36,8 +40,12 @@ router.get('/api/campaigns', validateTma, async (req, res) => {
       .map((c) => ({
         id: c.id,
         reward_amount: c.reward_amount,
+        task_type: c.task_type || 'visit',
+        requires_pin: !!c.requires_pin,
         business_name: c.businesses?.name || '',
         address: c.businesses?.address || '',
+        lat: c.businesses?.lat ?? null,
+        lng: c.businesses?.lng ?? null,
       }));
 
     return res.json(campaigns);
