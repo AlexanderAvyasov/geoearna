@@ -52,6 +52,11 @@ CREATE TABLE IF NOT EXISTS withdrawals (
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_type VARCHAR(20) NOT NULL DEFAULT 'visit';
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_description TEXT;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS requires_pin BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS budget INTEGER NOT NULL DEFAULT 0;
+
+-- reward_amount = floor((budget * 0.9) / max_visits)
+-- The 10% commission is deducted from business balance upfront at campaign creation
+-- and credited to platform_wallet atomically via create_campaign_with_commission().
 
 ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_telegram_id BIGINT;
 
@@ -96,6 +101,74 @@ BEGIN
   UPDATE businesses
      SET balance = balance + v_amount
    WHERE id = v_business_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Platform wallet: single-row accumulator for all commission earnings
+CREATE TABLE IF NOT EXISTS platform_wallet (
+  id      INTEGER PRIMARY KEY DEFAULT 1,
+  balance BIGINT  NOT NULL DEFAULT 0,
+  CHECK (id = 1)
+);
+INSERT INTO platform_wallet (id, balance) VALUES (1, 0) ON CONFLICT DO NOTHING;
+
+-- Per-campaign commission audit trail
+CREATE TABLE IF NOT EXISTS platform_transactions (
+  id          SERIAL PRIMARY KEY,
+  campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  amount      INTEGER NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Atomic campaign creation: locks business row, deducts commission upfront,
+-- credits platform_wallet, inserts campaign, records audit entry.
+-- Returns the new campaign id.
+CREATE OR REPLACE FUNCTION create_campaign_with_commission(
+  p_business_id      INTEGER,
+  p_budget           INTEGER,
+  p_reward_amount    INTEGER,
+  p_max_visits       INTEGER,
+  p_task_type        VARCHAR,
+  p_task_description TEXT,
+  p_requires_pin     BOOLEAN,
+  p_ends_at          TIMESTAMPTZ
+) RETURNS INTEGER AS $$
+DECLARE
+  v_biz_balance INTEGER;
+  v_commission  INTEGER;
+  v_campaign_id INTEGER;
+BEGIN
+  SELECT balance INTO v_biz_balance
+    FROM businesses WHERE id = p_business_id FOR UPDATE;
+
+  IF v_biz_balance < p_budget THEN
+    RAISE EXCEPTION 'INSUFFICIENT_BALANCE';
+  END IF;
+
+  -- commission = budget - (reward * visits), always >= 10% due to Math.floor
+  v_commission := p_budget - (p_reward_amount * p_max_visits);
+
+  UPDATE businesses
+     SET balance = balance - v_commission
+   WHERE id = p_business_id;
+
+  UPDATE platform_wallet
+     SET balance = balance + v_commission
+   WHERE id = 1;
+
+  INSERT INTO campaigns (
+    business_id, budget, reward_amount, max_visits,
+    task_type, task_description, requires_pin, ends_at, active
+  ) VALUES (
+    p_business_id, p_budget, p_reward_amount, p_max_visits,
+    p_task_type, p_task_description, p_requires_pin, p_ends_at, true
+  ) RETURNING id INTO v_campaign_id;
+
+  INSERT INTO platform_transactions (campaign_id, business_id, amount)
+  VALUES (v_campaign_id, p_business_id, v_commission);
+
+  RETURN v_campaign_id;
 END;
 $$ LANGUAGE plpgsql;
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
+import { formatGeo } from '../lib/geo';
 
 const ANIM = `
   @keyframes fadeUp { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
@@ -16,8 +17,230 @@ const STATUS_MAP = {
   rejected:  { label: 'Отклонено', color: '#FF3B30', bg: 'rgba(255,59,48,0.1)' },
 };
 
+const COMMISSION = 0.10;
+
+function calcReward(budget, visits) {
+  if (!budget || !visits || visits === 0) return 0;
+  return Math.floor((budget * (1 - COMMISSION)) / visits);
+}
+
 function Skeleton({ h = 20, w = '100%', r = 8 }) {
   return <div style={{ background: '#F2F2F7', borderRadius: r, height: h, width: w, animation: 'pulse 1.4s infinite' }} />;
+}
+
+function CampaignForm({ balance, onClose, onCreated }) {
+  const [budget, setBudget]   = useState('');
+  const [visits, setVisits]   = useState('');
+  const [taskType, setTaskType] = useState('visit');
+  const [desc, setDesc]       = useState('');
+  const [requiresPin, setRequiresPin] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState('');
+
+  const budgetNum = parseInt(budget, 10) || 0;
+  const visitsNum = parseInt(visits, 10) || 0;
+  const reward    = calcReward(budgetNum, visitsNum);
+  const commission = budgetNum - reward * visitsNum;
+  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && budgetNum <= balance;
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setError('');
+    setLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/campaign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', initdata: initData },
+        body: JSON.stringify({
+          budget: budgetNum,
+          max_visits: visitsNum,
+          task_type: taskType,
+          task_description: desc || null,
+          requires_pin: requiresPin,
+        }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        const msgs = {
+          INSUFFICIENT_BALANCE: 'Недостаточно GEO на балансе заведения.',
+          REWARD_TOO_LOW: 'Слишком маленькое вознаграждение — увеличьте бюджет или уменьшите активации.',
+        };
+        setError(msgs[d.error] || 'Ошибка создания кампании.');
+        return;
+      }
+      onCreated(d.campaign);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const TASK_TYPES = [
+    { value: 'visit',    label: '📍 Визит' },
+    { value: 'purchase', label: '🛍 Покупка' },
+    { value: 'review',   label: '⭐ Отзыв' },
+  ];
+
+  const inputStyle = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '13px 14px', borderRadius: 12,
+    border: '1.5px solid rgba(0,0,0,0.1)',
+    fontSize: 16, outline: 'none', background: '#F9F9F9',
+  };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 200, animation: 'backdrop 0.25s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+        background: '#fff', borderRadius: '24px 24px 0 0',
+        maxWidth: 480, margin: '0 auto',
+        maxHeight: '92vh', overflowY: 'auto',
+        animation: 'slideUp 0.35s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -4px 32px rgba(0,0,0,0.15)',
+      }}>
+        <div style={{ width: 40, height: 4, borderRadius: 2, background: '#E0E0E0', margin: '12px auto 0' }} />
+
+        <div style={{ padding: '20px 24px 40px' }}>
+          <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4 }}>Новая кампания</div>
+          <div style={{ color: '#8E8E93', fontSize: 14, marginBottom: 24 }}>
+            Баланс: <strong>{formatGeo(balance)} GEO</strong>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {/* Budget */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7 }}>Бюджет кампании (GEO)</div>
+              <input
+                value={budget}
+                onChange={e => setBudget(e.target.value.replace(/\D/g, ''))}
+                placeholder="Например: 500 000"
+                inputMode="numeric"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Activations */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7 }}>Количество активаций</div>
+              <input
+                value={visits}
+                onChange={e => setVisits(e.target.value.replace(/\D/g, ''))}
+                placeholder="Например: 100"
+                inputMode="numeric"
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Live formula breakdown */}
+            {budgetNum > 0 && visitsNum > 0 && (
+              <div style={{
+                background: reward >= 1 ? 'rgba(52,199,89,0.06)' : 'rgba(255,59,48,0.06)',
+                border: `1.5px solid ${reward >= 1 ? 'rgba(52,199,89,0.2)' : 'rgba(255,59,48,0.2)'}`,
+                borderRadius: 14, padding: '16px', marginBottom: 16,
+              }}>
+                <div style={{ fontSize: 12, color: '#8E8E93', fontWeight: 700, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  Расчёт по формуле
+                </div>
+                <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#3C3C3E', lineHeight: 2 }}>
+                  <div>Бюджет:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<strong>{formatGeo(budgetNum)} GEO</strong></div>
+                  <div style={{ color: '#FF3B30' }}>− Комиссия 10%:&nbsp;&nbsp;<strong>{formatGeo(commission)} GEO</strong></div>
+                  <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8, marginTop: 4 }}>
+                    ÷ Активаций:&nbsp;&nbsp;&nbsp;&nbsp;<strong>{formatGeo(visitsNum)}</strong>
+                  </div>
+                  <div style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: 8, marginTop: 4, fontSize: 16, color: reward >= 1 ? '#34C759' : '#FF3B30', fontWeight: 900 }}>
+                    = За задание:&nbsp;&nbsp;&nbsp;&nbsp;<strong>{formatGeo(reward)} GEO</strong>
+                  </div>
+                </div>
+                {reward < 1 && (
+                  <div style={{ color: '#FF3B30', fontSize: 12, marginTop: 8, fontWeight: 600 }}>
+                    ↑ Увеличьте бюджет или уменьшите активации
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Task type */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7 }}>Тип задания</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {TASK_TYPES.map(t => (
+                  <button key={t.value} type="button" onClick={() => setTaskType(t.value)}
+                    style={{
+                      flex: 1, padding: '10px 6px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                      border: taskType === t.value ? '2px solid #2AABEE' : '2px solid rgba(0,0,0,0.1)',
+                      background: taskType === t.value ? 'rgba(42,171,238,0.08)' : '#F2F2F7',
+                      color: taskType === t.value ? '#2AABEE' : '#3C3C3E',
+                      cursor: 'pointer',
+                    }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 7 }}>Описание задания (необязательно)</div>
+              <textarea
+                value={desc}
+                onChange={e => setDesc(e.target.value)}
+                placeholder="Что должен сделать клиент..."
+                rows={3}
+                style={{ ...inputStyle, resize: 'none', fontFamily: 'inherit' }}
+              />
+            </div>
+
+            {/* PIN toggle */}
+            <div onClick={() => setRequiresPin(p => !p)}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: '#F2F2F7', borderRadius: 12, padding: '14px 16px',
+                marginBottom: 20, cursor: 'pointer',
+              }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>🔐 Требовать PIN</div>
+                <div style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>Сотрудник называет PIN клиенту</div>
+              </div>
+              <div style={{
+                width: 44, height: 26, borderRadius: 13,
+                background: requiresPin ? '#34C759' : '#C7C7CC',
+                transition: 'background 0.2s',
+                position: 'relative',
+              }}>
+                <div style={{
+                  position: 'absolute', top: 3,
+                  left: requiresPin ? 21 : 3,
+                  width: 20, height: 20,
+                  borderRadius: '50%', background: '#fff',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                  transition: 'left 0.2s',
+                }} />
+              </div>
+            </div>
+
+            {error && (
+              <div style={{ background: 'rgba(255,59,48,0.08)', color: '#FF3B30', borderRadius: 10, padding: '10px 14px', fontSize: 14, fontWeight: 600, marginBottom: 16, border: '1px solid rgba(255,59,48,0.15)' }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button type="submit" disabled={!canSubmit || loading}
+              style={{
+                width: '100%',
+                background: canSubmit && !loading ? 'linear-gradient(135deg, #2AABEE, #1a8fcc)' : '#C7C7CC',
+                color: '#fff', border: 'none', borderRadius: 14, padding: '16px',
+                fontSize: 16, fontWeight: 700,
+                cursor: canSubmit && !loading ? 'pointer' : 'not-allowed',
+                boxShadow: canSubmit && !loading ? '0 4px 16px rgba(42,171,238,0.35)' : 'none',
+              }}>
+              {loading ? '⏳ Создаём...' : `Запустить кампанию · ${formatGeo(reward)} GEO / задание`}
+            </button>
+          </form>
+        </div>
+      </div>
+    </>
+  );
 }
 
 function TopupModal({ business, onClose, onSuccess }) {
