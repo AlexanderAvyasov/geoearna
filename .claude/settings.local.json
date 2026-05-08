@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"C:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\"; $env:Path += \";C:\\\\Program Files\\\\Git\\\\cmd\"; git add -A; git commit -m \"fix: bot launcher, TMA validation, visits join, withdraw rpc, coord validation\"; git push origin main)"
+    ]
+  }
+}

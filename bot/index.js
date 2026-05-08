@@ -25,7 +25,7 @@ bot.use(async (ctx, next) => {
   }
 });
 
-bot.command('start', { capture: true }, startHandler);
+bot.command('start', startHandler);
 bot.command('balance', balanceHandler);
 bot.command('withdraw', withdrawHandler);
 
