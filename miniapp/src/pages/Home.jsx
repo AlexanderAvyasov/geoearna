@@ -2,24 +2,23 @@ import { useEffect, useState } from 'react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
-
-const ANIM = `
-  @keyframes pulse  { 0%,100%{opacity:1} 50%{opacity:.35} }
-  @keyframes fadeUp { from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
-  @keyframes slideUp{ from{transform:translateY(100%)} to{transform:translateY(0)} }
-  @keyframes backdrop{ from{opacity:0} to{opacity:1} }
-`;
+import { C, G, E, sk, cardBase, pressable } from '../lib/design';
 
 const TASK_LABEL = { visit: '📍 Визит', purchase: '🛍 Покупка', review: '⭐ Отзыв' };
 
 function SkeletonCard() {
+  const shimmer = {
+    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.06) 50%, ${C.card} 100%)`,
+    backgroundSize: '800px 100%',
+    animation: 'shimmer 1.6s ease-in-out infinite',
+  };
   return (
-    <div style={{ background: '#fff', borderRadius: 16, padding: 16, marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ ...cardBase, padding: '16px 18px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div style={{ flex: 1 }}>
-        <div style={{ background: '#F2F2F7', borderRadius: 6, height: 15, width: '60%', marginBottom: 10, animation: 'pulse 1.4s ease-in-out infinite' }} />
-        <div style={{ background: '#F2F2F7', borderRadius: 6, height: 11, width: '35%', animation: 'pulse 1.4s ease-in-out infinite' }} />
+        <div style={{ ...sk(14, '60%', 6), ...shimmer, marginBottom: 10 }} />
+        <div style={{ ...sk(10, '35%', 5), ...shimmer }} />
       </div>
-      <div style={{ background: '#F2F2F7', borderRadius: 10, height: 36, width: 90, marginLeft: 12, animation: 'pulse 1.4s ease-in-out infinite' }} />
+      <div style={{ ...sk(38, 96, 12), ...shimmer, marginLeft: 14 }} />
     </div>
   );
 }
@@ -31,75 +30,106 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.48)', zIndex: 200, animation: 'backdrop 0.25s ease' }} />
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          zIndex: 200, animation: 'backdropIn 0.25s ease',
+        }}
+      />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: '#fff', borderRadius: '24px 24px 0 0',
-        padding: '0 0 36px', zIndex: 201,
+        background: C.surf,
+        borderRadius: '28px 28px 0 0',
+        border: `1px solid ${C.b1}`,
+        borderBottom: 'none',
+        padding: '0 0 40px',
+        zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         animation: 'slideUp 0.35s cubic-bezier(0.32,0.72,0,1)',
-        boxShadow: '0 -4px 32px rgba(0,0,0,0.15)',
+        boxShadow: '0 -8px 60px rgba(0,0,0,0.6)',
       }}>
-        <div style={{ width: 40, height: 4, borderRadius: 2, background: '#E0E0E0', margin: '12px auto 20px' }} />
-        <div style={{ padding: '0 24px' }}>
-          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 4, color: '#1C1C1E' }}>
+        {/* Handle */}
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 24px' }} />
+
+        <div style={{ padding: '0 22px' }}>
+          {/* Business name */}
+          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 4, color: C.t1, letterSpacing: -0.4 }}>
             {campaign.business_name}
           </div>
+
           {campaign.address && (
-            <div style={{ fontSize: 14, color: '#8E8E93', marginBottom: dist !== null ? 4 : 20, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 14, color: C.t3, marginBottom: dist !== null ? 4 : 20, display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>📍</span><span>{campaign.address}</span>
             </div>
           )}
+
           {dist !== null && (
-            <div style={{ fontSize: 13, color: '#2AABEE', fontWeight: 700, marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: C.blue, fontWeight: 700, marginBottom: 20 }}>
               🧭 {formatDistance(dist)} от вас
             </div>
           )}
 
+          {/* Reward hero */}
           <div style={{
-            background: 'linear-gradient(135deg, #34C759, #25a244)',
-            borderRadius: 18, padding: '22px',
-            color: '#fff', textAlign: 'center', marginBottom: 16,
+            background: G.geo,
+            borderRadius: 20, padding: '22px',
+            textAlign: 'center', marginBottom: 14,
+            boxShadow: `0 8px 32px ${C.geoGl}`,
+            position: 'relative', overflow: 'hidden',
           }}>
-            <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 5, fontWeight: 600 }}>Вознаграждение за визит</div>
-            <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -1.5 }}>
+            <div style={{
+              position: 'absolute', top: -20, right: -20,
+              width: 100, height: 100, borderRadius: '50%',
+              background: 'rgba(255,255,255,0.08)',
+            }} />
+            <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.55)', marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+              Вознаграждение за визит
+            </div>
+            <div style={{ fontSize: 46, fontWeight: 900, letterSpacing: -1.5, color: '#0A2010' }}>
               +{formatGeo(campaign.reward_amount)}
-              <span style={{ fontSize: 18, fontWeight: 700, opacity: 0.9, marginLeft: 8 }}>GEO</span>
+              <span style={{ fontSize: 18, fontWeight: 700, opacity: 0.7, marginLeft: 8 }}>GEO</span>
             </div>
           </div>
 
-          <div style={{ background: '#F2F2F7', borderRadius: 12, padding: '14px 16px', marginBottom: 12 }}>
-            <div style={{ fontSize: 12, color: '#8E8E93', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+          {/* Task type */}
+          <div style={{ background: C.card, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '14px 16px', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
               Тип задания
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>
+            <div style={{ fontWeight: 700, fontSize: 15, color: C.t1 }}>
               {TASK_LABEL[campaign.task_type] || '📍 Визит'}
             </div>
             {campaign.task_description && (
-              <div style={{ fontSize: 14, color: '#3C3C3E', lineHeight: 1.5, marginTop: 6 }}>
+              <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.5, marginTop: 6 }}>
                 {campaign.task_description}
               </div>
             )}
           </div>
 
+          {/* PIN required */}
           {campaign.requires_pin && (
             <div style={{
-              background: 'rgba(255,149,0,0.08)', border: '1.5px solid rgba(255,149,0,0.25)',
-              borderRadius: 12, padding: '12px 14px', marginBottom: 12,
+              background: C.goldFt, border: `1.5px solid ${C.goldGl}`,
+              borderRadius: 14, padding: '12px 14px', marginBottom: 10,
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
               <span style={{ fontSize: 18 }}>🔐</span>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#CC7A00', marginBottom: 2 }}>Требуется PIN</div>
-                <div style={{ fontSize: 13, color: '#8E8E93', lineHeight: 1.4 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: C.gold, marginBottom: 2 }}>Требуется PIN</div>
+                <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.4 }}>
                   Попросите сотрудника назвать PIN при чекине
                 </div>
               </div>
             </div>
           )}
 
-          <div style={{ background: '#F2F2F7', borderRadius: 12, padding: '14px 16px', marginBottom: 20 }}>
-            <div style={{ fontSize: 12, color: '#8E8E93', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>
+          {/* How to earn */}
+          <div style={{ background: C.card, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '14px 16px', marginBottom: 20 }}>
+            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>
               Как получить
             </div>
             {[
@@ -107,18 +137,24 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               ['📍', 'Разрешите доступ к геолокации'],
               ['💎', 'GEO зачислятся мгновенно'],
             ].map(([icon, text]) => (
-              <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
-                <span style={{ fontSize: 13, color: '#3C3C3E' }}>{text}</span>
+                <span style={{ fontSize: 13, color: C.t2 }}>{text}</span>
               </div>
             ))}
           </div>
 
-          <button onClick={onClose} style={{
-            width: '100%', background: '#F2F2F7', border: 'none',
-            borderRadius: 14, padding: '15px', fontSize: 16,
-            fontWeight: 700, color: '#3C3C3E', cursor: 'pointer',
-          }}>
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%', background: C.card,
+              border: `1px solid ${C.b1}`,
+              borderRadius: 16, padding: '15px',
+              fontSize: 16, fontWeight: 700,
+              color: C.t2, cursor: 'pointer',
+              transition: `opacity 0.15s`,
+            }}
+          >
             Закрыть
           </button>
         </div>
@@ -127,7 +163,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
   );
 }
 
-function CampaignCard({ campaign, onTap }) {
+function CampaignCard({ campaign, onTap, index }) {
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -139,45 +175,53 @@ function CampaignCard({ campaign, onTap }) {
       onTouchStart={() => setPressed(true)}
       onTouchEnd={() => setPressed(false)}
       style={{
-        background: '#fff', borderRadius: 16, padding: '15px 16px',
-        marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.05)', cursor: 'pointer',
-        transform: pressed ? 'scale(0.975)' : 'scale(1)',
-        transition: 'transform 0.15s ease',
+        ...cardBase,
+        padding: '15px 16px',
+        marginBottom: 10,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        border: `1px solid ${C.b1}`,
+        cursor: 'pointer',
+        ...pressable(pressed),
+        animation: `fadeUp 0.35s ${E.smooth} both`,
+        animationDelay: `${index * 0.06}s`,
         userSelect: 'none', WebkitUserSelect: 'none',
-        animation: 'fadeUp 0.3s ease both',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1C1C1E' }}>
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
           {campaign.business_name}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ fontSize: 12, color: '#2AABEE', fontWeight: 600 }}>
+            <span style={{ fontSize: 12, color: C.blue, fontWeight: 600 }}>
               🧭 {formatDistance(campaign.dist)}
             </span>
           )}
-          {campaign.address && !campaign.dist && (
-            <span style={{ fontSize: 12, color: '#8E8E93', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {campaign.address && campaign.dist === undefined && (
+            <span style={{ fontSize: 12, color: C.t3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               📍 {campaign.address}
             </span>
           )}
           {campaign.requires_pin && (
-            <span style={{ fontSize: 11, color: '#FF9500', fontWeight: 600 }}>🔐 PIN</span>
+            <span style={{
+              fontSize: 10, color: C.gold, fontWeight: 700,
+              background: C.goldFt, borderRadius: 6, padding: '2px 6px',
+              border: `1px solid ${C.goldGl}`,
+            }}>🔐 PIN</span>
           )}
         </div>
       </div>
       <div style={{ flexShrink: 0, textAlign: 'right' }}>
         <div style={{
-          background: 'linear-gradient(135deg, #34C759, #25a244)',
-          color: '#fff', borderRadius: 12, padding: '9px 13px',
+          background: G.geo,
+          color: '#071a0c', borderRadius: 12, padding: '9px 13px',
           fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap',
-          boxShadow: '0 3px 10px rgba(52,199,89,0.35)',
+          boxShadow: `0 4px 14px ${C.geoGl}`,
         }}>
           +{formatGeo(campaign.reward_amount)} GEO
         </div>
-        <div style={{ fontSize: 11, color: '#C7C7CC', marginTop: 4 }}>Подробнее →</div>
+        <div style={{ fontSize: 11, color: C.t3, marginTop: 5 }}>Подробнее →</div>
       </div>
     </div>
   );
@@ -198,7 +242,6 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Non-blocking location for distance sorting
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -219,44 +262,64 @@ export default function Home() {
   })();
 
   return (
-    <div>
-      <style>{ANIM}</style>
-
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.4s ease both' }}>
       {/* Hero */}
       <div style={{
-        background: 'linear-gradient(150deg, #0D1117 0%, #1a2744 100%)',
-        padding: '28px 20px 40px',
-        color: '#fff',
+        background: G.hero,
+        padding: '32px 20px 52px',
+        position: 'relative', overflow: 'hidden',
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.4, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
+        {/* ambient glow */}
+        <div style={{
+          position: 'absolute', top: -40, right: -40,
+          width: 200, height: 200, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(0,230,118,0.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -30, left: -30,
+          width: 160, height: 160, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(42,171,238,0.10) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, letterSpacing: 1.5, marginBottom: 10, textTransform: 'uppercase' }}>
           GeoEarn · Discover
         </div>
-        <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 8, lineHeight: 1.1 }}>
+        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, lineHeight: 1.1, letterSpacing: -0.8, color: C.t1 }}>
           Зарабатывайте GEO 💎
         </div>
-        <div style={{ fontSize: 14, opacity: 0.55, lineHeight: 1.5, maxWidth: 280 }}>
+        <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.6, maxWidth: 280 }}>
           Посещайте заведения и получайте GEO-монеты за каждый визит
         </div>
+
         {userPos && !loading && displayed.length > 0 && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'rgba(52,199,89,0.15)', border: '1px solid rgba(52,199,89,0.3)',
-            borderRadius: 20, padding: '5px 12px', marginTop: 14,
-            fontSize: 12, color: '#34C759', fontWeight: 700,
+            background: C.geoFt, border: `1px solid ${C.geoGl}`,
+            borderRadius: 20, padding: '5px 12px', marginTop: 16,
+            fontSize: 12, color: C.geo, fontWeight: 700,
           }}>
             🧭 Сортировка по расстоянию
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div style={{ marginTop: -16, borderRadius: '20px 20px 0 0', background: '#EFEFF4', minHeight: '70vh', paddingTop: 18 }}>
+      {/* Content panel */}
+      <div style={{
+        marginTop: -20, borderRadius: '24px 24px 0 0',
+        background: C.bg,
+        border: `1px solid ${C.b0}`,
+        borderBottom: 'none',
+        minHeight: '70vh',
+        paddingTop: 20,
+      }}>
         <div style={{ padding: '0 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
             Активные кампании
           </div>
           {!loading && displayed.length > 0 && (
-            <div style={{ fontSize: 12, color: '#8E8E93', fontWeight: 600 }}>
+            <div style={{ fontSize: 12, color: C.t3, fontWeight: 600 }}>
               {displayed.length} {displayed.length === 1 ? 'заведение' : displayed.length < 5 ? 'заведения' : 'заведений'}
             </div>
           )}
@@ -266,33 +329,38 @@ export default function Home() {
           {loading && [1, 2, 3].map(i => <SkeletonCard key={i} />)}
 
           {!loading && error && (
-            <div style={{ textAlign: 'center', paddingTop: 48 }}>
+            <div style={{ textAlign: 'center', paddingTop: 56 }}>
               <div style={{ fontSize: 52, marginBottom: 12 }}>😕</div>
-              <div style={{ fontWeight: 600, fontSize: 16, color: '#FF3B30', marginBottom: 6 }}>Ошибка загрузки</div>
-              <div style={{ color: '#8E8E93', fontSize: 14 }}>{error}</div>
+              <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
+              <div style={{ color: C.t3, fontSize: 14 }}>{error}</div>
             </div>
           )}
 
           {!loading && !error && displayed.length === 0 && (
-            <div style={{ textAlign: 'center', paddingTop: 48 }}>
+            <div style={{ textAlign: 'center', paddingTop: 56 }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>🏪</div>
-              <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8, color: '#1C1C1E' }}>Нет активных кампаний</div>
-              <div style={{ color: '#8E8E93', fontSize: 14, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активных кампаний</div>
+              <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
                 Пока нет заведений с активными акциями.<br />Загляните позже!
               </div>
             </div>
           )}
 
           {!loading && !error && displayed.map((c, i) => (
-            <div key={c.id} style={{ animationDelay: `${i * 0.05}s` }}>
-              <CampaignCard campaign={c} onTap={setSelected} />
-            </div>
+            <CampaignCard key={c.id} campaign={c} onTap={setSelected} index={i} />
           ))}
         </div>
 
         {!loading && !error && displayed.length > 0 && (
-          <div style={{ margin: '8px 16px 28px', padding: '16px', background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: '#1C1C1E' }}>Как это работает</div>
+          <div style={{
+            margin: '8px 16px 32px',
+            ...cardBase,
+            border: `1px solid ${C.b0}`,
+            padding: 16,
+          }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12, color: C.t2, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Как это работает
+            </div>
             {[
               ['📷', 'Нажмите 📷 и отсканируйте QR-код в заведении'],
               ['📍', 'Разрешите доступ к геолокации'],
@@ -300,14 +368,16 @@ export default function Home() {
             ].map(([icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
-                <span style={{ fontSize: 14, color: '#3C3C3E' }}>{text}</span>
+                <span style={{ fontSize: 14, color: C.t2 }}>{text}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {selected && <CampaignSheet campaign={selected} userPos={userPos} onClose={() => setSelected(null)} />}
+      {selected && (
+        <CampaignSheet campaign={selected} userPos={userPos} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }

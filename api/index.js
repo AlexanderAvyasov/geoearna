@@ -15,6 +15,9 @@ dotenv.config();
 
 const app = express();
 
+// Railway / Nginx proxy — trust X-Forwarded-For from the first hop
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 

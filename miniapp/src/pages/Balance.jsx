@@ -3,13 +3,7 @@ import { Link } from 'react-router-dom';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
-
-const ANIM = `
-  @keyframes fadeUp  { from{transform:translateY(12px);opacity:0} to{transform:translateY(0);opacity:1} }
-  @keyframes pulse   { 0%,100%{opacity:1} 50%{opacity:.35} }
-  @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-  @keyframes slideIn { from{transform:translateX(-10px);opacity:0} to{transform:translateX(0);opacity:1} }
-`;
+import { C, G, E, sk, cardBase } from '../lib/design';
 
 function formatDate(str) {
   return new Date(str).toLocaleString('ru-RU', {
@@ -19,13 +13,18 @@ function formatDate(str) {
 }
 
 function SkeletonRow() {
+  const shimmer = {
+    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.06) 50%, ${C.card} 100%)`,
+    backgroundSize: '600px 100%',
+    animation: 'shimmer 1.6s ease-in-out infinite',
+  };
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', marginBottom: 10, display: 'flex', justifyContent: 'space-between' }}>
-      <div>
-        <div style={{ background: '#F2F2F7', borderRadius: 6, height: 14, width: 130, marginBottom: 8, animation: 'pulse 1.4s infinite' }} />
-        <div style={{ background: '#F2F2F7', borderRadius: 6, height: 11, width: 80, animation: 'pulse 1.4s infinite' }} />
+    <div style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '14px 16px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ ...sk(14, 140, 6), ...shimmer, marginBottom: 8 }} />
+        <div style={{ ...sk(10, 90, 5), ...shimmer }} />
       </div>
-      <div style={{ background: '#F2F2F7', borderRadius: 8, height: 22, width: 80, alignSelf: 'center', animation: 'pulse 1.4s infinite' }} />
+      <div style={{ ...sk(22, 84, 8), ...shimmer }} />
     </div>
   );
 }
@@ -76,69 +75,67 @@ export default function Balance() {
       .finally(() => setLoading(false));
   }, []);
 
-  const geoBalance      = user?.balance ?? 0;
-  const uzsBalance      = geoToUzs(geoBalance, geoRate);
-  const totalEarnedGeo  = visits.reduce((s, v) => s + (v.rewarded || 0), 0);
-
+  const geoBalance     = user?.balance ?? 0;
+  const totalEarnedGeo = visits.reduce((s, v) => s + (v.rewarded || 0), 0);
   const displayBalance = useCountUp(geoBalance, !loading && geoBalance > 0);
   const shownBalance   = loading ? 0 : (geoBalance > 0 ? displayBalance : 0);
 
   if (error) return (
-    <div style={{ padding: 32, textAlign: 'center', paddingTop: 80 }}>
-      <div style={{ fontSize: 52, marginBottom: 16 }}>😕</div>
-      <div style={{ color: '#FF3B30', fontWeight: 600 }}>{error}</div>
+    <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+      <div style={{ fontSize: 52 }}>😕</div>
+      <div style={{ color: C.red, fontWeight: 600 }}>{error}</div>
     </div>
   );
 
   return (
-    <div>
-      <style>{ANIM}</style>
-
-      {/* Dark wallet hero */}
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.4s ease both' }}>
+      {/* Wallet hero */}
       <div style={{
-        background: 'linear-gradient(150deg, #0D1117 0%, #161E2E 60%, #0D1117 100%)',
-        padding: '32px 20px 56px',
-        color: '#fff',
-        position: 'relative',
-        overflow: 'hidden',
+        background: G.hero,
+        padding: '36px 22px 60px',
+        position: 'relative', overflow: 'hidden',
       }}>
-        {/* Decorative glow */}
+        {/* Blue ambient glow */}
         <div style={{
-          position: 'absolute', top: -40, right: -40,
-          width: 200, height: 200, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(42,171,238,0.12) 0%, transparent 70%)',
+          position: 'absolute', top: -60, right: -60,
+          width: 240, height: 240, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(42,171,238,0.14) 0%, transparent 70%)',
+          pointerEvents: 'none', animation: 'glowPulse 4s ease-in-out infinite',
+        }} />
+        {/* Green ambient */}
+        <div style={{
+          position: 'absolute', bottom: -40, left: -40,
+          width: 180, height: 180, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(0,230,118,0.10) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
-        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.4, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 }}>
           💎 GEO Wallet
         </div>
 
         {loading ? (
           <div>
-            <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 12, height: 52, width: 200, animation: 'pulse 1.4s infinite', marginBottom: 10 }} />
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, height: 18, width: 120, animation: 'pulse 1.4s infinite' }} />
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, height: 52, width: 220, animation: 'pulse 1.4s infinite', marginBottom: 10 }} />
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 18, width: 130, animation: 'pulse 1.4s infinite' }} />
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 6 }}>
-              <div style={{ fontSize: 52, fontWeight: 900, letterSpacing: -2, lineHeight: 1, color: '#fff' }}>
+              <div style={{ fontSize: 54, fontWeight: 900, letterSpacing: -2, lineHeight: 1, color: C.t1 }}>
                 {formatGeo(shownBalance)}
               </div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>
-                GEO
-              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.t3, marginBottom: 7 }}>GEO</div>
             </div>
-            <div style={{ fontSize: 17, color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>
+            <div style={{ fontSize: 17, color: C.t3, fontWeight: 500 }}>
               ≈ {formatUzs(geoToUzs(shownBalance, geoRate))} UZS
             </div>
-
             {geoRate !== 1 && (
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'rgba(42,171,238,0.12)', border: '1px solid rgba(42,171,238,0.25)',
-                borderRadius: 20, padding: '4px 12px',
-                fontSize: 12, color: '#2AABEE', marginTop: 12, fontWeight: 700,
+                background: C.blueFt, border: `1px solid ${C.blueGl}`,
+                borderRadius: 20, padding: '4px 12px', marginTop: 14,
+                fontSize: 12, color: C.blue, fontWeight: 700,
               }}>
                 📈 1 GEO = {geoRate} UZS
               </div>
@@ -147,32 +144,40 @@ export default function Balance() {
         )}
 
         {/* Stats row */}
-        <div style={{ display: 'flex', gap: 0, marginTop: 24 }}>
+        <div style={{ display: 'flex', marginTop: 28 }}>
           {[
-            { label: 'Визитов', val: loading ? '—' : visits.length },
+            { label: 'Визитов',    val: loading ? '—' : visits.length },
             { label: 'Заработано', val: loading ? '—' : `${formatGeo(totalEarnedGeo)} GEO` },
           ].map((item, i) => (
-            <div key={i} style={{ flex: 1, paddingRight: i === 0 ? 16 : 0, borderRight: i === 0 ? '1px solid rgba(255,255,255,0.1)' : 'none', paddingLeft: i === 1 ? 16 : 0 }}>
-              <div style={{ fontSize: 11, opacity: 0.4, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{item.label}</div>
-              <div style={{ fontSize: 20, fontWeight: 800 }}>{item.val}</div>
+            <div key={i} style={{
+              flex: 1,
+              paddingRight: i === 0 ? 18 : 0,
+              borderRight: i === 0 ? `1px solid ${C.b1}` : 'none',
+              paddingLeft: i === 1 ? 18 : 0,
+            }}>
+              <div style={{ fontSize: 11, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.6 }}>{item.label}</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.t1 }}>{item.val}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Content */}
-      <div style={{ marginTop: -28, borderRadius: '28px 28px 0 0', background: '#EFEFF4', minHeight: '60vh', paddingTop: 20 }}>
-
-        {/* Withdraw button */}
-        <div style={{ padding: '0 16px 16px' }}>
+      {/* Content panel */}
+      <div style={{
+        marginTop: -24, borderRadius: '28px 28px 0 0',
+        background: C.bg, border: `1px solid ${C.b0}`, borderBottom: 'none',
+        minHeight: '60vh', paddingTop: 22,
+      }}>
+        {/* Withdraw CTA */}
+        <div style={{ padding: '0 16px 18px' }}>
           <Link to="/withdraw" style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
-            background: 'linear-gradient(135deg, #2AABEE, #1a8fcc)',
+            background: G.blue,
             color: '#fff', textDecoration: 'none',
             borderRadius: 18, padding: '17px 20px',
             fontWeight: 800, fontSize: 16,
-            boxShadow: '0 6px 24px rgba(42,171,238,0.38)',
-            animation: 'fadeUp 0.3s ease both',
+            boxShadow: `0 8px 28px ${C.blueGl}`,
+            animation: 'fadeUp 0.35s ease both',
           }}>
             <span style={{ fontSize: 20 }}>💳</span>
             Вывести GEO → UZS
@@ -180,14 +185,12 @@ export default function Balance() {
         </div>
 
         {/* Activity header */}
-        <div style={{ padding: '4px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ padding: '0 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
             История активности
           </div>
           {!loading && visits.length > 0 && (
-            <div style={{ fontSize: 12, color: '#8E8E93', fontWeight: 600 }}>
-              {visits.length} записей
-            </div>
+            <div style={{ fontSize: 12, color: C.t3, fontWeight: 600 }}>{visits.length} записей</div>
           )}
         </div>
 
@@ -195,10 +198,10 @@ export default function Balance() {
           {loading && [1, 2, 3].map(i => <SkeletonRow key={i} />)}
 
           {!loading && visits.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '48px 16px' }}>
+            <div style={{ textAlign: 'center', padding: '56px 16px' }}>
               <div style={{ fontSize: 64, marginBottom: 16 }}>🗺️</div>
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: '#1C1C1E' }}>Нет активности</div>
-              <div style={{ color: '#8E8E93', fontSize: 14, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
+              <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
                 Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
               </div>
             </div>
@@ -206,25 +209,26 @@ export default function Balance() {
 
           {!loading && visits.map((v, i) => (
             <div key={v.id} style={{
-              background: '#fff', borderRadius: 16,
+              ...cardBase,
+              border: `1px solid ${C.b1}`,
               padding: '14px 16px', marginBottom: 10,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-              animation: `fadeUp 0.3s ${i * 0.04}s ease both`,
+              animation: `fadeUp 0.35s ${E.smooth} both`,
+              animationDelay: `${i * 0.04}s`,
             }}>
               <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#1C1C1E' }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
                   {v.business_name || 'Заведение'}
                 </div>
-                <div style={{ fontSize: 12, color: '#8E8E93' }}>
+                <div style={{ fontSize: 12, color: C.t3 }}>
                   📅 {formatDate(v.created_at)}
                 </div>
               </div>
               <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                <div style={{ color: '#34C759', fontWeight: 800, fontSize: 16 }}>
+                <div style={{ color: C.geo, fontWeight: 800, fontSize: 16 }}>
                   +{formatGeo(v.rewarded)} GEO
                 </div>
-                <div style={{ fontSize: 11, color: '#C7C7CC', marginTop: 2 }}>
+                <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
                   ≈ {formatUzs(geoToUzs(v.rewarded, geoRate))} UZS
                 </div>
               </div>

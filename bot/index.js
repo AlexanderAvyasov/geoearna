@@ -38,7 +38,16 @@ bot.on('message:text', async (ctx) => {
   );
 });
 
-bot.start();
+// Graceful shutdown — Railway sends SIGTERM before stopping old instance.
+// Without this the old process keeps polling and causes 409 Conflict on restart.
+process.once('SIGINT',  () => bot.stop());
+process.once('SIGTERM', () => bot.stop());
+
+bot.start().catch(err => {
+  console.error('Bot failed to start:', err.message);
+  process.exit(1);
+});
+
 startStreakTask();
 
 module.exports = bot;
