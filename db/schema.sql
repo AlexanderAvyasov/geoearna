@@ -99,7 +99,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Atomic checkin: inserts visit, increments campaign counter, adjusts balances
+-- Atomic checkin: balance check, insert visit, adjust balances, auto-stop exhausted campaigns
 CREATE OR REPLACE FUNCTION process_checkin(
   p_user_id     INTEGER,
   p_business_id INTEGER,
@@ -108,7 +108,27 @@ CREATE OR REPLACE FUNCTION process_checkin(
   p_lng         DECIMAL,
   p_reward      INTEGER
 ) RETURNS void AS $$
+DECLARE
+  v_biz_balance  INTEGER;
+  v_visits_count INTEGER;
+  v_max_visits   INTEGER;
 BEGIN
+  -- Lock business row and verify funds atomically
+  SELECT balance INTO v_biz_balance
+    FROM businesses WHERE id = p_business_id FOR UPDATE;
+
+  IF v_biz_balance < p_reward THEN
+    RAISE EXCEPTION 'BUSINESS_INSUFFICIENT_FUNDS';
+  END IF;
+
+  -- Verify campaign slot is still available (race-condition safe)
+  SELECT visits_count, max_visits INTO v_visits_count, v_max_visits
+    FROM campaigns WHERE id = p_campaign_id FOR UPDATE;
+
+  IF v_visits_count >= v_max_visits THEN
+    RAISE EXCEPTION 'NO_ACTIVE_CAMPAIGN';
+  END IF;
+
   INSERT INTO visits (user_id, business_id, campaign_id, lat, lng, rewarded)
   VALUES (p_user_id, p_business_id, p_campaign_id, p_lat, p_lng, p_reward);
 
@@ -119,6 +139,13 @@ BEGIN
   UPDATE businesses
      SET balance = balance - p_reward
    WHERE id = p_business_id;
+
+  -- Auto-stop any campaign the business can no longer afford
+  UPDATE campaigns
+     SET active = false
+   WHERE business_id = p_business_id
+     AND active = true
+     AND reward_amount > (SELECT balance FROM businesses WHERE id = p_business_id);
 
   UPDATE users
      SET balance = balance + p_reward

@@ -5,18 +5,33 @@ const { sendMessage } = require('../services/notify');
 
 const router = express.Router();
 
+const UZ_PHONE_RE = /^\+998[0-9]{9}$/;
+
+function normalizePhone(raw) {
+  let p = String(raw).replace(/[\s\-\(\)]/g, '');
+  if (!p.startsWith('+')) p = '+' + p;
+  return p;
+}
+
 router.post('/api/withdraw', validateTma, async (req, res) => {
   try {
     const { amount, phone } = req.body;
 
-    if (typeof amount !== 'number' || amount <= 0 || !phone) {
+    if (typeof amount !== 'number' || amount <= 0) {
       return res.status(400).json({ error: 'INVALID_PARAMS' });
     }
+
+    const normalizedPhone = normalizePhone(phone || '');
+    if (!UZ_PHONE_RE.test(normalizedPhone)) {
+      return res.status(400).json({ error: 'INVALID_PHONE' });
+    }
+
+    const geoRate = parseFloat(process.env.GEO_RATE) || 1;
 
     const { data, error } = await supabase.rpc('process_withdrawal', {
       p_user_id: req.user.id,
       p_amount: amount,
-      p_phone: phone,
+      p_phone: normalizedPhone,
     });
 
     if (error) {
@@ -28,18 +43,24 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
     }
 
     const row = Array.isArray(data) ? data[0] : data;
+    const uzsAmount = Math.round(amount * geoRate);
 
-    // Fire-and-forget notification
     sendMessage(
       req.user.telegram_id,
       `✅ *Заявка на вывод принята!*\n\n` +
-      `💳 Сумма: *${amount.toLocaleString('ru-RU')} сум*\n` +
-      `📱 Payme: \`${phone}\`\n\n` +
+      `💎 GEO: *${amount.toLocaleString('ru-RU')} GEO*\n` +
+      `💵 К выплате: *${uzsAmount.toLocaleString('ru-RU')} UZS*\n` +
+      `📱 Payme: \`${normalizedPhone}\`\n\n` +
       `Средства поступят в течение 24 часов.\n` +
-      `Остаток баланса: *${row.new_balance.toLocaleString('ru-RU')} сум*`
+      `Остаток: *${row.new_balance.toLocaleString('ru-RU')} GEO*`
     ).catch(() => {});
 
-    return res.json({ status: 'pending', totalBalance: row.new_balance });
+    return res.json({
+      status: 'pending',
+      totalBalance: row.new_balance,
+      uzsAmount,
+      geoRate,
+    });
   } catch (error) {
     console.error('POST /api/withdraw error', error);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
