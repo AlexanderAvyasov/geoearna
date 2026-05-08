@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
   try {
-    const { qrToken, lat, lng } = req.body;
+    const { qrToken, lat, lng, pin } = req.body;
 
     if (!qrToken || typeof lat !== 'number' || typeof lng !== 'number') {
       return res.status(400).json({ error: 'INVALID_PARAMS' });
@@ -22,12 +22,14 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
       qrToken,
       lat,
       lng,
+      pin: pin || null,
     });
 
     return res.json(result);
   } catch (error) {
     const code = error && error.code ? error.code : 'INTERNAL_ERROR';
-    const status = code === 'TOO_SOON' ? 429 : ['TOO_FAR', 'INVALID_PARAMS', 'INVALID_QR_TOKEN', 'NO_ACTIVE_CAMPAIGN', 'BUSINESS_INSUFFICIENT_FUNDS'].includes(code) ? 400 : 500;
+    const clientErrors = ['TOO_FAR', 'INVALID_PARAMS', 'INVALID_QR_TOKEN', 'NO_ACTIVE_CAMPAIGN', 'BUSINESS_INSUFFICIENT_FUNDS', 'PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'];
+    const status = code === 'TOO_SOON' ? 429 : clientErrors.includes(code) ? 400 : 500;
     return res.status(status).json({ error: code });
   }
 });

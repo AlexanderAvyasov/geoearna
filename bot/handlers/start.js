@@ -6,18 +6,14 @@ async function startHandler(ctx) {
     const qrToken = ctx.match || null;
     const telegramId = String(ctx.from?.id);
     const username = ctx.from?.username || null;
+    const firstName = ctx.from?.first_name || 'пользователь';
 
     if (!telegramId) {
-      return ctx.reply('Не удалось определить вашего Telegram ID. Попробуйте снова.');
+      return ctx.reply('Не удалось определить ваш Telegram ID. Попробуйте снова.');
     }
 
-    if (!ctx.session) {
-      ctx.session = {};
-    }
-
-    if (qrToken) {
-      ctx.session.qrToken = qrToken;
-    }
+    if (!ctx.session) ctx.session = {};
+    if (qrToken) ctx.session.pendingQrToken = qrToken;
 
     const { data: existingUser, error: selectError } = await supabase
       .from('users')
@@ -27,12 +23,10 @@ async function startHandler(ctx) {
 
     if (selectError) {
       console.error('start select user error', selectError);
-      return ctx.reply('Произошла ошибка при обработке команды. Попробуйте позже.');
+      return ctx.reply('Произошла ошибка. Попробуйте позже.');
     }
 
-    let user = existingUser;
-
-    if (!user) {
+    if (!existingUser) {
       const { data: insertedUser, error: insertError } = await supabase
         .from('users')
         .insert({ telegram_id: telegramId, username })
@@ -41,40 +35,84 @@ async function startHandler(ctx) {
 
       if (insertError) {
         console.error('start insert user error', insertError);
-        return ctx.reply('Произошла ошибка при регистрации. Попробуйте позже.');
+        return ctx.reply('Ошибка при регистрации. Попробуйте позже.');
       }
 
-      user = insertedUser;
-    }
-
-    if (qrToken) {
-      const webAppUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(qrToken)}`;
-      const keyboard = new Keyboard().webApp('Открыть приложение', webAppUrl).resized();
+      ctx.session.awaitingPhone = true;
+      const phoneKeyboard = new Keyboard()
+        .requestContact('📱 Поделиться номером')
+        .resized()
+        .oneTime();
 
       return ctx.reply(
-        'Найден QR-код заведения. Откройте приложение для чекина.',
-        {
-          reply_markup: keyboard,
-        }
+        `👋 Добро пожаловать в GeoEarn, ${firstName}!\n\n` +
+        `Посещайте заведения, сканируйте QR-коды и получайте бонусы на свой счёт.\n\n` +
+        `Для завершения регистрации поделитесь номером телефона — он нужен для вывода средств.`,
+        { reply_markup: phoneKeyboard }
       );
     }
 
-    const webAppUrl = `${process.env.WEBAPP_URL}`;
-    const keyboard = new Keyboard()
-      .webApp('Мои визиты и баланс', webAppUrl)
-      .text('Запросить вывод')
-      .resized();
-
-    return ctx.reply(
-      'Добро пожаловать в GeoEarn! Вы можете открыть приложение или запросить вывод средств.',
-      {
-        reply_markup: keyboard,
-      }
-    );
+    return sendMainMenu(ctx, existingUser);
   } catch (error) {
     console.error('startHandler error', error);
     return ctx.reply('Произошла внутренняя ошибка. Попробуйте позже.');
   }
 }
 
-module.exports = startHandler;
+async function sendMainMenu(ctx, user) {
+  const qrToken = ctx.session?.pendingQrToken || null;
+  if (qrToken) {
+    ctx.session.pendingQrToken = null;
+    const webAppUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(qrToken)}`;
+    const keyboard = new Keyboard().webApp('📍 Выполнить чекин', webAppUrl).resized();
+    return ctx.reply('Найден QR-код заведения. Откройте приложение для чекина.', {
+      reply_markup: keyboard,
+    });
+  }
+
+  const webAppUrl = process.env.WEBAPP_URL;
+  const keyboard = new Keyboard()
+    .webApp('💼 Открыть GeoEarn', webAppUrl)
+    .resized();
+
+  return ctx.reply(
+    `Добро пожаловать, ${ctx.from?.first_name || 'пользователь'}!\n\n` +
+    `Баланс: *${(user?.balance || 0).toLocaleString('ru-RU')} сум*\n\n` +
+    `Сканируйте QR-коды в заведениях и получайте вознаграждение.\n\n` +
+    `Команды:\n/myqr — QR-код вашего заведения\n/mypin — одноразовый PIN для клиента`,
+    { reply_markup: keyboard, parse_mode: 'Markdown' }
+  );
+}
+
+async function handleContact(ctx) {
+  try {
+    const telegramId = String(ctx.from?.id);
+    const phone = ctx.message?.contact?.phone_number;
+
+    if (!phone) return;
+
+    await supabase
+      .from('users')
+      .update({ phone })
+      .eq('telegram_id', telegramId);
+
+    ctx.session.awaitingPhone = false;
+
+    const { data: user } = await supabase
+      .from('users')
+      .select('*')
+      .eq('telegram_id', telegramId)
+      .maybeSingle();
+
+    await ctx.reply('✅ Номер телефона сохранён. Регистрация завершена!', {
+      reply_markup: { remove_keyboard: true },
+    });
+
+    return sendMainMenu(ctx, user);
+  } catch (error) {
+    console.error('handleContact error', error);
+    return ctx.reply('Ошибка при сохранении номера. Попробуйте позже.');
+  }
+}
+
+module.exports = { startHandler, sendMainMenu, handleContact };

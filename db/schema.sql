@@ -49,6 +49,21 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_type VARCHAR(20) NOT NULL DEFAULT 'visit';
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_description TEXT;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS requires_pin BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE businesses ADD COLUMN IF NOT EXISTS owner_telegram_id BIGINT;
+
+CREATE TABLE IF NOT EXISTS verification_pins (
+  id SERIAL PRIMARY KEY,
+  business_id INTEGER NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+  pin VARCHAR(6) NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '15 minutes',
+  used BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- Atomic checkin: inserts visit, increments campaign counter, adjusts balances
 CREATE OR REPLACE FUNCTION process_checkin(
   p_user_id     INTEGER,
