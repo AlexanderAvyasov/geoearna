@@ -184,22 +184,16 @@ export default function Admin() {
   const [pinExpires, setPinExpires] = useState(null);
   const [pinLoading, setPinLoading] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
-  const [showTopup, setShowTopup] = useState(false);
+  // const [showTopup, setShowTopup] = useState(false); // Payme integration pending
 
   const webappUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   function loadData() {
-    const h = { initdata: initData };
-    Promise.all([
-      fetch(`${API_BASE}/api/admin/business`, { headers: h }),
-      fetch(`${API_BASE}/api/admin/topups`, { headers: h }),
-    ])
-      .then(async ([bRes, tRes]) => {
-        if (bRes.status === 404 || bRes.status === 403) { setNotOwner(true); return; }
-        const bData = await bRes.json();
-        const tData = tRes.ok ? await tRes.json() : { requests: [] };
-        setBusiness(bData.business);
-        setTopups(tData.requests || []);
+    fetch(`${API_BASE}/api/admin/business`, { headers: { initdata: initData } })
+      .then(async r => {
+        if (r.status === 404 || r.status === 403) { setNotOwner(true); return; }
+        const d = await r.json();
+        setBusiness(d.business);
       })
       .catch(() => setNotOwner(true))
       .finally(() => setLoading(false));
@@ -280,16 +274,7 @@ export default function Admin() {
               </div>
               <div style={{ fontSize: 42 }}>💰</div>
             </div>
-            <button
-              onClick={() => setShowTopup(true)}
-              style={{
-                width: '100%', background: 'linear-gradient(135deg, #34C759, #25a244)',
-                color: '#fff', border: 'none', borderRadius: 12, padding: '13px',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(52,199,89,0.3)',
-              }}>
-              + Пополнить баланс
-            </button>
+            {/* Payme top-up button — pending integration */}
           </div>
 
           {/* Active campaign stats */}
@@ -338,29 +323,7 @@ export default function Admin() {
             )}
           </div>
 
-          {/* Top-up history */}
-          {topups.length > 0 && (
-            <div style={{ background: '#fff', borderRadius: 18, padding: '20px', marginBottom: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.06)', animation: 'fadeUp 0.3s 0.15s ease both' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 16 }}>История пополнений</div>
-              {topups.map(t => {
-                const s = STATUS_MAP[t.status] || STATUS_MAP.pending;
-                return (
-                  <div key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, marginBottom: 12, borderBottom: '1px solid #F2F2F7' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 15 }}>{t.amount.toLocaleString()} сум</div>
-                      <div style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>
-                        {new Date(t.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                      </div>
-                      {t.note && <div style={{ fontSize: 12, color: '#FF3B30', marginTop: 2 }}>{t.note}</div>}
-                    </div>
-                    <div style={{ background: s.bg, color: s.color, borderRadius: 8, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>
-                      {s.label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Top-up history — pending Payme integration */}
 
           {/* QR Code */}
           <div style={{ background: '#fff', borderRadius: 18, padding: '20px', marginBottom: 24, boxShadow: '0 2px 10px rgba(0,0,0,0.06)', animation: 'fadeUp 0.3s 0.2s ease both', textAlign: 'center' }}>
@@ -372,17 +335,6 @@ export default function Admin() {
         </div>
       </div>
 
-      {showTopup && (
-        <TopupModal
-          business={business}
-          onClose={() => setShowTopup(false)}
-          onSuccess={() => {
-            setShowTopup(false);
-            // Reload topup history after short delay
-            setTimeout(loadData, 1000);
-          }}
-        />
-      )}
     </div>
   );
 }
