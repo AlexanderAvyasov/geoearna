@@ -35,7 +35,7 @@ async function validateTma(req, res, next) {
       return res.status(401).json({ error: 'INVALID_INITDATA' });
     }
 
-    const secretKey = crypto.createHash('sha256').update(process.env.BOT_TOKEN || '').digest();
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(process.env.BOT_TOKEN || '').digest();
     const dataCheckString = buildDataCheckString(payload);
     const expectedHash = crypto
       .createHmac('sha256', secretKey)
