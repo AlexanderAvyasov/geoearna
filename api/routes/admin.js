@@ -9,11 +9,14 @@ router.get('/api/admin/business', validateTma, async (req, res) => {
 
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at, created_at)')
+    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at)')
     .eq('owner_telegram_id', telegramId)
     .maybeSingle();
 
-  if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (error) {
+    console.error('GET /api/admin/business error:', JSON.stringify(error));
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
   if (!business) return res.status(404).json({ error: 'NO_BUSINESS' });
 
   return res.json({ business });
@@ -41,6 +44,50 @@ router.post('/api/admin/pin', validateTma, async (req, res) => {
   if (insertError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
 
   return res.json({ pin, expiresAt });
+});
+
+// Business statistics (visits, GEO spent)
+router.get('/api/admin/stats', validateTma, async (req, res) => {
+  const telegramId = req.user.telegram_id;
+
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('id')
+    .eq('owner_telegram_id', telegramId)
+    .maybeSingle();
+
+  if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
+
+  const now = new Date();
+  const startOfToday   = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+  const sevenDaysAgo   = new Date(now.getTime() - 7  * 86400_000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 86400_000);
+
+  const [
+    { count: visitsToday },
+    { count: visits7d },
+    { count: visitsPrev7d },
+    { data: lastTopup },
+  ] = await Promise.all([
+    supabase.from('checkins').select('*', { count: 'exact', head: true })
+      .eq('business_id', business.id).gte('created_at', startOfToday.toISOString()),
+    supabase.from('checkins').select('*', { count: 'exact', head: true })
+      .eq('business_id', business.id).gte('created_at', sevenDaysAgo.toISOString()),
+    supabase.from('checkins').select('*', { count: 'exact', head: true })
+      .eq('business_id', business.id)
+      .gte('created_at', fourteenDaysAgo.toISOString())
+      .lt('created_at', sevenDaysAgo.toISOString()),
+    supabase.from('topup_requests').select('amount')
+      .eq('business_id', business.id).eq('status', 'confirmed')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+
+  return res.json({
+    visitsToday:    visitsToday    || 0,
+    visits7d:       visits7d       || 0,
+    visitsPrev7d:   visitsPrev7d   || 0,
+    lastTopupAmount: lastTopup?.amount || null,
+  });
 });
 
 // Create campaign with budget-based reward formula
