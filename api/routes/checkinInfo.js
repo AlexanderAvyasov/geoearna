@@ -5,7 +5,9 @@ const router = express.Router();
 
 router.get('/api/checkin/info', async (req, res) => {
   const { token } = req.query;
-  if (!token) return res.status(400).json({ error: 'INVALID_PARAMS' });
+  if (!token || typeof token !== 'string' || token.length > 128) {
+    return res.status(400).json({ error: 'INVALID_PARAMS' });
+  }
 
   const { data: business, error } = await supabase
     .from('businesses')
@@ -14,7 +16,10 @@ router.get('/api/checkin/info', async (req, res) => {
     .maybeSingle();
 
   if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
-  if (!business) return res.status(404).json({ error: 'INVALID_QR_TOKEN' });
+  if (!business) {
+    console.warn(`[checkin/info] invalid token from ${req.ip}`);
+    return res.status(404).json({ error: 'INVALID_QR_TOKEN' });
+  }
 
   const now = new Date();
   const campaign = (business.campaigns || []).find(c => {

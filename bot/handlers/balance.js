@@ -18,10 +18,11 @@ async function balanceHandler(ctx) {
   try {
     const telegramId = String(ctx.from?.id);
 
-    const [{ data: user }, { data: streak }] = await Promise.all([
-      supabase.from('users').select('id, balance, xp, level').eq('telegram_id', telegramId).maybeSingle(),
-      null,
-    ]);
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, balance, xp, level')
+      .eq('telegram_id', telegramId)
+      .maybeSingle();
 
     if (!user) {
       return ctx.reply('Пользователь не найден. Отправьте /start для регистрации.');

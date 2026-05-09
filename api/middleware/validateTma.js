@@ -68,6 +68,11 @@ async function validateTma(req, res, next) {
       return res.status(401).json({ error: 'INVALID_USER' });
     }
 
+    // Bot accounts cannot use Mini App APIs
+    if (telegramUser.is_bot) {
+      return res.status(401).json({ error: 'BOTS_NOT_ALLOWED' });
+    }
+
     const telegramId = String(telegramUser.id);
     const username = telegramUser.username || null;
     const phone = telegramUser.phone_number || null;
@@ -98,6 +103,11 @@ async function validateTma(req, res, next) {
       }
 
       user = insertedUser;
+    }
+
+    // Banned users cannot access any API endpoint
+    if (user.banned_at) {
+      return res.status(403).json({ error: 'ACCOUNT_BANNED' });
     }
 
     req.telegramUser = telegramUser;

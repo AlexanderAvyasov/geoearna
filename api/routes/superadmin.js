@@ -6,7 +6,7 @@ const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
-const SUPER_ADMIN_ID = '930826522';
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
 
 function requireSuperAdmin(req, res, next) {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) {
@@ -27,7 +27,7 @@ router.get('/api/superadmin/stats', ...SA, async (req, res) => {
       { count: bizCount },
       { count: activeCampaigns },
       { data: platform },
-      { data: visits },
+      { data: geoIssuedRow },
       { data: withdrawals },
     ] = await Promise.all([
       supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -35,13 +35,14 @@ router.get('/api/superadmin/stats', ...SA, async (req, res) => {
       supabase.from('businesses').select('*', { count: 'exact', head: true }),
       supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('active', true),
       supabase.from('platform_wallet').select('balance').single(),
-      supabase.from('visits').select('rewarded'),
-      supabase.from('withdrawals').select('amount, status'),
+      // Use DB-level aggregate instead of fetching all rows
+      supabase.from('visits').select('rewarded.sum()').single(),
+      supabase.from('withdrawals').select('amount, status').limit(2000),
     ]);
 
-    const totalGeoIssued  = visits?.reduce((s, v) => s + (v.rewarded || 0), 0) || 0;
-    const pendingWds      = withdrawals?.filter(w => w.status === 'pending') || [];
-    const approvedGeo     = withdrawals?.filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0) || 0;
+    const totalGeoIssued  = geoIssuedRow?.rewarded || 0;
+    const pendingWds      = (withdrawals || []).filter(w => w.status === 'pending');
+    const approvedGeo     = (withdrawals || []).filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
 
     return res.json({
       userCount:          userCount || 0,
@@ -450,7 +451,7 @@ router.post('/api/superadmin/users/:id/ban', ...SA, async (req, res) => {
     const { data: userRow } = await supabase.from('users').select('telegram_id').eq('id', userId).single();
 
     const { error } = await supabase.from('users').update({ banned_at: new Date().toISOString() }).eq('id', userId);
-    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+    if (error) { console.error('user ban error', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 
     if (userRow?.telegram_id) {
       sendMessage(userRow.telegram_id, `⛔ *Ваш аккаунт заблокирован*${reason ? `\n\nПричина: ${reason}` : ''}`).catch(() => {});
@@ -473,7 +474,7 @@ router.post('/api/superadmin/users/:id/unban', ...SA, async (req, res) => {
     if (!userId) return res.status(400).json({ error: 'INVALID_PARAMS' });
 
     const { error } = await supabase.from('users').update({ banned_at: null }).eq('id', userId);
-    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+    if (error) { console.error('user unban error', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 
     try { await supabase.from('sa_audit_log').insert({ action: 'user_unban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID) }); } catch (_) {}
 

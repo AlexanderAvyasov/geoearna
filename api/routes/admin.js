@@ -90,6 +90,8 @@ router.get('/api/admin/stats', validateTma, async (req, res) => {
   });
 });
 
+const VALID_TASK_TYPES = ['visit', 'photo', 'form', 'survey'];
+
 // Create campaign with budget-based reward formula
 router.post('/api/admin/campaign', validateTma, async (req, res) => {
   const telegramId = req.user.telegram_id;
@@ -98,8 +100,22 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
   if (!Number.isInteger(budget) || budget < 1000) {
     return res.status(400).json({ error: 'INVALID_PARAMS', message: 'budget must be >= 1000' });
   }
-  if (!Number.isInteger(max_visits) || max_visits < 1) {
-    return res.status(400).json({ error: 'INVALID_PARAMS', message: 'max_visits must be >= 1' });
+  if (!Number.isInteger(max_visits) || max_visits < 1 || max_visits > 100000) {
+    return res.status(400).json({ error: 'INVALID_PARAMS', message: 'max_visits must be 1–100000' });
+  }
+  if (task_type !== undefined && !VALID_TASK_TYPES.includes(task_type)) {
+    return res.status(400).json({ error: 'INVALID_PARAMS', message: `task_type must be one of: ${VALID_TASK_TYPES.join(', ')}` });
+  }
+  if (task_description !== undefined && task_description !== null) {
+    if (typeof task_description !== 'string' || task_description.length > 500) {
+      return res.status(400).json({ error: 'INVALID_PARAMS', message: 'task_description must be a string under 500 chars' });
+    }
+  }
+  if (ends_at !== undefined && ends_at !== null) {
+    const endsDate = new Date(ends_at);
+    if (isNaN(endsDate.getTime()) || endsDate <= new Date()) {
+      return res.status(400).json({ error: 'INVALID_PARAMS', message: 'ends_at must be a future date' });
+    }
   }
 
   const { data: business, error: businessError } = await supabase
