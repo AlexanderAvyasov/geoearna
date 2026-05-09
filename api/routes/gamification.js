@@ -1,5 +1,5 @@
 const express = require('express');
-const { validateTma } = require('../middleware/validateTma');
+const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { getUserGameData, getTashkentDay, getWeekStart, grantXp } = require('../services/gamification');
 
