@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Wallet, Lock, QrCode, Store, CheckCircle, AlertTriangle, Loader2, RefreshCw, Zap, Copy } from 'lucide-react';
+import { MapPin, Wallet, Lock, QrCode, Store, CheckCircle, AlertTriangle, Loader2, RefreshCw, Zap, Copy, Calendar, StopCircle, ShoppingBag, Star, ChevronRight } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E, sk, cardBase, inputStyle } from '../lib/design';
 
-const STATUS_MAP = {
-  pending:   { label: 'Ожидает',   color: C.orange, bg: C.goldFt },
-  confirmed: { label: 'Зачислено', color: C.geo,    bg: C.geoFt  },
-  rejected:  { label: 'Отклонено', color: C.red,    bg: C.redFt  },
-};
-
 const COMMISSION = 0.10;
+
+const TASK_META = {
+  visit:    { label: 'Визит',   Icon: MapPin      },
+  purchase: { label: 'Покупка', Icon: ShoppingBag },
+  review:   { label: 'Отзыв',  Icon: Star        },
+};
 
 function calcReward(budget, visits) {
   if (!budget || !visits || visits === 0) return 0;
@@ -50,14 +50,140 @@ function Toggle({ on, onToggle }) {
   );
 }
 
+function ProgressBar({ value, max, color }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div style={{ height: 5, borderRadius: 3, background: C.b1, overflow: 'hidden' }}>
+      <div style={{
+        height: '100%', borderRadius: 3,
+        width: `${pct}%`,
+        background: color || G.geo,
+        transition: 'width 0.5s ease',
+      }} />
+    </div>
+  );
+}
+
+function CampaignCard({ campaign, onStop, stopping }) {
+  const isActive  = campaign.active;
+  const remaining = campaign.max_visits - campaign.visits_count;
+  const exhausted = remaining <= 0;
+  const meta      = TASK_META[campaign.task_type] || TASK_META.visit;
+
+  const statusLabel = isActive ? 'Активна' : exhausted ? 'Завершена' : 'Остановлена';
+  const statusColor = isActive ? C.geo : C.t3;
+
+  const endsDate = campaign.ends_at
+    ? new Date(campaign.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+  const createdDate = campaign.created_at
+    ? new Date(campaign.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+
+  return (
+    <div style={{
+      ...cardBase,
+      border: `1px solid ${isActive ? C.geoGl : C.b0}`,
+      padding: '16px', marginBottom: 10,
+    }}>
+      {/* Status row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {isActive && (
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: C.geo, boxShadow: `0 0 6px ${C.geo}`,
+              display: 'inline-block', flexShrink: 0,
+            }} />
+          )}
+          <span style={{ fontSize: 11, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+            {statusLabel}
+          </span>
+          <span style={{
+            fontSize: 11, color: C.t3, fontWeight: 600,
+            background: C.card, borderRadius: 6, padding: '2px 8px',
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            <meta.Icon size={10} color={C.t3} strokeWidth={2} />
+            {meta.label}
+          </span>
+        </div>
+
+        {isActive && (
+          <button
+            onClick={() => onStop(campaign.id)}
+            disabled={stopping === campaign.id}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: C.redFt, border: `1px solid rgba(255,59,92,0.25)`,
+              borderRadius: 10, padding: '6px 12px',
+              fontSize: 12, fontWeight: 700, color: C.red,
+              cursor: stopping === campaign.id ? 'not-allowed' : 'pointer',
+              opacity: stopping === campaign.id ? 0.6 : 1,
+              transition: 'opacity 0.15s',
+            }}>
+            {stopping === campaign.id
+              ? <Loader2 size={12} color={C.red} style={{ animation: 'spin 1s linear infinite' }} />
+              : <StopCircle size={12} color={C.red} strokeWidth={2} />
+            }
+            Остановить
+          </button>
+        )}
+      </div>
+
+      {/* Reward */}
+      <div style={{ fontSize: 22, fontWeight: 900, color: isActive ? C.geo : C.t2, marginBottom: 10, letterSpacing: -0.5 }}>
+        +{formatGeo(campaign.reward_amount)}
+        <span style={{ fontSize: 13, fontWeight: 600, color: C.t3, marginLeft: 6 }}>GEO / задание</span>
+      </div>
+
+      {/* Progress */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: C.t3, marginBottom: 6 }}>
+          <span>{campaign.visits_count} из {campaign.max_visits} активаций</span>
+          {isActive && <span style={{ color: C.geo, fontWeight: 700 }}>{remaining} осталось</span>}
+        </div>
+        <ProgressBar value={campaign.visits_count} max={campaign.max_visits} color={isActive ? G.geo : C.b2} />
+      </div>
+
+      {/* Dates */}
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+        {createdDate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: C.t3 }}>
+            <Calendar size={11} color={C.t3} />
+            Создана {createdDate}
+          </div>
+        )}
+        {endsDate && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: isActive ? C.orange : C.t3 }}>
+            <Calendar size={11} color={isActive ? C.orange : C.t3} />
+            До {endsDate}
+          </div>
+        )}
+      </div>
+
+      {campaign.requires_pin && (
+        <div style={{
+          marginTop: 10, display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 12, color: C.gold, fontWeight: 600,
+        }}>
+          <Lock size={12} color={C.gold} strokeWidth={2} />
+          Требуется PIN
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CampaignForm({ balance, onClose, onCreated }) {
-  const [budget,     setBudget]     = useState('');
-  const [visits,     setVisits]     = useState('');
-  const [taskType,   setTaskType]   = useState('visit');
-  const [desc,       setDesc]       = useState('');
+  const [budget,      setBudget]      = useState('');
+  const [visits,      setVisits]      = useState('');
+  const [taskType,    setTaskType]    = useState('visit');
+  const [desc,        setDesc]        = useState('');
+  const [endsAt,      setEndsAt]      = useState('');
   const [requiresPin, setRequiresPin] = useState(false);
-  const [loading,    setLoading]    = useState(false);
-  const [error,      setError]      = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
 
   const budgetNum  = parseInt(budget, 10) || 0;
   const visitsNum  = parseInt(visits, 10) || 0;
@@ -68,6 +194,8 @@ function CampaignForm({ balance, onClose, onCreated }) {
   const [fBudget, setFBudget] = useState(false);
   const [fVisits, setFVisits] = useState(false);
   const [fDesc,   setFDesc]   = useState(false);
+
+  const today = new Date().toISOString().split('T')[0];
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -82,6 +210,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
           budget: budgetNum, max_visits: visitsNum,
           task_type: taskType, task_description: desc || null,
           requires_pin: requiresPin,
+          ends_at: endsAt ? new Date(endsAt + 'T23:59:59').toISOString() : null,
         }),
       });
       const d = await r.json();
@@ -97,11 +226,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
     } finally { setLoading(false); }
   }
 
-  const TASK_TYPES = [
-    { value: 'visit',    label: 'Визит' },
-    { value: 'purchase', label: 'Покупка' },
-    { value: 'review',   label: 'Отзыв' },
-  ];
+  const TASK_TYPES = Object.entries(TASK_META).map(([value, { label }]) => ({ value, label }));
 
   return (
     <>
@@ -133,7 +258,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
           <form onSubmit={handleSubmit}>
             {/* Budget */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Бюджет кампании (GEO)</div>
+              <div style={labelStyle}>Бюджет кампании (GEO)</div>
               <input
                 value={budget}
                 onChange={e => setBudget(e.target.value.replace(/\D/g, ''))}
@@ -147,7 +272,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
 
             {/* Activations */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Количество активаций</div>
+              <div style={labelStyle}>Количество активаций</div>
               <input
                 value={visits}
                 onChange={e => setVisits(e.target.value.replace(/\D/g, ''))}
@@ -189,7 +314,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
 
             {/* Task type */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Тип задания</div>
+              <div style={labelStyle}>Тип задания</div>
               <div style={{ display: 'flex', gap: 8 }}>
                 {TASK_TYPES.map(t => (
                   <button key={t.value} type="button" onClick={() => setTaskType(t.value)}
@@ -208,7 +333,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
 
             {/* Description */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Описание задания (необязательно)</div>
+              <div style={labelStyle}>Описание задания (необязательно)</div>
               <textarea
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
@@ -218,6 +343,28 @@ function CampaignForm({ balance, onClose, onCreated }) {
                 onBlur={() => setFDesc(false)}
                 style={{ ...inputStyle(fDesc), resize: 'none', fontFamily: 'inherit' }}
               />
+            </div>
+
+            {/* End date */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={labelStyle}>Дата окончания (необязательно)</div>
+              <input
+                type="date"
+                value={endsAt}
+                onChange={e => setEndsAt(e.target.value)}
+                min={today}
+                style={{
+                  ...inputStyle(false),
+                  colorScheme: 'dark',
+                  cursor: 'pointer',
+                }}
+              />
+              {endsAt && (
+                <div style={{ fontSize: 12, color: C.t3, marginTop: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Calendar size={11} color={C.t3} />
+                  Кампания завершится {new Date(endsAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </div>
+              )}
             </div>
 
             {/* PIN toggle */}
@@ -274,6 +421,11 @@ function CampaignForm({ balance, onClose, onCreated }) {
   );
 }
 
+const labelStyle = {
+  fontSize: 11, fontWeight: 700, color: C.t3,
+  textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7,
+};
+
 export default function Admin() {
   const [business,   setBusiness]   = useState(null);
   const [loading,    setLoading]    = useState(true);
@@ -283,6 +435,7 @@ export default function Admin() {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinCopied,  setPinCopied]  = useState(false);
   const [showForm,   setShowForm]   = useState(false);
+  const [stopping,   setStopping]   = useState(null);
 
   const webappUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
@@ -315,6 +468,16 @@ export default function Admin() {
     setTimeout(() => setPinCopied(false), 2000);
   }
 
+  async function stopCampaign(id) {
+    setStopping(id);
+    try {
+      const r = await fetch(`${API_BASE}/api/admin/campaign/${id}/stop`, {
+        method: 'POST', headers: { initdata: initData },
+      });
+      if (r.ok) loadData();
+    } finally { setStopping(null); }
+  }
+
   if (loading) {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', padding: 20 }}>
@@ -339,7 +502,13 @@ export default function Admin() {
   }
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&margin=1&bgcolor=13161F&color=FFFFFF&data=${encodeURIComponent(`${webappUrl}/checkin?token=${business.qr_token}`)}`;
-  const activeCampaign = (business?.campaigns || []).find(c => c.active);
+
+  const allCampaigns = [...(business?.campaigns || [])].sort((a, b) => {
+    if (a.active !== b.active) return (b.active ? 1 : 0) - (a.active ? 1 : 0);
+    return b.id - a.id;
+  });
+
+  const activeCampaign = allCampaigns.find(c => c.active);
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.4s ease both' }}>
@@ -392,7 +561,6 @@ export default function Admin() {
               </div>
               <Wallet size={36} color={C.gold} strokeWidth={1.5} style={{ opacity: 0.7 }} />
             </div>
-            {/* Campaign CTA */}
             <button
               onClick={() => setShowForm(true)}
               style={{
@@ -407,45 +575,45 @@ export default function Admin() {
             </button>
           </div>
 
-          {/* Active campaign */}
-          {activeCampaign && (
+          {/* Campaigns list */}
+          <div style={{ marginBottom: 14, animation: 'fadeUp 0.35s 0.05s ease both' }}>
             <div style={{
-              ...cardBase, border: `1px solid ${C.geoGl}`,
-              padding: '20px', marginBottom: 14,
-              animation: 'fadeUp 0.35s 0.05s ease both',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: 12,
             }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.geo, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.geo, boxShadow: `0 0 6px ${C.geo}` }} />
-                Активная кампания
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7 }}>
+                Кампании ({allCampaigns.length})
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {[
-                  { val: activeCampaign.visits_count, label: 'Визитов', color: C.blue },
-                  { val: activeCampaign.max_visits - activeCampaign.visits_count, label: 'Осталось', color: C.geo },
-                  { val: `${formatGeo(activeCampaign.reward_amount)}`, label: 'GEO/визит', color: C.gold },
-                ].map(({ val, label, color }) => (
-                  <div key={label} style={{
-                    flex: 1, background: C.cardHi,
-                    border: `1px solid ${C.b0}`,
-                    borderRadius: 12, padding: '14px', textAlign: 'center',
-                  }}>
-                    <div style={{ fontSize: 24, fontWeight: 900, color }}>{val}</div>
-                    <div style={{ fontSize: 11, color: C.t3, marginTop: 3 }}>{label}</div>
-                  </div>
-                ))}
-              </div>
-              {activeCampaign.requires_pin && (
-                <div style={{
-                  marginTop: 12, background: C.goldFt, border: `1.5px solid ${C.goldGl}`,
-                  borderRadius: 10, padding: '10px 12px', fontSize: 13, color: C.gold, fontWeight: 600,
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <Lock size={13} color={C.gold} strokeWidth={2} />
-                  Кампания требует PIN-подтверждение
+              {activeCampaign && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: C.geo, fontWeight: 700 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.geo, display: 'inline-block' }} />
+                  1 активна
                 </div>
               )}
             </div>
-          )}
+
+            {allCampaigns.length === 0 ? (
+              <div style={{
+                ...cardBase, border: `1px solid ${C.b0}`,
+                padding: '32px 20px', textAlign: 'center',
+              }}>
+                <Zap size={32} color={C.t3} strokeWidth={1.5} style={{ opacity: 0.4, marginBottom: 12 }} />
+                <div style={{ fontWeight: 700, fontSize: 15, color: C.t2, marginBottom: 6 }}>Нет кампаний</div>
+                <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5 }}>
+                  Создайте первую кампанию, чтобы привлечь клиентов
+                </div>
+              </div>
+            ) : (
+              allCampaigns.map(c => (
+                <CampaignCard
+                  key={c.id}
+                  campaign={c}
+                  onStop={stopCampaign}
+                  stopping={stopping}
+                />
+              ))
+            )}
+          </div>
 
           {/* PIN generation */}
           <div style={{
@@ -537,10 +705,7 @@ export default function Admin() {
         <CampaignForm
           balance={business.balance || 0}
           onClose={() => setShowForm(false)}
-          onCreated={campaign => {
-            setShowForm(false);
-            loadData();
-          }}
+          onCreated={() => { setShowForm(false); loadData(); }}
         />
       )}
     </div>

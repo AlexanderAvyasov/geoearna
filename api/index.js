@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+const { webhookCallback } = require('grammy');
 const checkinRoutes = require('./routes/checkin');
 const checkinInfoRoutes = require('./routes/checkinInfo');
 const userRoutes = require('./routes/user');
@@ -40,6 +41,11 @@ app.use('/api/checkin', rateLimit({
   message: { error: 'TOO_MANY_REQUESTS' },
 }));
 
+// Telegram bot webhook — must be raw (before express.json parses body)
+const { bot } = require('../bot/index');
+const botSecret = process.env.BOT_TOKEN?.split(':')[1] || 'webhook';
+app.post(`/bot/${botSecret}`, webhookCallback(bot, 'express'));
+
 app.use(checkinRoutes);
 app.use(checkinInfoRoutes);
 app.use(userRoutes);
@@ -63,6 +69,16 @@ const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
   console.log(`GeoEarn server started on port ${port}`);
+
+  const domain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (domain) {
+    const webhookUrl = `https://${domain}/bot/${botSecret}`;
+    bot.api.setWebhook(webhookUrl)
+      .then(() => console.log(`[bot] webhook set → ${webhookUrl}`))
+      .catch(err => console.error('[bot] setWebhook failed:', err.message));
+  } else {
+    console.warn('[bot] RAILWAY_PUBLIC_DOMAIN not set — webhook not registered');
+  }
 });
 
 module.exports = app;

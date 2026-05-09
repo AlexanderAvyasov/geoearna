@@ -9,7 +9,7 @@ router.get('/api/admin/business', validateTma, async (req, res) => {
 
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at)')
+    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at, created_at)')
     .eq('owner_telegram_id', telegramId)
     .maybeSingle();
 

@@ -11,4 +11,3 @@ function spawnProcess(script) {
 }
 
 spawnProcess('api/index.js');
-spawnProcess('bot/index.js');
