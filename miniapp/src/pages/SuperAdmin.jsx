@@ -656,14 +656,114 @@ function CampaignsTab() {
 
 // ─── Tab: Finance ─────────────────────────────────────────────────────────────
 
+function WithdrawalSheet({ w, geoRate, onClose, onApprove, onReject, busy }) {
+  const [note,     setNote]     = useState('');
+  const [rejecting, setRejecting] = useState(false);
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 300, animation: 'backdropIn 0.22s ease',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        padding: '0 0 40px', zIndex: 301,
+        maxWidth: 480, margin: '0 auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#10B981', letterSpacing: -0.5 }}>
+                {formatGeo(w.amount)} GEO
+              </div>
+              <div style={{ fontSize: 13, color: C.t3, marginTop: 2 }}>
+                ≈ {formatUzs(geoToUzs(w.amount, geoRate))} UZS
+              </div>
+            </div>
+            <StatusBadge status={w.status} />
+          </div>
+
+          {/* Details */}
+          <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', borderRadius: 14, marginBottom: 16 }}>
+            {[
+              [Smartphone, 'Payme', w.phone, C.blue],
+              [User,       'Пользователь', w.users?.username ? `@${w.users.username}` : `ID ${w.users?.telegram_id}`, C.t2],
+              [Wallet,     'Остаток', w.users?.balance != null ? `${formatGeo(w.users.balance)} GEO` : '—', C.t2],
+              [Clock,      'Дата заявки', fmtDate(w.created_at), C.t3],
+              ...(w.processed_at ? [[CheckCircle, 'Обработано', fmtDate(w.processed_at), C.t3]] : []),
+              ...(w.note ? [[FileText, 'Причина отказа', w.note, C.orange]] : []),
+            ].map(([Icon, label, val, color], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 10, marginBottom: 10, borderBottom: i < 2 ? `1px solid ${C.b0}` : 'none' }}>
+                <Icon size={14} color={C.t3} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: C.t3, flexShrink: 0, minWidth: 90 }}>{label}</span>
+                <span style={{ fontSize: 13, color, fontWeight: 600, wordBreak: 'break-all' }}>{val}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Actions */}
+          {w.status === 'pending' && (
+            rejecting ? (
+              <div>
+                <input
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="Причина отказа (необязательно)..."
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    padding: '12px 14px', borderRadius: 12,
+                    border: `1.5px solid ${C.red}60`,
+                    background: C.redFt, color: C.t1,
+                    fontSize: 14, outline: 'none', marginBottom: 10,
+                  }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Btn variant="ghost" size="md" onClick={() => { setRejecting(false); setNote(''); }} style={{ flex: 1 }}>
+                    Отмена
+                  </Btn>
+                  <Btn variant="danger" size="md" onClick={() => onReject(w.id, note)} loading={busy} style={{ flex: 2 }}>
+                    <XCircle size={16} /> Отклонить
+                  </Btn>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 10 }}>
+                <Btn variant="danger" size="md" onClick={() => setRejecting(true)} style={{ flex: 1 }}>
+                  <XCircle size={16} /> Отклонить
+                </Btn>
+                <Btn variant="success" size="md" onClick={() => onApprove(w.id)} loading={busy} style={{ flex: 2 }}>
+                  <CheckCircle size={16} /> Одобрить
+                </Btn>
+              </div>
+            )
+          )}
+
+          {w.status !== 'pending' && (
+            <Btn variant="ghost" size="md" onClick={onClose} style={{ width: '100%' }}>
+              Закрыть
+            </Btn>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 function FinanceTab({ geoRate }) {
   const [wdFilter,  setWdFilter]  = useState('pending');
   const [wdList,    setWdList]    = useState([]);
   const [wdLoading, setWdLoading] = useState(true);
   const [wdError,   setWdError]   = useState(null);
-  const [rejectId,  setRejectId]  = useState(null);
-  const [note,      setNote]      = useState('');
-  const [busy,      setBusy]      = useState({});
+  const [selected,  setSelected]  = useState(null);
+  const [busy,      setBusy]      = useState(false);
   const [econ,      setEcon]      = useState(null);
   const [cfg,       setCfg]       = useState(null);
   const [rateInput, setRateInput] = useState('');
@@ -689,22 +789,23 @@ function FinanceTab({ geoRate }) {
   }, []);
 
   async function approve(id) {
-    setBusy(b => ({ ...b, [id]: true }));
+    setBusy(true);
     try {
       await saFetch(`/api/superadmin/withdrawals/${id}/approve`, { method: 'POST' });
       setWdList(l => l.map(w => w.id === id ? { ...w, status: 'approved' } : w));
+      setSelected(prev => prev ? { ...prev, status: 'approved' } : null);
     } catch (e) { alert(`Ошибка: ${e.message}`); }
-    setBusy(b => ({ ...b, [id]: false }));
+    setBusy(false);
   }
 
-  async function reject(id) {
-    setBusy(b => ({ ...b, [id]: true }));
+  async function reject(id, note) {
+    setBusy(true);
     try {
       await saFetch(`/api/superadmin/withdrawals/${id}/reject`, { method: 'POST', body: JSON.stringify({ note }) });
       setWdList(l => l.map(w => w.id === id ? { ...w, status: 'rejected', note } : w));
-      setRejectId(null); setNote('');
+      setSelected(null);
     } catch (e) { alert(`Ошибка: ${e.message}`); }
-    setBusy(b => ({ ...b, [id]: false }));
+    setBusy(false);
   }
 
   async function saveRate() {
@@ -772,64 +873,44 @@ function FinanceTab({ geoRate }) {
           {!wdLoading && !wdError && wdList.length === 0 && <Empty icon={ArrowDownToLine} text="Нет заявок" />}
 
           {!wdLoading && !wdError && wdList.map(w => (
-            <div key={w.id} style={{
+            <div key={w.id} onClick={() => setSelected(w)} style={{
               ...cardBase,
               border: `1px solid ${w.status === 'pending' ? `${C.gold}50` : C.b1}`,
-              padding: '16px', marginBottom: 10, borderRadius: 16,
+              padding: '14px 16px', marginBottom: 10, borderRadius: 16,
+              cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 22, color: '#10B981', letterSpacing: -0.5 }}>
-                    {formatGeo(w.amount)} GEO
-                  </div>
-                  <div style={{ fontSize: 12, color: C.t3 }}>≈ {formatUzs(geoToUzs(w.amount, geoRate))} UZS</div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 18, color: '#10B981', letterSpacing: -0.3 }}>
+                  {formatGeo(w.amount)} GEO
                 </div>
-                <StatusBadge status={w.status} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: w.status === 'pending' ? 12 : 0 }}>
-                <div style={{ fontSize: 13, color: C.t2, display: 'flex', gap: 5, alignItems: 'center' }}>
-                  <Smartphone size={12} color={C.t3} />
+                <div style={{ fontSize: 12, color: C.t3, marginTop: 2, display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <Smartphone size={10} color={C.t3} />
                   <span style={{ fontFamily: 'monospace', color: C.blue }}>{w.phone}</span>
                 </div>
-                <div style={{ fontSize: 12, color: C.t3, display: 'flex', gap: 5, alignItems: 'center' }}>
-                  <User size={11} color={C.t3} />
+                <div style={{ fontSize: 11, color: C.t3, marginTop: 3, display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <User size={10} color={C.t3} />
                   {w.users?.username ? `@${w.users.username}` : `tg:${w.users?.telegram_id}`}
-                  {w.users?.balance != null && <span> · остаток {formatGeo(w.users.balance)} GEO</span>}
-                </div>
-                <div style={{ fontSize: 11, color: C.t3, display: 'flex', gap: 5, alignItems: 'center' }}>
+                  <span>·</span>
                   <Clock size={10} color={C.t3} /> {fmtDate(w.created_at)}
-                  {w.processed_at && ` → ${fmtDate(w.processed_at)}`}
                 </div>
-                {w.note && <div style={{ fontSize: 12, color: C.orange, display: 'flex', gap: 5 }}><FileText size={11} color={C.orange} />{w.note}</div>}
               </div>
-              {w.status === 'pending' && (
-                rejectId === w.id ? (
-                  <div>
-                    <input
-                      value={note} onChange={e => setNote(e.target.value)}
-                      placeholder="Причина отказа..."
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${C.red}60`, background: C.redFt, color: C.t1, fontSize: 14, outline: 'none', marginBottom: 8 }}
-                    />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Btn variant="ghost" size="sm" onClick={() => { setRejectId(null); setNote(''); }} style={{ flex: 1 }}>Отмена</Btn>
-                      <Btn variant="danger" size="sm" onClick={() => reject(w.id)} loading={busy[w.id]} style={{ flex: 2 }}>
-                        <XCircle size={14} /> Отклонить + вернуть GEO
-                      </Btn>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Btn variant="danger" size="sm" onClick={() => setRejectId(w.id)} style={{ flex: 1 }}>
-                      <XCircle size={14} /> Отклонить
-                    </Btn>
-                    <Btn variant="success" size="sm" onClick={() => approve(w.id)} loading={busy[w.id]} style={{ flex: 2 }}>
-                      <CheckCircle size={14} /> Одобрить (оплатить)
-                    </Btn>
-                  </div>
-                )
-              )}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                <StatusBadge status={w.status} />
+                <ChevronRight size={16} color={C.t3} />
+              </div>
             </div>
           ))}
+
+          {selected && (
+            <WithdrawalSheet
+              w={selected}
+              geoRate={geoRate}
+              onClose={() => setSelected(null)}
+              onApprove={approve}
+              onReject={reject}
+              busy={busy}
+            />
+          )}
         </div>
       )}
 
