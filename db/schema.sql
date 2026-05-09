@@ -53,6 +53,7 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_type VARCHAR(20) NOT NULL DE
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_description TEXT;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS requires_pin BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS budget INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 -- reward_amount = floor((budget * 0.9) / max_visits)
 -- The 10% commission is deducted from business balance upfront at campaign creation

@@ -660,6 +660,7 @@ function FinanceTab({ geoRate }) {
   const [wdFilter,  setWdFilter]  = useState('pending');
   const [wdList,    setWdList]    = useState([]);
   const [wdLoading, setWdLoading] = useState(true);
+  const [wdError,   setWdError]   = useState(null);
   const [rejectId,  setRejectId]  = useState(null);
   const [note,      setNote]      = useState('');
   const [busy,      setBusy]      = useState({});
@@ -673,10 +674,11 @@ function FinanceTab({ geoRate }) {
 
   useEffect(() => {
     setWdLoading(true);
+    setWdError(null);
     const qs = wdFilter === 'all' ? '' : `?status=${wdFilter}`;
     saFetch(`/api/superadmin/withdrawals${qs}`)
       .then(d => setWdList(d.withdrawals || []))
-      .catch(() => {})
+      .catch(e => setWdError(e.message || 'Ошибка загрузки'))
       .finally(() => setWdLoading(false));
   }, [wdFilter]);
 
@@ -760,9 +762,16 @@ function FinanceTab({ geoRate }) {
             </div>
           ))}
 
-          {!wdLoading && wdList.length === 0 && <Empty icon={ArrowDownToLine} text="Нет заявок" />}
+          {!wdLoading && wdError && (
+            <div style={{ background: `${C.red}10`, border: `1.5px solid ${C.red}30`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', gap: 10 }}>
+              <AlertTriangle size={18} color={C.red} style={{ flexShrink: 0 }} />
+              <div style={{ fontSize: 13, color: C.red }}>{wdError}</div>
+            </div>
+          )}
 
-          {!wdLoading && wdList.map(w => (
+          {!wdLoading && !wdError && wdList.length === 0 && <Empty icon={ArrowDownToLine} text="Нет заявок" />}
+
+          {!wdLoading && !wdError && wdList.map(w => (
             <div key={w.id} style={{
               ...cardBase,
               border: `1px solid ${w.status === 'pending' ? `${C.gold}50` : C.b1}`,
