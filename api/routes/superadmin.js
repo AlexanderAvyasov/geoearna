@@ -103,7 +103,7 @@ router.post('/api/superadmin/withdrawals/:id/approve', ...SA, async (req, res) =
 
     if (error) throw error;
 
-    const geoRate   = parseFloat(process.env.GEO_RATE) || 1;
+    const geoRate   = parseFloat(process.env.GEO_RATE) || 1000;
     const uzsAmount = Math.round(wd.amount * geoRate);
 
     sendMessage(

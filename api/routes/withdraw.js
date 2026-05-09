@@ -26,7 +26,7 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
       return res.status(400).json({ error: 'INVALID_PHONE' });
     }
 
-    const geoRate = parseFloat(process.env.GEO_RATE) || 1;
+    const geoRate = parseFloat(process.env.GEO_RATE) || 1000;
 
     const { data, error } = await supabase.rpc('process_withdrawal', {
       p_user_id: req.user.id,

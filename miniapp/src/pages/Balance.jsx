@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, TrendingUp, Map, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
+import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
@@ -15,7 +15,7 @@ function formatDate(str) {
 
 function SkeletonRow() {
   const shimmer = {
-    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.06) 50%, ${C.card} 100%)`,
+    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.05) 50%, ${C.card} 100%)`,
     backgroundSize: '600px 100%',
     animation: 'shimmer 1.6s ease-in-out infinite',
   };
@@ -54,9 +54,9 @@ function useCountUp(target, running) {
 }
 
 const WD_STATUS = {
-  pending:  { label: 'Ожидает',  Icon: Clock,         color: '#f59e0b' },
-  approved: { label: 'Одобрено', Icon: CheckCircle,   color: '#00e676' },
-  rejected: { label: 'Отклонено', Icon: XCircle,      color: '#ff5252' },
+  pending:  { label: 'Ожидает',   Icon: Clock,       color: '#F59E0B' },
+  approved: { label: 'Одобрено',  Icon: CheckCircle, color: '#10B981' },
+  rejected: { label: 'Отклонено', Icon: XCircle,     color: '#EF4444' },
 };
 
 export default function Balance() {
@@ -71,10 +71,10 @@ export default function Balance() {
   useEffect(() => {
     const h = { initdata: initData };
     Promise.all([
-      fetch(`${API_BASE}/api/me`,             { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/visits`,          { headers: h }).then(r => r.json()),
+      fetch(`${API_BASE}/api/me`,            { headers: h }).then(r => r.json()),
+      fetch(`${API_BASE}/api/visits`,         { headers: h }).then(r => r.json()),
       fetch(`${API_BASE}/api/config`).then(r => r.json()).catch(() => ({ geoRate: 1 })),
-      fetch(`${API_BASE}/api/me/withdrawals`,  { headers: h }).then(r => r.json()).catch(() => ({ withdrawals: [] })),
+      fetch(`${API_BASE}/api/me/withdrawals`, { headers: h }).then(r => r.json()).catch(() => ({ withdrawals: [] })),
     ])
       .then(([me, vis, cfg, wds]) => {
         setUser(me.user);
@@ -99,35 +99,36 @@ export default function Balance() {
   );
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.4s ease both' }}>
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s ease both' }}>
       {/* Wallet hero */}
       <div style={{
         background: G.hero,
         padding: '36px 22px 60px',
         position: 'relative', overflow: 'hidden',
       }}>
+        {/* Ambient glow */}
         <div style={{
           position: 'absolute', top: -60, right: -60,
           width: 240, height: 240, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(42,171,238,0.14) 0%, transparent 70%)',
-          pointerEvents: 'none', animation: 'glowPulse 4s ease-in-out infinite',
+          background: 'radial-gradient(circle, rgba(124,58,237,0.14) 0%, transparent 70%)',
+          pointerEvents: 'none', animation: 'glowPulse 5s ease-in-out infinite',
         }} />
         <div style={{
           position: 'absolute', bottom: -40, left: -40,
           width: 180, height: 180, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,230,118,0.10) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Coins size={14} color={C.geo} strokeWidth={2} />
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.8, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Wallet size={13} color={C.purple} strokeWidth={2} />
           GEO Wallet
         </div>
 
         {loading ? (
           <div>
-            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 12, height: 52, width: 220, animation: 'pulse 1.4s infinite', marginBottom: 10 }} />
-            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, height: 18, width: 130, animation: 'pulse 1.4s infinite' }} />
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 12, height: 52, width: 220, animation: 'pulse 1.4s infinite', marginBottom: 10 }} />
+            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, height: 18, width: 130, animation: 'pulse 1.4s infinite' }} />
           </div>
         ) : (
           <>
@@ -142,11 +143,11 @@ export default function Balance() {
             </div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: C.blueFt, border: `1px solid ${C.blueGl}`,
+              background: C.purpleFt, border: `1px solid rgba(124,58,237,0.2)`,
               borderRadius: 20, padding: '4px 12px', marginTop: 14,
-              fontSize: 12, color: C.blue, fontWeight: 700,
+              fontSize: 12, color: C.purpleL, fontWeight: 700,
             }}>
-              <TrendingUp size={12} color={C.blue} />
+              <TrendingUp size={12} color={C.purpleL} />
               1 GEO = {geoRate} UZS
             </div>
           </>
@@ -164,7 +165,7 @@ export default function Balance() {
               borderRight: i === 0 ? `1px solid ${C.b1}` : 'none',
               paddingLeft: i === 1 ? 18 : 0,
             }}>
-              <div style={{ fontSize: 11, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.6 }}>{item.label}</div>
+              <div style={{ fontSize: 10, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.8 }}>{item.label}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: C.t1 }}>{item.val}</div>
             </div>
           ))}
@@ -174,18 +175,18 @@ export default function Balance() {
       {/* Content panel */}
       <div style={{
         marginTop: -24, borderRadius: '28px 28px 0 0',
-        background: C.bg, border: `1px solid ${C.b0}`, borderBottom: 'none',
+        background: C.bg, border: `1px solid rgba(255,255,255,0.05)`, borderBottom: 'none',
         minHeight: '60vh', paddingTop: 22,
       }}>
         {/* Withdraw CTA */}
         <div style={{ padding: '0 16px 18px' }}>
           <Link to="/withdraw" style={{
             display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
-            background: G.blue,
+            background: G.accent,
             color: '#fff', textDecoration: 'none',
             borderRadius: 18, padding: '17px 20px',
             fontWeight: 800, fontSize: 16,
-            boxShadow: `0 8px 28px ${C.blueGl}`,
+            boxShadow: `0 8px 28px ${C.purpleGl}`,
             animation: 'fadeUp 0.35s ease both',
           }}>
             <CreditCard size={20} color="#fff" strokeWidth={2} />
@@ -204,9 +205,9 @@ export default function Balance() {
               onClick={() => setActiveTab(tab.key)}
               style={{
                 flex: 1, padding: '9px 4px', borderRadius: 12,
-                border: activeTab === tab.key ? `1.5px solid ${C.blue}` : `1px solid ${C.b1}`,
-                background: activeTab === tab.key ? C.blueFt : C.card,
-                color: activeTab === tab.key ? C.blue : C.t3,
+                border: activeTab === tab.key ? `1.5px solid ${C.purple}` : `1px solid ${C.b1}`,
+                background: activeTab === tab.key ? C.purpleFt : C.card,
+                color: activeTab === tab.key ? C.purpleL : C.t3,
                 fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'all 0.18s',
@@ -215,7 +216,7 @@ export default function Balance() {
               {tab.label}
               {tab.badge > 0 && (
                 <span style={{
-                  background: '#f59e0b', color: '#000',
+                  background: '#F59E0B', color: '#000',
                   borderRadius: 10, fontSize: 10, fontWeight: 800,
                   padding: '1px 6px', lineHeight: 1.4,
                 }}>
@@ -234,9 +235,9 @@ export default function Balance() {
 
               {!loading && visits.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-                  <Map size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
+                  <MapPin size={60} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.3 }} />
                   <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
-                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
+                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
                     Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
                   </div>
                 </div>
@@ -248,7 +249,7 @@ export default function Balance() {
                   border: `1px solid ${C.b1}`,
                   padding: '14px 16px', marginBottom: 10,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  animation: `fadeUp 0.35s ${E.smooth} both`,
+                  animation: `fadeUp 0.32s ${E.smooth} both`,
                   animationDelay: `${i * 0.04}s`,
                 }}>
                   <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
@@ -261,10 +262,13 @@ export default function Balance() {
                     </div>
                   </div>
                   <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                    <div style={{ color: C.geo, fontWeight: 800, fontSize: 16 }}>
+                    <div style={{
+                      color: C.purpleL, fontWeight: 800, fontSize: 15,
+                      background: C.purpleFt, borderRadius: 10, padding: '5px 10px',
+                    }}>
                       +{formatGeo(v.rewarded)} GEO
                     </div>
-                    <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: C.t3, marginTop: 4 }}>
                       ≈ {formatUzs(geoToUzs(v.rewarded, geoRate))} UZS
                     </div>
                   </div>
@@ -280,9 +284,9 @@ export default function Balance() {
 
               {!loading && withdrawals.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-                  <ArrowDownCircle size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
+                  <ArrowDownCircle size={60} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.3 }} />
                   <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет заявок</div>
-                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
+                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
                     Заявки на вывод появятся здесь
                   </div>
                 </div>
@@ -296,7 +300,7 @@ export default function Balance() {
                     border: `1px solid ${C.b1}`,
                     padding: '14px 16px', marginBottom: 10,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    animation: `fadeUp 0.35s ${E.smooth} both`,
+                    animation: `fadeUp 0.32s ${E.smooth} both`,
                     animationDelay: `${i * 0.04}s`,
                   }}>
                     <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
@@ -317,7 +321,11 @@ export default function Balance() {
                       )}
                     </div>
                     <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                      <div style={{ color: w.status === 'rejected' ? C.t3 : C.t1, fontWeight: 800, fontSize: 16, textDecoration: w.status === 'rejected' ? 'line-through' : 'none' }}>
+                      <div style={{
+                        color: w.status === 'rejected' ? C.t3 : C.t1,
+                        fontWeight: 800, fontSize: 15,
+                        textDecoration: w.status === 'rejected' ? 'line-through' : 'none',
+                      }}>
                         -{formatGeo(w.amount)} GEO
                       </div>
                       <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>

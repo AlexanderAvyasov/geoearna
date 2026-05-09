@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
-import { Home as HomeIcon, Map as MapIcon, ScanLine, Coins, Store as StoreIcon, Shield, Loader2 } from 'lucide-react';
+import { Home as HomeIcon, Map as MapIcon, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2 } from 'lucide-react';
 import { C, G, E } from './lib/design';
 import Home       from './pages/Home';
 import MapPage    from './pages/Map';
@@ -20,7 +20,7 @@ export const GLOBAL_CSS = `
     margin: 0; padding: 0;
     background: ${C.bg};
     color: ${C.t1};
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
@@ -29,7 +29,7 @@ export const GLOBAL_CSS = `
   * { scrollbar-width: none; }
 
   @keyframes pageEnter {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes shimmer {
@@ -38,16 +38,16 @@ export const GLOBAL_CSS = `
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
-    50%       { opacity: .3; }
+    50%       { opacity: .35; }
   }
   @keyframes glowPulse {
-    0%, 100% { opacity: .6; transform: scale(1); }
-    50%       { opacity: 1;  transform: scale(1.08); }
+    0%, 100% { opacity: .5; transform: scale(1); }
+    50%       { opacity: .9; transform: scale(1.06); }
   }
   @keyframes scanRing {
-    0%   { box-shadow: 0 0 0 0   rgba(42,171,238,.7), 0 6px 28px rgba(42,171,238,.5); }
-    60%  { box-shadow: 0 0 0 12px rgba(42,171,238,0), 0 6px 32px rgba(42,171,238,.7); }
-    100% { box-shadow: 0 0 0 0   rgba(42,171,238,0), 0 6px 28px rgba(42,171,238,.5); }
+    0%   { box-shadow: 0 0 0 0   rgba(124,58,237,.7), 0 6px 28px rgba(124,58,237,.5); }
+    60%  { box-shadow: 0 0 0 12px rgba(124,58,237,0), 0 6px 32px rgba(124,58,237,.7); }
+    100% { box-shadow: 0 0 0 0   rgba(124,58,237,0), 0 6px 28px rgba(124,58,237,.5); }
   }
   @keyframes coinBurst {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
@@ -55,14 +55,14 @@ export const GLOBAL_CSS = `
   }
   @keyframes pop {
     0%   { transform: scale(0.6); opacity: 0; }
-    70%  { transform: scale(1.1); }
+    70%  { transform: scale(1.08); }
     100% { transform: scale(1);   opacity: 1; }
   }
   @keyframes ripple {
     to { transform: scale(3); opacity: 0; }
   }
   @keyframes fadeUp {
-    from { transform: translateY(16px); opacity: 0; }
+    from { transform: translateY(14px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
   }
   @keyframes slideUp {
@@ -74,34 +74,34 @@ export const GLOBAL_CSS = `
     to   { opacity: 1; }
   }
   @keyframes userPing {
-    0%, 100% { transform: scale(1);   opacity: .8; }
-    50%       { transform: scale(1.6); opacity: 0; }
+    0%, 100% { transform: scale(1);   opacity: .7; }
+    50%       { transform: scale(1.7); opacity: 0; }
   }
   @keyframes successGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,.6); }
-    50%       { box-shadow: 0 0 0 20px rgba(0,230,118,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,.5); }
+    50%       { box-shadow: 0 0 0 22px rgba(16,185,129,0); }
   }
   @keyframes toastIn {
-    from { transform: translate(-50%, 12px); opacity: 0; }
+    from { transform: translate(-50%, 10px); opacity: 0; }
     to   { transform: translate(-50%, 0);    opacity: 1; }
   }
   @keyframes navPop {
-    0%   { transform: scale(0) translateX(-50%); }
-    70%  { transform: scale(1.3) translateX(-38%); }
-    100% { transform: scale(1) translateX(-50%); }
+    0%   { transform: scale(0) translateX(-50%); opacity: 0; }
+    70%  { transform: scale(1.2) translateX(-42%); opacity: 1; }
+    100% { transform: scale(1) translateX(-50%); opacity: 1; }
   }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-6px); }
-  }
-  @keyframes gradientShift {
-    0%   { background-position: 0% 50%; }
-    50%  { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    50%       { transform: translateY(-5px); }
   }
   @keyframes spin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
+  }
+  @keyframes accentShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 `;
 
@@ -148,20 +148,26 @@ function ScanQrButton({ onToast }) {
     <button
       onClick={handleScan}
       style={{
-        position: 'relative', bottom: 18,
-        width: 60, height: 60, borderRadius: '50%',
+        position: 'relative',
+        bottom: 20,
+        width: 56,
+        height: 56,
+        borderRadius: '50%',
         background: scanning
-          ? 'linear-gradient(135deg, #1a7aaa, #0d5a80)'
-          : G.blue,
-        border: `2.5px solid ${C.surf}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+          ? 'rgba(109,40,217,0.6)'
+          : G.accent,
+        border: `2px solid rgba(13,17,23,0.8)`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         cursor: scanning ? 'not-allowed' : 'pointer',
-        animation: scanning ? 'none' : 'scanRing 2.2s ease-in-out infinite',
+        animation: scanning ? 'none' : 'scanRing 2.4s ease-in-out infinite',
         flexShrink: 0,
-        transition: `transform 0.12s ${E.spring}`,
+        transition: `all 0.15s ${E.spring}`,
         WebkitTapHighlightColor: 'transparent',
         outline: 'none',
         zIndex: 10,
+        boxShadow: `0 4px 20px rgba(124,58,237,0.45)`,
       }}
       onTouchStart={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.88)'; }}
       onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
@@ -169,8 +175,8 @@ function ScanQrButton({ onToast }) {
       onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
       {scanning
-        ? <Loader2 size={24} strokeWidth={2} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
-        : <ScanLine size={24} strokeWidth={2} color="#fff" />
+        ? <Loader2 size={22} strokeWidth={2} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+        : <ScanLine size={22} strokeWidth={2} color="#fff" />
       }
     </button>
   );
@@ -181,16 +187,16 @@ function Toast({ message }) {
     <div style={{
       position: 'fixed', bottom: 100, left: '50%',
       transform: 'translate(-50%, 0)',
-      background: 'rgba(20,22,30,0.96)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
+      background: 'rgba(13,17,23,0.97)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
       color: C.t1, borderRadius: 14,
       padding: '12px 22px', fontSize: 14, fontWeight: 600,
       zIndex: 500, whiteSpace: 'nowrap',
       animation: 'toastIn 0.25s ease',
       maxWidth: 'calc(100vw - 48px)', textAlign: 'center',
-      border: `1px solid ${C.b1}`,
-      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      border: `1px solid rgba(255,255,255,0.08)`,
+      boxShadow: '0 8px 40px rgba(0,0,0,0.6)',
     }}>
       {message}
     </div>
@@ -201,10 +207,10 @@ const NAV_ITEMS = [
   { to: '/',        Icon: HomeIcon,  label: 'Главная' },
   { to: '/map',     Icon: MapIcon,   label: 'Карта'   },
   null,
-  { to: '/balance', Icon: Coins,     label: 'Кошелёк' },
+  { to: '/balance', Icon: Wallet,    label: 'Кошелёк' },
   IS_SUPER_ADMIN
-    ? { to: '/superadmin', Icon: Shield,    label: 'SA Panel' }
-    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес'   },
+    ? { to: '/superadmin', Icon: Shield,    label: 'SA' }
+    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес' },
 ];
 
 function BottomNav() {
@@ -223,20 +229,19 @@ function BottomNav() {
     <>
       <nav style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(8,9,14,0.92)',
+        background: 'rgba(7,11,20,0.94)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: `1px solid ${C.b1}`,
+        borderTop: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', alignItems: 'flex-end',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         zIndex: 100,
-        boxShadow: '0 -1px 0 rgba(255,255,255,0.05)',
       }}>
-        {NAV_ITEMS.map((item, idx) => {
+        {NAV_ITEMS.map((item) => {
           if (!item) {
             return (
               <div key="scan" style={{
-                flex: 1.3, display: 'flex', justifyContent: 'center',
+                flex: 1.2, display: 'flex', justifyContent: 'center',
                 alignItems: 'flex-end', paddingBottom: 6,
               }}>
                 <ScanQrButton onToast={showToast} />
@@ -248,50 +253,44 @@ function BottomNav() {
             ? pathname === '/'
             : pathname.startsWith(item.to);
 
-          const activeColor = item.to === '/balance' ? C.geo
-            : item.to === '/admin' || item.to === '/superadmin' ? C.gold
-            : C.blue;
-
-          const iconColor = isActive ? activeColor : 'rgba(255,255,255,0.3)';
-
           return (
             <NavLink
               key={item.to}
               to={item.to}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 3, padding: '10px 0 8px',
+                alignItems: 'center', gap: 4, padding: '11px 0 9px',
                 textDecoration: 'none', position: 'relative',
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
               <item.Icon
                 size={22}
-                strokeWidth={isActive ? 2 : 1.75}
-                color={iconColor}
+                strokeWidth={isActive ? 2.25 : 1.75}
+                color={isActive ? C.purpleL : C.t3}
                 style={{
-                  transition: `color 0.15s, transform 0.15s ${E.spring}`,
-                  transform: isActive ? 'scale(1.12)' : 'scale(1)',
+                  transition: `color 0.18s, transform 0.18s ${E.spring}`,
+                  transform: isActive ? 'scale(1.1)' : 'scale(1)',
                   display: 'block',
-                  filter: isActive ? `drop-shadow(0 0 6px ${activeColor}80)` : 'none',
+                  filter: isActive ? `drop-shadow(0 0 5px rgba(139,92,246,0.6))` : 'none',
                 }}
               />
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
-                color: isActive ? activeColor : 'rgba(255,255,255,0.3)',
-                transition: 'color 0.15s',
+                fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
+                color: isActive ? C.purpleL : C.t3,
+                transition: 'color 0.18s',
                 textTransform: 'uppercase',
               }}>
                 {item.label}
               </span>
               {isActive && (
                 <div style={{
-                  position: 'absolute', bottom: 0, left: '50%',
+                  position: 'absolute', top: 0, left: '50%',
                   transform: 'translateX(-50%)',
-                  width: 18, height: 3, borderRadius: 2,
-                  background: activeColor,
-                  animation: 'navPop 0.25s ease both',
-                  boxShadow: `0 0 8px ${activeColor}`,
+                  width: 20, height: 2, borderRadius: 2,
+                  background: C.purpleL,
+                  animation: 'navPop 0.28s ease both',
+                  boxShadow: `0 0 8px ${C.purpleGl}`,
                 }} />
               )}
             </NavLink>
@@ -313,7 +312,7 @@ function AppLayout() {
     <div style={{
       minHeight: '100vh',
       background: C.bg,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif',
+      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       color: C.t1,
       WebkitTapHighlightColor: 'transparent',
     }}>
@@ -324,11 +323,11 @@ function AppLayout() {
         overflow: isMap ? 'hidden' : undefined,
       }}>
         <Routes>
-          <Route path="/"         element={<Home />} />
-          <Route path="/map"      element={<MapPage />} />
-          <Route path="/checkin"  element={<Checkin />} />
-          <Route path="/balance"  element={<Balance />} />
-          <Route path="/withdraw" element={<Withdraw />} />
+          <Route path="/"           element={<Home />} />
+          <Route path="/map"        element={<MapPage />} />
+          <Route path="/checkin"    element={<Checkin />} />
+          <Route path="/balance"    element={<Balance />} />
+          <Route path="/withdraw"   element={<Withdraw />} />
           <Route path="/admin"      element={<Admin />} />
           <Route path="/superadmin" element={<SuperAdmin />} />
         </Routes>

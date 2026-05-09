@@ -4,7 +4,7 @@ const router = express.Router();
 
 router.get('/api/config', (req, res) => {
   res.json({
-    geoRate: parseFloat(process.env.GEO_RATE) || 1,
+    geoRate: parseFloat(process.env.GEO_RATE) || 1000,
     currency: 'GEO',
     fiatCurrency: 'UZS',
   });
