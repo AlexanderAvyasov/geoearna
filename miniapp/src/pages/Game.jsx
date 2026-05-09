@@ -5,16 +5,21 @@ import {
 } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
-import { C, E, cardBase } from '../lib/design';
+import { C, cardBase } from '../lib/design';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 const LV = {
-  1: { label: 'Новичок',       color: '#6B7280', bg: 'rgba(107,114,128,0.12)', min: 0,     next: 500   },
-  2: { label: 'Исследователь', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  min: 500,   next: 2000  },
-  3: { label: 'Постоянный',    color: C.green,   bg: C.greenFt,                min: 2000,  next: 6000  },
-  4: { label: 'Эксперт',       color: C.gold,    bg: C.goldFt,                 min: 6000,  next: 15000 },
-  5: { label: 'Легенда',       color: C.geo,     bg: C.geoDim,                 min: 15000, next: null  },
+  1:  { label: 'Новичок',       color: '#6B7280', bg: 'rgba(107,114,128,0.10)', min: 0,    next: 100   },
+  2:  { label: 'Исследователь', color: '#3B82F6', bg: 'rgba(59,130,246,0.10)',  min: 100,  next: 250   },
+  3:  { label: 'Постоянный',    color: C.green,   bg: C.greenFt,                min: 250,  next: 500   },
+  4:  { label: 'Активный',      color: C.gold,    bg: C.goldFt,                 min: 500,  next: 1000  },
+  5:  { label: 'Эксперт',       color: C.orange,  bg: 'rgba(251,146,60,0.10)',  min: 1000, next: 2000  },
+  6:  { label: 'Мастер',        color: '#F472B6', bg: 'rgba(244,114,182,0.10)', min: 2000, next: 3000  },
+  7:  { label: 'Ветеран',       color: '#A78BFA', bg: 'rgba(167,139,250,0.10)', min: 3000, next: 3750  },
+  8:  { label: 'Элита',         color: '#22D3EE', bg: 'rgba(34,211,238,0.10)',  min: 3750, next: 4500  },
+  9:  { label: 'Чемпион',       color: C.red,     bg: C.redFt,                  min: 4500, next: 5000  },
+  10: { label: 'Легенда',       color: C.geo,     bg: C.geoDim,                 min: 5000, next: null  },
 };
 
 function xpPct(xp, level) {

@@ -27,11 +27,17 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
     });
 
     // Fire-and-forget Telegram notification
+    const xpGained = 10 + (result.newPlaceBonus > 0 ? 20 : 0);
+    const streakLine = result.streakInfo.projected > 1
+      ? `🔥 Стрик: *${result.streakInfo.projected} дн.*\n`
+      : '';
     sendMessage(
       req.user.telegram_id,
-      `🎉 *+${result.reward.toLocaleString('ru-RU')} сум* зачислено!\n\n` +
+      `✅ *+${result.reward.toLocaleString('ru-RU')} GEO* получено!\n\n` +
       `📍 ${result.businessName}\n` +
-      `💼 Баланс: *${result.totalBalance.toLocaleString('ru-RU')} сум*`
+      `${streakLine}` +
+      `⚡ +${xpGained} XP\n` +
+      `💰 Баланс: *${result.totalBalance.toLocaleString('ru-RU')} GEO*`
     ).catch(() => {});
 
     return res.json({ reward: result.reward, totalBalance: result.totalBalance });

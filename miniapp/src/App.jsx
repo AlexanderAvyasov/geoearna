@@ -12,6 +12,7 @@ import SuperAdmin from './pages/SuperAdmin';
 import Onboarding from './pages/Onboarding';
 import Game       from './pages/Game';
 import MapPage    from './pages/Map';
+import Legal      from './pages/Legal';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
@@ -209,7 +210,7 @@ function BottomNav() {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
 
-  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map') return null;
+  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map' || pathname === '/legal') return null;
   if (IS_SUPER_ADMIN && pathname === '/admin') return null;
 
   function showToast(msg) {
@@ -295,7 +296,7 @@ function BottomNav() {
 
 function AppLayout() {
   const { pathname } = useLocation();
-  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/map';
+  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/map' && pathname !== '/legal';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -320,6 +321,7 @@ function AppLayout() {
           <Route path="/map"        element={<MapPage />} />
           <Route path="/admin"      element={<Admin />} />
           <Route path="/superadmin" element={<SuperAdmin />} />
+          <Route path="/legal"      element={<Legal />} />
         </Routes>
       </div>
       <BottomNav />

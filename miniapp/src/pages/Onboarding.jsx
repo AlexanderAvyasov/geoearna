@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapPin, Wallet, CreditCard, User, Store, Check } from 'lucide-react';
 import { C, E } from '../lib/design';
+import { LegalSheet } from './Legal';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
@@ -141,12 +142,17 @@ function SlidePhase({ onDone }) {
 
 function ModePhase({ onChoose }) {
   const [chosen, setChosen] = useState(null);
+  const [legalTab, setLegalTab] = useState(null); // null | 'terms' | 'privacy'
+
+  if (legalTab) {
+    return <LegalSheet initialTab={legalTab} onClose={() => setLegalTab(null)} />;
+  }
 
   const modes = [
     {
       id: 'user',
       Icon: User,
-      label: 'Покупатель',
+      label: 'Geo Скаут',
       desc: 'Зарабатываю GEO-монеты, посещая заведения',
       accent: C.geo,
       accentDim: C.geoDim,
@@ -258,6 +264,23 @@ function ModePhase({ onChoose }) {
         >
           {chosen ? 'Начать' : 'Выберите режим'}
         </button>
+
+        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: C.t3, lineHeight: 1.6 }}>
+          Нажимая «Начать», вы принимаете{' '}
+          <button
+            onClick={() => setLegalTab('terms')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.geo, fontSize: 11, padding: 0, fontWeight: 600 }}
+          >
+            Условия пользования
+          </button>
+          {' '}и{' '}
+          <button
+            onClick={() => setLegalTab('privacy')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.geo, fontSize: 11, padding: 0, fontWeight: 600 }}
+          >
+            Политику конфиденциальности
+          </button>
+        </div>
       </div>
     </div>
   );

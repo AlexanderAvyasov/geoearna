@@ -12,13 +12,15 @@ async function startHandler(ctx) {
       return ctx.reply('Не удалось определить ваш Telegram ID. Попробуйте снова.');
     }
 
-    // Determine whether param is a referral code or a QR token
+    // Determine whether param is a referral code, scan command, or a QR token
     const isReferral  = param && param.startsWith('ref_');
+    const isScan      = param === 'scan';
     const referralCode = isReferral ? param : null;
-    const qrToken      = isReferral ? null : param;
+    const qrToken      = !isReferral && !isScan ? param : null;
 
     if (!ctx.session) ctx.session = {};
     if (qrToken) ctx.session.pendingQrToken = qrToken;
+    if (isScan)  ctx.session.pendingScan = true;
 
     const { data: existingUser, error: selectError } = await supabase
       .from('users')
@@ -92,6 +94,8 @@ async function recordReferral(newUserId, referralCode) {
 
 async function sendMainMenu(ctx, user) {
   const qrToken = ctx.session?.pendingQrToken || null;
+  const scanMode = ctx.session?.pendingScan || false;
+
   if (qrToken) {
     ctx.session.pendingQrToken = null;
     const webAppUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(qrToken)}`;
@@ -101,16 +105,29 @@ async function sendMainMenu(ctx, user) {
     });
   }
 
+  if (scanMode) {
+    ctx.session.pendingScan = false;
+    const keyboard = new Keyboard()
+      .webApp('📷 Зачекиниться', `${process.env.WEBAPP_URL}/checkin`)
+      .resized();
+    return ctx.reply(
+      `Откройте камеру и отсканируйте QR-код заведения:`,
+      { reply_markup: keyboard }
+    );
+  }
+
   const webAppUrl = process.env.WEBAPP_URL;
   const keyboard = new Keyboard()
-    .webApp('💼 Открыть GeoEarn', webAppUrl)
+    .webApp('🚀 Открыть GeoEarn', webAppUrl)
+    .row()
+    .webApp('📷 Зачекиниться', `${webAppUrl}/checkin`)
     .resized();
 
   return ctx.reply(
     `Добро пожаловать, ${ctx.from?.first_name || 'пользователь'}!\n\n` +
     `Баланс: *${(user?.balance || 0).toLocaleString('ru-RU')} GEO*\n\n` +
     `Сканируйте QR-коды в заведениях и получайте вознаграждение.\n\n` +
-    `Команды:\n/myqr — QR-код вашего заведения\n/mypin — одноразовый PIN для клиента`,
+    `Команды:\n/balance — баланс, уровень, стрик\n/history — история выводов\n/myqr — QR-код вашего заведения\n/mypin — одноразовый PIN для клиента`,
     { reply_markup: keyboard, parse_mode: 'Markdown' }
   );
 }

@@ -1,5 +1,6 @@
 const { supabase } = require('../../db/index');
 const { getDistance } = require('./geo');
+const { sendMessage } = require('./notify');
 const {
   getTashkentDay,
   getWeekStart,
@@ -123,9 +124,15 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   const today     = getTashkentDay();
   const weekStart = getWeekStart(today);
   const isFirstVisitToThisBusiness = (prevVisitCount || 0) === 0;
+  const prevLevel = levelInfo.level;
+  const prevXp    = user?.xp || 0;
 
   ;(async () => {
     try {
+      const { data: userRow } = await supabase
+        .from('users').select('telegram_id').eq('id', userId).single();
+      const telegramId = userRow?.telegram_id;
+
       const streakResult = await applyStreakUpdate(userId, today);
       const newStreak = streakResult.newStreak;
 
@@ -135,14 +142,50 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
         (!streakResult.alreadyDone ? 5 : 0);
       await grantXp(userId, xpAmount, 'checkin');
 
-      await Promise.all([
+      const newLevelInfo = getLevelInfo(prevXp + xpAmount);
+
+      const [newlyUnlocked] = await Promise.all([
+        checkAchievements(userId, business.id, newStreak),
         supabase.rpc('activate_referral', { p_referred_id: userId }),
         visitId
           ? supabase.rpc('process_referral_income', { p_referred_id: userId, p_visit_id: visitId, p_reward: baseReward })
           : Promise.resolve(),
         checkAndUpdateTasks(userId, business.id, today, weekStart, newStreak, isBeforeNoon),
-        checkAchievements(userId, business.id, newStreak),
       ]);
+
+      if (telegramId) {
+        // Level-up notification
+        if (newLevelInfo.level > prevLevel) {
+          const bonusPct = Math.round((newLevelInfo.bonus - 1) * 100);
+          sendMessage(telegramId,
+            `🎖 *Новый уровень!*\n\n` +
+            `Уровень ${newLevelInfo.level} — *${newLevelInfo.label}*\n` +
+            (bonusPct > 0 ? `Бонус к наградам: *+${bonusPct}%* 🚀` : '')
+          ).catch(() => {});
+          await new Promise(r => setTimeout(r, 150));
+        }
+
+        // Streak milestone bonus notification
+        if (streakResult.milestoneBonus > 0) {
+          sendMessage(telegramId,
+            `🔥 *Стрик ${newStreak} дней — бонус зачислен!*\n\n` +
+            `💰 +${streakResult.milestoneBonus.toLocaleString('ru-RU')} GEO\n` +
+            `Не прерывайте серию! 💪`
+          ).catch(() => {});
+          await new Promise(r => setTimeout(r, 150));
+        }
+
+        // Achievement notifications
+        for (const ach of (newlyUnlocked || [])) {
+          sendMessage(telegramId,
+            `🏆 *Достижение разблокировано!*\n\n` +
+            `*${ach.title}*\n\n` +
+            (ach.geo_reward > 0 ? `💰 +${ach.geo_reward.toLocaleString('ru-RU')} GEO\n` : '') +
+            (ach.xp_reward > 0 ? `⚡ +${ach.xp_reward} XP` : '')
+          ).catch(() => {});
+          await new Promise(r => setTimeout(r, 150));
+        }
+      }
     } catch (e) {
       console.error('[gamification] pipeline error', e?.message);
     }

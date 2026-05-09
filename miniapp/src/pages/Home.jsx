@@ -409,6 +409,33 @@ export default function Home() {
       {selected && (
         <CampaignSheet campaign={selected} userPos={userPos} onClose={() => setSelected(null)} />
       )}
+
+      {/* Legal footer */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', gap: 20,
+        padding: '20px 24px 8px',
+      }}>
+        <button
+          onClick={() => navigate('/legal')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 11, color: C.t3, padding: '4px 0',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          Условия пользования
+        </button>
+        <button
+          onClick={() => navigate('/legal?tab=privacy')}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 11, color: C.t3, padding: '4px 0',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          Конфиденциальность
+        </button>
+      </div>
     </div>
   );
 }

@@ -4,11 +4,16 @@ const TASHKENT_MS = 5 * 60 * 60 * 1000; // UTC+5
 const GRACE_MS    = 2 * 60 * 60 * 1000; // 2-hour grace period
 
 const LEVELS = [
-  { min: 15000, level: 5, label: 'Легенда',       bonus: 1.20 },
-  { min: 6000,  level: 4, label: 'Эксперт',        bonus: 1.15 },
-  { min: 2000,  level: 3, label: 'Постоянный',     bonus: 1.10 },
-  { min: 500,   level: 2, label: 'Исследователь',  bonus: 1.05 },
-  { min: 0,     level: 1, label: 'Новичок',        bonus: 1.00 },
+  { min: 5000, level: 10, label: 'Легенда',       bonus: 1.25 },
+  { min: 4500, level: 9,  label: 'Чемпион',       bonus: 1.20 },
+  { min: 3750, level: 8,  label: 'Элита',          bonus: 1.18 },
+  { min: 3000, level: 7,  label: 'Ветеран',        bonus: 1.15 },
+  { min: 2000, level: 6,  label: 'Мастер',         bonus: 1.12 },
+  { min: 1000, level: 5,  label: 'Эксперт',        bonus: 1.10 },
+  { min: 500,  level: 4,  label: 'Активный',       bonus: 1.08 },
+  { min: 250,  level: 3,  label: 'Постоянный',     bonus: 1.05 },
+  { min: 100,  level: 2,  label: 'Исследователь',  bonus: 1.02 },
+  { min: 0,    level: 1,  label: 'Новичок',        bonus: 1.00 },
 ];
 
 const MILESTONE_GEO = { 7: 500, 14: 1500, 30: 5000 };
@@ -47,7 +52,7 @@ function getLevelInfo(xp) {
 }
 
 function getNextLevelXp(xp) {
-  const thresholds = [500, 2000, 6000, 15000];
+  const thresholds = [100, 250, 500, 1000, 2000, 3000, 3750, 4500, 5000];
   return thresholds.find(t => (xp || 0) < t) || null;
 }
 
@@ -303,9 +308,10 @@ async function checkAchievements(userId, businessId, newStreak) {
     supabase.from('achievement_definitions').select('*'),
     supabase.from('user_achievements').select('achievement_key').eq('user_id', userId),
   ]);
-  if (!defs) return;
+  if (!defs) return [];
 
   const earnedKeys = new Set((earned || []).map(a => a.achievement_key));
+  const newlyUnlocked = [];
 
   for (const ad of defs) {
     if (earnedKeys.has(ad.key)) continue;
@@ -351,11 +357,14 @@ async function checkAchievements(userId, businessId, newStreak) {
         if (ad.xp_reward > 0) {
           await grantXp(userId, ad.xp_reward, `achievement_${ad.key}`);
         }
+        newlyUnlocked.push({ key: ad.key, title: ad.title, geo_reward: ad.geo_reward, xp_reward: ad.xp_reward });
       }
     } catch (e) {
       console.error('[achievements] error on', ad.key, e?.message);
     }
   }
+
+  return newlyUnlocked;
 }
 
 // ── Full game data for /api/me/game ──────────────────────────────────────────
