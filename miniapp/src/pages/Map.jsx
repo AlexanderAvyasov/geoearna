@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star } from 'lucide-react';
+import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -106,6 +107,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 }
 
 export default function MapPage() {
+  const navigate      = useNavigate();
   const containerRef  = useRef(null);
   const mapRef        = useRef(null);
   const markersRef    = useRef([]);
@@ -211,8 +213,41 @@ export default function MapPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: C.bg }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 16px',
+        background: 'rgba(7,11,20,0.95)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0, zIndex: 20,
+      }}>
+        <button onClick={() => navigate(-1)} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          color: C.blue, padding: '4px 8px 4px 0',
+          display: 'flex', alignItems: 'center',
+          WebkitTapHighlightColor: 'transparent',
+        }}>
+          <ArrowLeft size={22} color={C.blue} strokeWidth={2} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+          <MapIcon size={18} color={C.purpleL} strokeWidth={1.75} />
+          <span style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>Карта</span>
+        </div>
+        {!loading && (
+          <div style={{
+            fontSize: 12, color: C.t3, fontWeight: 600,
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 10, padding: '3px 10px',
+          }}>
+            {nearby.length} {nearby.length === 1 ? 'место' : nearby.length < 5 ? 'места' : 'мест'}
+          </div>
+        )}
+      </div>
+
       {/* Map */}
-      <div style={{ position: 'relative', flex: '0 0 52vh' }}>
+      <div style={{ position: 'relative', flex: '0 0 48vh' }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
         {loading && (

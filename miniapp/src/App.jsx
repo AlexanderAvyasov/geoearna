@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
-import { Home as HomeIcon, Map as MapIcon, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2 } from 'lucide-react';
+import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2 } from 'lucide-react';
 import { C, G, E } from './lib/design';
 import Home       from './pages/Home';
-import MapPage    from './pages/Map';
 import Checkin    from './pages/Checkin';
 import Balance    from './pages/Balance';
 import Withdraw   from './pages/Withdraw';
 import Admin      from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
 import Onboarding from './pages/Onboarding';
+import Game       from './pages/Game';
+import MapPage    from './pages/Map';
+
+const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
@@ -204,20 +207,20 @@ function Toast({ message }) {
 }
 
 const NAV_ITEMS = [
-  { to: '/',        Icon: HomeIcon,  label: 'Главная' },
-  { to: '/map',     Icon: MapIcon,   label: 'Карта'   },
+  { to: '/',        Icon: HomeIcon,  label: 'Главная'  },
+  { to: '/game',    Icon: Star,      label: 'Прогресс' },
   null,
-  { to: '/balance', Icon: Wallet,    label: 'Кошелёк' },
+  { to: '/balance', Icon: Wallet,    label: 'Кошелёк'  },
   IS_SUPER_ADMIN
-    ? { to: '/superadmin', Icon: Shield,    label: 'SA' }
-    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес' },
+    ? { to: '/superadmin', Icon: Shield,    label: 'SA'      }
+    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес'  },
 ];
 
 function BottomNav() {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
 
-  if (pathname === '/checkin' || pathname === '/withdraw') return null;
+  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map') return null;
   if (IS_SUPER_ADMIN && pathname === '/admin') return null;
 
   function showToast(msg) {
@@ -304,8 +307,7 @@ function BottomNav() {
 
 function AppLayout() {
   const { pathname } = useLocation();
-  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw';
-  const isMap   = pathname === '/map';
+  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/map';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -318,16 +320,16 @@ function AppLayout() {
     }}>
       <div style={{
         maxWidth: 480, margin: '0 auto',
-        paddingBottom: hasNav && !isMap ? 80 : 0,
-        height: isMap ? '100vh' : isSAPage ? 'auto' : undefined,
-        overflow: isMap ? 'hidden' : undefined,
+        paddingBottom: hasNav ? 80 : 0,
+        height: isSAPage ? 'auto' : undefined,
       }}>
         <Routes>
           <Route path="/"           element={<Home />} />
-          <Route path="/map"        element={<MapPage />} />
           <Route path="/checkin"    element={<Checkin />} />
           <Route path="/balance"    element={<Balance />} />
           <Route path="/withdraw"   element={<Withdraw />} />
+          <Route path="/game"       element={<Game />} />
+          <Route path="/map"        element={<MapPage />} />
           <Route path="/admin"      element={<Admin />} />
           <Route path="/superadmin" element={<SuperAdmin />} />
         </Routes>
@@ -339,13 +341,21 @@ function AppLayout() {
 
 export default function App() {
   useTelegram();
-  const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem('geo_onboarded'));
+  const [onboarded, setOnboarded] = useState(() =>
+    !!localStorage.getItem(ONBOARD_KEY) || !!localStorage.getItem('geo_onboarded')
+  );
+
+  function handleOnboardDone(mode) {
+    localStorage.setItem(ONBOARD_KEY, '1');
+    if (mode) localStorage.setItem('geo_mode', mode);
+    setOnboarded(true);
+  }
 
   return (
     <>
       <style>{GLOBAL_CSS}</style>
       {!onboarded ? (
-        <Onboarding onDone={() => setOnboarded(true)} />
+        <Onboarding onDone={handleOnboardDone} />
       ) : (
         <BrowserRouter>
           <AppLayout />

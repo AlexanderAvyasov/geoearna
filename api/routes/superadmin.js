@@ -68,7 +68,7 @@ router.get('/api/superadmin/withdrawals', ...SA, async (req, res) => {
 
     let q = supabase
       .from('withdrawals')
-      .select('id, amount, phone, status, created_at, processed_at, users(telegram_id, username, balance)')
+      .select('id, amount, phone, status, note, created_at, processed_at, users(telegram_id, username, balance)')
       .order('created_at', { ascending: false })
       .limit(200);
 
@@ -390,7 +390,7 @@ router.get('/api/superadmin/campaigns', ...SA, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('campaigns')
-      .select('id, active, budget, reward_amount, visits_count, max_visits, task_type, requires_pin, ends_at, created_at, businesses(id, name, owner_telegram_id)')
+      .select('id, active, budget, reward_amount, visits_count, max_visits, task_type, requires_pin, ends_at, created_at, businesses!business_id(id, name, owner_telegram_id)')
       .order('created_at', { ascending: false })
       .limit(300);
 

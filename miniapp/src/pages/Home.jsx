@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Zap, Map as MapIcon } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -248,6 +249,7 @@ function CampaignCard({ campaign, onTap, index }) {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
@@ -321,17 +323,37 @@ export default function Home() {
           Посещайте заведения и получайте GEO‑монеты за каждый визит
         </div>
 
-        {userPos && !loading && displayed.length > 0 && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: C.purpleFt, border: `1px solid rgba(124,58,237,0.2)`,
-            borderRadius: 20, padding: '5px 12px', marginTop: 16,
-            fontSize: 12, color: C.purpleL, fontWeight: 700,
-          }}>
-            <Compass size={12} color={C.purpleL} />
-            По расстоянию от вас
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+          {userPos && !loading && displayed.length > 0 && (
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: C.purpleFt, border: `1px solid rgba(124,58,237,0.2)`,
+              borderRadius: 20, padding: '5px 12px',
+              fontSize: 12, color: C.purpleL, fontWeight: 700,
+            }}>
+              <Compass size={12} color={C.purpleL} />
+              По расстоянию от вас
+            </div>
+          )}
+          <button
+            onClick={() => navigate('/map')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.07)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 20, padding: '5px 14px',
+              fontSize: 12, color: C.t2, fontWeight: 700,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              outline: 'none',
+            }}
+            onTouchStart={e => { e.currentTarget.style.opacity = '0.7'; }}
+            onTouchEnd={e => { e.currentTarget.style.opacity = '1'; }}
+          >
+            <MapIcon size={13} color={C.t2} strokeWidth={1.75} />
+            Карта
+          </button>
+        </div>
       </div>
 
       {/* Content panel */}

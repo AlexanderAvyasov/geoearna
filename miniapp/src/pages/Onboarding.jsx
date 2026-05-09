@@ -287,9 +287,5 @@ export default function Onboarding({ onDone }) {
 
   return phase === 'slides'
     ? <SlidePhase onDone={() => setPhase('mode')} />
-    : <ModePhase onChoose={mode => {
-        localStorage.setItem('geo_onboarded', '1');
-        localStorage.setItem('geo_mode', mode);
-        onDone(mode);
-      }} />;
+    : <ModePhase onChoose={onDone} />;
 }

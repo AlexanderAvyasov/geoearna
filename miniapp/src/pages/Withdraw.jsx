@@ -57,8 +57,11 @@ export default function Withdraw() {
       .finally(() => setLoading(false));
   }, []);
 
+  const MIN_UZS   = 50_000;
   const geoVal    = Number(amount.replace(/\s+/g, '').replace(',', '.')) || 0;
   const uzsPreview = geoToUzs(geoVal, geoRate);
+  const minGeo    = Math.ceil(MIN_UZS / geoRate);
+  const belowMin  = geoVal > 0 && uzsPreview < MIN_UZS;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -67,6 +70,7 @@ export default function Withdraw() {
     if (!phone.trim())           return setError('Введите номер телефона Payme.');
     if (!isValidUzPhone(phone))  return setError('Формат: +998901234567');
     if (!Number.isFinite(geoVal) || geoVal <= 0) return setError('Введите корректную сумму.');
+    if (belowMin)                return setError(`Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(minGeo)} GEO)`);
     if (geoVal > balance)        return setError(`Максимум: ${formatGeo(balance)} GEO`);
 
     setSubmitting(true);
@@ -81,6 +85,7 @@ export default function Withdraw() {
         const msgs = {
           INSUFFICIENT_FUNDS: 'Недостаточно GEO на балансе.',
           INVALID_PHONE: 'Неверный формат телефона. Пример: +998901234567',
+          BELOW_MINIMUM: `Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(data.minGeo || minGeo)} GEO)`,
         };
         setError(msgs[data.error] || 'Не удалось создать заявку. Попробуйте позже.');
         return;
@@ -213,15 +218,28 @@ export default function Withdraw() {
                 inputMode="numeric"
               />
 
+              {/* Minimum info */}
+              <div style={{
+                background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.07)`,
+                borderRadius: 10, padding: '9px 12px', marginBottom: 14,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{ fontSize: 12, color: C.t3 }}>Минимальная сумма</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.t2 }}>
+                  {formatUzs(MIN_UZS)} UZS · {formatGeo(minGeo)} GEO
+                </span>
+              </div>
+
               {/* UZS preview */}
               {geoVal > 0 && (
                 <div style={{
-                  background: C.blueFt, border: `1.5px solid ${C.blueGl}`,
+                  background: belowMin ? 'rgba(255,59,92,0.08)' : C.blueFt,
+                  border: `1.5px solid ${belowMin ? 'rgba(255,59,92,0.25)' : C.blueGl}`,
                   borderRadius: 12, padding: '12px 14px', marginBottom: 16,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <span style={{ fontSize: 14, color: C.t3 }}>Получите на Payme</span>
-                  <span style={{ fontWeight: 800, color: C.blue, fontSize: 16 }}>
+                  <span style={{ fontWeight: 800, color: belowMin ? C.red : C.blue, fontSize: 16 }}>
                     {formatUzs(uzsPreview)} UZS
                   </span>
                 </div>
@@ -264,14 +282,14 @@ export default function Withdraw() {
               </div>
             )}
 
-            <button type="submit" disabled={submitting || loading} style={{
+            <button type="submit" disabled={submitting || loading || belowMin} style={{
               width: '100%',
-              background: (submitting || loading) ? C.b2 : G.blue,
+              background: (submitting || loading || belowMin) ? C.b2 : G.blue,
               color: '#fff', border: 'none',
               padding: '17px', borderRadius: 16,
               fontWeight: 700, fontSize: 16,
-              cursor: (submitting || loading) ? 'not-allowed' : 'pointer',
-              boxShadow: (submitting || loading) ? 'none' : `0 6px 24px ${C.blueGl}`,
+              cursor: (submitting || loading || belowMin) ? 'not-allowed' : 'pointer',
+              boxShadow: (submitting || loading || belowMin) ? 'none' : `0 6px 24px ${C.blueGl}`,
               transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>

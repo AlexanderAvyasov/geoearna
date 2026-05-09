@@ -28,6 +28,14 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
     }
 
     const geoRate = getGeoRate();
+    const MIN_UZS = 50_000;
+    if (amount * geoRate < MIN_UZS) {
+      return res.status(400).json({
+        error: 'BELOW_MINIMUM',
+        minGeo: Math.ceil(MIN_UZS / geoRate),
+        minUzs: MIN_UZS,
+      });
+    }
 
     const { data, error } = await supabase.rpc('process_withdrawal', {
       p_user_id: req.user.id,

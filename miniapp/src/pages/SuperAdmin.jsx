@@ -536,12 +536,14 @@ function CampaignsTab() {
   const [loading,   setLoading]   = useState(true);
   const [filter,    setFilter]    = useState('all');
   const [busy,      setBusy]      = useState({});
+  const [fetchErr,  setFetchErr]  = useState(null);
 
   useEffect(() => {
     setLoading(true);
+    setFetchErr(null);
     saFetch('/api/superadmin/campaigns')
       .then(d => setCampaigns(d.campaigns || []))
-      .catch(() => {})
+      .catch(e => setFetchErr(e.message || 'Ошибка загрузки'))
       .finally(() => setLoading(false));
   }, []);
 
@@ -597,9 +599,16 @@ function CampaignsTab() {
         </div>
       ))}
 
-      {!loading && filtered.length === 0 && <Empty icon={Megaphone} text="Нет кампаний" />}
+      {!loading && fetchErr && (
+        <div style={{ background: `${C.red}10`, border: `1.5px solid ${C.red}30`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', gap: 10 }}>
+          <AlertTriangle size={18} color={C.red} style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: 13, color: C.red }}>{fetchErr}</div>
+        </div>
+      )}
 
-      {!loading && filtered.map((c, i) => (
+      {!loading && !fetchErr && filtered.length === 0 && <Empty icon={Megaphone} text="Нет кампаний" />}
+
+      {!loading && !fetchErr && filtered.map((c, i) => (
         <div key={c.id} style={{
           ...cardBase,
           border: `1px solid ${c.isAnomaly ? `${C.red}50` : c.active ? `#10B98130` : C.b1}`,
