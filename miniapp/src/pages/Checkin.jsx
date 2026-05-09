@@ -132,9 +132,7 @@ export default function Checkin() {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 24px',
-      background: isSuccess
-        ? 'linear-gradient(160deg, #070B14 0%, #0E0B1E 50%, #070B14 100%)'
-        : C.bg,
+      background: C.bg,
       textAlign: 'center',
       transition: 'background 0.6s ease',
     }}>
@@ -160,21 +158,21 @@ export default function Checkin() {
           <div style={{ position: 'relative', width: 96, height: 96, marginBottom: 28 }}>
             <div style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
-              background: C.purpleFt,
+              background: 'rgba(198,241,53,0.08)',
               animation: 'ripple 1.6s ease-out infinite',
             }} />
             <div style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
-              background: 'rgba(124,58,237,0.06)',
+              background: 'rgba(198,241,53,0.04)',
               animation: 'ripple 1.6s ease-out 0.5s infinite',
             }} />
             <div style={{
               position: 'relative', zIndex: 1,
               width: 96, height: 96, borderRadius: '50%',
-              background: C.surf, border: `1px solid rgba(124,58,237,0.2)`,
+              background: C.surf, border: `0.5px solid rgba(198,241,53,0.18)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <MapPin size={38} color={C.purple} strokeWidth={1.75} />
+              <MapPin size={38} color="#C6F135" strokeWidth={1.75} />
             </div>
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
@@ -220,13 +218,13 @@ export default function Checkin() {
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '18px', borderRadius: 16,
-                border: `2px solid ${pinError ? C.red : pin.length >= 4 ? C.purple : C.b2}`,
+                border: `1px solid ${pinError ? C.red : pin.length >= 4 ? 'rgba(198,241,53,0.45)' : C.b2}`,
                 background: C.surf,
                 color: C.t1,
                 fontSize: 28, fontWeight: 700, textAlign: 'center',
                 letterSpacing: 10, outline: 'none',
                 transition: 'border-color 0.15s', marginBottom: 12,
-                fontFamily: 'Inter, -apple-system, sans-serif',
+                fontFamily: "'DM Sans', -apple-system, sans-serif",
               }}
             />
             {pinError && (
@@ -242,12 +240,12 @@ export default function Checkin() {
             )}
             <button type="submit" disabled={pin.length < 4} style={{
               width: '100%',
-              background: pin.length >= 4 ? G.accent : C.b2,
-              color: pin.length >= 4 ? '#fff' : C.t3,
-              border: 'none', padding: '16px', borderRadius: 14,
-              fontWeight: 700, fontSize: 16,
+              background: pin.length >= 4 ? '#C6F135' : C.cardHi,
+              color: pin.length >= 4 ? '#090B10' : C.t3,
+              border: `0.5px solid ${pin.length >= 4 ? 'transparent' : C.b2}`,
+              padding: '15px', borderRadius: 13,
+              fontWeight: 700, fontSize: 15,
               cursor: pin.length >= 4 ? 'pointer' : 'not-allowed',
-              boxShadow: pin.length >= 4 ? `0 6px 24px ${C.purpleGl}` : 'none',
               transition: 'all 0.2s',
             }}>
               Подтвердить
@@ -284,9 +282,8 @@ export default function Checkin() {
 
           {/* Reward card */}
           <div style={{
-            background: 'rgba(124,58,237,0.08)',
-            border: `1.5px solid rgba(124,58,237,0.22)`,
-            backdropFilter: 'blur(12px)',
+            background: 'rgba(198,241,53,0.08)',
+            border: `0.5px solid rgba(198,241,53,0.20)`,
             borderRadius: 24, padding: '26px 44px',
             marginBottom: 36,
             animation: 'fadeUp 0.4s 0.3s both',
@@ -295,20 +292,19 @@ export default function Checkin() {
               Вы получили
             </div>
             <div style={{ animation: 'pop 0.5s 0.45s both' }}>
-              <div style={{ fontSize: 56, fontWeight: 900, color: C.t1, letterSpacing: -2, lineHeight: 1 }}>
+              <div style={{ fontSize: 56, fontWeight: 900, color: '#C6F135', letterSpacing: -2, lineHeight: 1, fontFamily: "'Syne', sans-serif" }}>
                 +{formatGeo(reward)}
               </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: C.purpleL, marginTop: 6 }}>GEO</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: C.t2, marginTop: 6 }}>GEO</div>
             </div>
           </div>
 
           <Link to="/balance" style={{
             display: 'block', width: '100%', maxWidth: 300,
-            background: G.accent,
-            color: '#fff', textDecoration: 'none',
-            padding: '17px 32px', borderRadius: 18,
-            fontWeight: 800, fontSize: 16,
-            boxShadow: `0 6px 28px ${C.purpleGl}`,
+            background: '#C6F135',
+            color: '#090B10', textDecoration: 'none',
+            padding: '15px 32px', borderRadius: 13,
+            fontWeight: 700, fontSize: 15,
             animation: 'fadeUp 0.4s 0.45s both',
           }}>
             Перейти к кошельку

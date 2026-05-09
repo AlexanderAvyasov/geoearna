@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Coins, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs, isValidUzPhone, normalizePhone } from '../lib/geo';
-import { C, G, E, cardBase, inputStyle } from '../lib/design';
+import { C, E, cardBase, inputStyle } from '../lib/design';
+
+const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 function Field({ label, value, onChange, placeholder, type = 'text', inputMode, hint }) {
   const [focused, setFocused] = useState(false);
-  const [hasError] = useState(false);
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
@@ -22,7 +23,7 @@ function Field({ label, value, onChange, placeholder, type = 'text', inputMode, 
         inputMode={inputMode}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={inputStyle(focused, hasError)}
+        style={inputStyle(focused, false)}
       />
       {hint && (
         <div style={{ fontSize: 12, color: C.t3, marginTop: 6, paddingLeft: 2 }}>{hint}</div>
@@ -62,6 +63,7 @@ export default function Withdraw() {
   const uzsPreview = geoToUzs(geoVal, geoRate);
   const minGeo    = Math.ceil(MIN_UZS / geoRate);
   const belowMin  = geoVal > 0 && uzsPreview < MIN_UZS;
+  const overMax   = geoVal > balance;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -100,55 +102,48 @@ export default function Withdraw() {
     }
   }
 
+  const disabled = submitting || loading || belowMin || overMax;
+
   return (
     <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.4s ease both' }}>
       {/* Header */}
       <div style={{
-        background: 'rgba(8,9,14,0.95)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: C.bg,
         padding: '14px 16px',
         display: 'flex', alignItems: 'center', gap: 12,
-        borderBottom: `1px solid ${C.b1}`,
+        borderBottom: `0.5px solid ${C.b1}`,
         position: 'sticky', top: 0, zIndex: 10,
       }}>
         <button onClick={() => navigate('/balance')} style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          color: C.blue, padding: '4px 8px 4px 0',
+          color: C.t2, padding: '4px 8px 4px 0',
           display: 'flex', alignItems: 'center',
+          WebkitTapHighlightColor: 'transparent',
         }}>
-          <ArrowLeft size={22} color={C.blue} strokeWidth={2} />
+          <ArrowLeft size={22} color={C.t2} strokeWidth={1.75} />
         </button>
-        <div style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>Вывод GEO → UZS</div>
+        <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, color: C.t1 }}>Вывод GEO</div>
       </div>
 
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: '16px 16px 32px' }}>
         {/* Balance card */}
         {!loading && (
           <div style={{
-            background: G.hero,
-            borderRadius: 20, padding: '22px',
-            color: C.t1, marginBottom: 20,
-            border: `1px solid ${C.b1}`,
-            boxShadow: `0 8px 32px rgba(0,0,0,0.4)`,
+            ...cardBase,
+            border: `0.5px solid ${C.b1}`,
+            padding: '20px',
+            marginBottom: 16,
             animation: 'fadeUp 0.35s ease both',
-            position: 'relative', overflow: 'hidden',
           }}>
-            <div style={{
-              position: 'absolute', top: -30, right: -30,
-              width: 130, height: 130, borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(42,171,238,0.12) 0%, transparent 70%)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{ fontSize: 11, color: C.t3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Coins size={12} color={C.geo} strokeWidth={2} />
+            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1.2, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Wallet size={11} color={C.geo} strokeWidth={2} />
               Доступно
             </div>
-            <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.5 }}>
+            <div style={{ ...SYNE, fontSize: 38, fontWeight: 700, letterSpacing: -1.5, color: C.t1, lineHeight: 1 }}>
               {formatGeo(balance)}
-              <span style={{ fontSize: 18, fontWeight: 500, color: C.t3, marginLeft: 8 }}>GEO</span>
+              <span style={{ fontSize: 16, fontWeight: 500, color: C.t3, marginLeft: 8 }}>GEO</span>
             </div>
-            <div style={{ fontSize: 15, color: C.t3, marginTop: 4 }}>
+            <div style={{ fontSize: 14, color: C.t3, marginTop: 6 }}>
               ≈ {formatUzs(geoToUzs(balance, geoRate))} UZS
             </div>
           </div>
@@ -158,25 +153,21 @@ export default function Withdraw() {
         {success ? (
           <div style={{ textAlign: 'center', padding: '32px 16px', animation: 'fadeUp 0.4s ease both' }}>
             <div style={{
-              width: 96, height: 96, borderRadius: '50%',
-              background: G.geo,
+              width: 88, height: 88, borderRadius: '50%',
+              background: C.geoDim,
+              border: `0.5px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 24px',
-              boxShadow: `0 8px 32px ${C.geoGl}`,
               animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
             }}>
-              <CheckCircle size={46} color="#071a0c" strokeWidth={2.5} />
+              <CheckCircle size={42} color={C.geo} strokeWidth={2} />
             </div>
 
-            <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 8, color: C.t1 }}>Заявка принята!</div>
+            <div style={{ ...SYNE, fontWeight: 700, fontSize: 22, marginBottom: 8, color: C.t1 }}>Заявка принята!</div>
 
-            <div style={{
-              ...cardBase,
-              border: `1px solid ${C.b1}`,
-              padding: '18px 24px', marginBottom: 24,
-            }}>
+            <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '18px 24px', marginBottom: 24 }}>
               <div style={{ fontSize: 13, color: C.t3, marginBottom: 4 }}>Спишется</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, marginBottom: 2 }}>
+              <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, color: C.t1, marginBottom: 2 }}>
                 {formatGeo(geoVal)} GEO
               </div>
               <div style={{ fontSize: 14, color: C.t3 }}>
@@ -184,24 +175,23 @@ export default function Withdraw() {
               </div>
             </div>
 
-            <div style={{ color: C.t3, fontSize: 15, marginBottom: 36, lineHeight: 1.6 }}>
+            <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>
               Перевод на Payme в течение 24 часов.<br />
               Остаток: <strong style={{ color: C.t1 }}>{formatGeo(balance)} GEO</strong>
             </div>
 
             <button onClick={() => navigate('/balance')} style={{
-              background: G.blue,
-              color: '#fff', border: 'none',
-              padding: '15px 40px', borderRadius: 16,
-              fontWeight: 700, fontSize: 16, cursor: 'pointer',
-              boxShadow: `0 6px 24px ${C.blueGl}`,
+              background: C.geo,
+              color: C.bg, border: 'none',
+              padding: '14px 40px', borderRadius: 13,
+              fontWeight: 700, fontSize: 15, cursor: 'pointer',
             }}>
               К кошельку
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} style={{ animation: 'fadeUp 0.35s 0.1s both' }}>
-            <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '20px 16px', marginBottom: 16 }}>
+            <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '20px 16px', marginBottom: 12 }}>
               <Field
                 label="Номер Payme"
                 value={phone}
@@ -218,9 +208,9 @@ export default function Withdraw() {
                 inputMode="numeric"
               />
 
-              {/* Minimum info */}
+              {/* Min info row */}
               <div style={{
-                background: 'rgba(255,255,255,0.03)', border: `1px solid rgba(255,255,255,0.07)`,
+                background: C.t4, border: `0.5px solid ${C.b1}`,
                 borderRadius: 10, padding: '9px 12px', marginBottom: 14,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
@@ -233,13 +223,13 @@ export default function Withdraw() {
               {/* UZS preview */}
               {geoVal > 0 && (
                 <div style={{
-                  background: belowMin ? 'rgba(255,59,92,0.08)' : C.blueFt,
-                  border: `1.5px solid ${belowMin ? 'rgba(255,59,92,0.25)' : C.blueGl}`,
-                  borderRadius: 12, padding: '12px 14px', marginBottom: 16,
+                  background: belowMin ? C.redFt : C.geoDim,
+                  border: `0.5px solid ${belowMin ? 'rgba(248,113,113,0.25)' : C.geoGl}`,
+                  borderRadius: 12, padding: '12px 14px', marginBottom: 14,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <span style={{ fontSize: 14, color: C.t3 }}>Получите на Payme</span>
-                  <span style={{ fontWeight: 800, color: belowMin ? C.red : C.blue, fontSize: 16 }}>
+                  <span style={{ fontWeight: 700, color: belowMin ? C.red : C.geo, fontSize: 16 }}>
                     {formatUzs(uzsPreview)} UZS
                   </span>
                 </div>
@@ -248,22 +238,25 @@ export default function Withdraw() {
               {/* Quick amounts */}
               {balance > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>Быстрый выбор</div>
+                  <div style={{ fontSize: 11, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Быстрый выбор</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {[1000, 5000, 10000, balance]
                       .filter((v, i, a) => v <= balance && a.indexOf(v) === i)
-                      .map(v => (
-                        <button key={v} type="button" onClick={() => setAmount(String(v))} style={{
-                          padding: '7px 13px', borderRadius: 10,
-                          border: amount === String(v) ? `1.5px solid ${C.blue}` : `1.5px solid ${C.b2}`,
-                          background: amount === String(v) ? C.blueFt : 'transparent',
-                          color: amount === String(v) ? C.blue : C.t2,
-                          fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}>
-                          {v === balance ? 'Всё' : formatGeo(v)}
-                        </button>
-                      ))}
+                      .map(v => {
+                        const isSelected = amount === String(v);
+                        return (
+                          <button key={v} type="button" onClick={() => setAmount(String(v))} style={{
+                            padding: '7px 13px', borderRadius: 10,
+                            border: isSelected ? `0.5px solid ${C.geoGl}` : `0.5px solid ${C.b2}`,
+                            background: isSelected ? C.geoDim : 'transparent',
+                            color: isSelected ? C.geo : C.t2,
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}>
+                            {v === balance ? 'Всё' : formatGeo(v)}
+                          </button>
+                        );
+                      })}
                   </div>
                 </div>
               )}
@@ -273,8 +266,8 @@ export default function Withdraw() {
               <div style={{
                 background: C.redFt, color: C.red,
                 borderRadius: 12, padding: '12px 14px',
-                fontSize: 14, fontWeight: 600, marginBottom: 16,
-                border: `1px solid rgba(255,59,92,0.2)`,
+                fontSize: 14, fontWeight: 600, marginBottom: 14,
+                border: `0.5px solid rgba(248,113,113,0.20)`,
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <AlertTriangle size={16} color={C.red} strokeWidth={2} style={{ flexShrink: 0 }} />
@@ -282,25 +275,25 @@ export default function Withdraw() {
               </div>
             )}
 
-            <button type="submit" disabled={submitting || loading || belowMin} style={{
+            <button type="submit" disabled={disabled} style={{
               width: '100%',
-              background: (submitting || loading || belowMin) ? C.b2 : G.blue,
-              color: '#fff', border: 'none',
-              padding: '17px', borderRadius: 16,
-              fontWeight: 700, fontSize: 16,
-              cursor: (submitting || loading || belowMin) ? 'not-allowed' : 'pointer',
-              boxShadow: (submitting || loading || belowMin) ? 'none' : `0 6px 24px ${C.blueGl}`,
-              transition: 'all 0.2s',
+              background: disabled ? C.cardHi : C.geo,
+              color: disabled ? C.t3 : C.bg,
+              border: `0.5px solid ${disabled ? C.b2 : 'transparent'}`,
+              padding: '15px', borderRadius: 13,
+              fontWeight: 700, fontSize: 15,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: `all 0.18s ${E.smooth}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               {submitting
-                ? <><Loader2 size={18} color="#fff" style={{ animation: 'spin 1s linear infinite' }} /> Отправляем...</>
-                : 'Вывести GEO'
+                ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> Отправляем...</>
+                : <><CreditCard size={17} color={disabled ? C.t3 : C.bg} strokeWidth={2} /> Вывести GEO</>
               }
             </button>
 
-            <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: C.t3 }}>
-              Конвертация GEO → UZS по курсу 1 GEO = {geoRate} UZS
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: C.t3 }}>
+              1 GEO = {geoRate} UZS
             </div>
           </form>
         )}

@@ -1,63 +1,77 @@
-// GeoEarn Premium Design System v2
-// Revolut × Telegram Premium × Linear × Stripe
+// GeoEarn Design System v3 — Restrained Luxury
+// Linear × Revolut × Raycast
 
 export const C = {
   // Backgrounds
-  bg:        '#070B14',
-  surf:      '#0D1117',
-  card:      '#0D1520',
-  cardHi:    '#111827',
+  bg:     '#090B10',
+  surf:   '#0F1318',
+  card:   '#161B24',
+  cardHi: '#1E2530',
 
   // Borders
   b0: 'rgba(255,255,255,0.04)',
   b1: 'rgba(255,255,255,0.07)',
-  b2: 'rgba(255,255,255,0.13)',
+  b2: 'rgba(255,255,255,0.12)',
 
-  // Purple — primary accent
-  purple:   '#7C3AED',
-  purpleL:  '#8B5CF6',
-  purpleD:  '#6D28D9',
-  purpleFt: 'rgba(124,58,237,0.12)',
-  purpleGl: 'rgba(124,58,237,0.35)',
+  // GEO accent — yellow-green
+  geo:    '#C6F135',
+  geoDim: 'rgba(198,241,53,0.10)',
+  geoGl:  'rgba(198,241,53,0.20)',
 
-  // Indigo — secondary accent
-  indigo:   '#6366F1',
-  indigoFt: 'rgba(99,102,241,0.10)',
-  indigoGl: 'rgba(99,102,241,0.28)',
+  // Success green
+  green:   '#4ADE80',
+  greenFt: 'rgba(74,222,128,0.10)',
+  greenGl: 'rgba(74,222,128,0.20)',
 
-  // Emerald — reward color (premium, not neon)
-  emerald:   '#10B981',
-  emeraldD:  '#059669',
-  emeraldFt: 'rgba(16,185,129,0.10)',
-  emeraldGl: 'rgba(16,185,129,0.25)',
+  // Achievements / rewards
+  gold:   '#F5A623',
+  goldFt: 'rgba(245,166,35,0.10)',
+  goldGl: 'rgba(245,166,35,0.20)',
 
-  // Amber — premium moments
-  gold:   '#F59E0B',
-  goldD:  '#D97706',
-  goldFt: 'rgba(245,158,11,0.10)',
-  goldGl: 'rgba(245,158,11,0.28)',
+  // Errors
+  red:   '#F87171',
+  redFt: 'rgba(248,113,113,0.10)',
+  redGl: 'rgba(248,113,113,0.20)',
 
-  // Alerts
-  orange: '#F97316',
-  red:    '#EF4444',
-  redFt:  'rgba(239,68,68,0.10)',
-  redGl:  'rgba(239,68,68,0.25)',
+  // Streak / warnings
+  orange: '#FB923C',
 
   // Text
-  t1: '#F8FAFC',
-  t2: 'rgba(248,250,252,0.55)',
-  t3: 'rgba(248,250,252,0.32)',
-  t4: 'rgba(248,250,252,0.12)',
+  t1: '#F0F2F7',
+  t2: '#8892A8',
+  t3: '#4A5168',
+  t4: 'rgba(240,242,247,0.06)',
+
+  // Legacy aliases — for pages not yet migrated to new tokens
+  purple:   '#C6F135',
+  purpleL:  '#C6F135',
+  purpleD:  '#A8D420',
+  purpleFt: 'rgba(198,241,53,0.10)',
+  purpleGl: 'rgba(198,241,53,0.20)',
+  indigo:   '#C6F135',
+  indigoFt: 'rgba(198,241,53,0.10)',
+  indigoGl: 'rgba(198,241,53,0.20)',
+  emerald:   '#4ADE80',
+  emeraldD:  '#22C55E',
+  emeraldFt: 'rgba(74,222,128,0.10)',
+  emeraldGl: 'rgba(74,222,128,0.20)',
+  goldD:     '#D97706',
+  blue:      '#C6F135',
+  blueGl:    'rgba(198,241,53,0.20)',
+  blueFt:    'rgba(198,241,53,0.10)',
 };
 
+// Legacy gradient shims — flat colors for pages not yet redesigned
 export const G = {
-  page:       'linear-gradient(180deg, #070B14 0%, #0A0F1A 100%)',
-  hero:       'linear-gradient(160deg, #070B14 0%, #0C1020 50%, #070B14 100%)',
-  accent:     'linear-gradient(135deg, #7C3AED 0%, #6366F1 100%)',
-  accentDeep: 'linear-gradient(135deg, #6D28D9 0%, #4F46E5 100%)',
-  emerald:    'linear-gradient(135deg, #059669 0%, #10B981 100%)',
-  gold:       'linear-gradient(135deg, #D97706 0%, #F59E0B 100%)',
-  dark:       'linear-gradient(160deg, #070B14 0%, #0B111E 60%, #070B14 100%)',
+  page:       C.bg,
+  hero:       C.bg,
+  accent:     C.geo,
+  accentDeep: C.geo,
+  emerald:    C.green,
+  gold:       C.gold,
+  dark:       C.surf,
+  blue:       C.geo,
+  geo:        C.geo,
 };
 
 export const E = {
@@ -74,32 +88,30 @@ export function sk(h, w = '100%', r = 8) {
   };
 }
 
-// Premium dark card
 export const cardBase = {
-  background: '#0D1520',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: '#161B24',
+  border: '0.5px solid rgba(255,255,255,0.07)',
   borderRadius: 20,
 };
 
-// Glass surface — for modals and floating elements
 export const glassCard = {
-  background: 'rgba(13,21,32,0.94)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(15,19,24,0.97)',
+  border: '0.5px solid rgba(255,255,255,0.08)',
   borderRadius: 24,
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
+  backdropFilter: 'blur(24px)',
+  WebkitBackdropFilter: 'blur(24px)',
 };
 
 export function inputStyle(focused = false, error = false) {
   return {
     width: '100%', boxSizing: 'border-box',
     padding: '14px 16px', borderRadius: 14,
-    border: `1.5px solid ${error ? '#EF4444' : focused ? '#7C3AED' : 'rgba(255,255,255,0.08)'}`,
+    border: `1px solid ${error ? '#F87171' : focused ? 'rgba(198,241,53,0.45)' : 'rgba(255,255,255,0.08)'}`,
     background: 'rgba(255,255,255,0.04)',
-    color: '#F8FAFC', fontSize: 16, outline: 'none',
+    color: '#F0F2F7', fontSize: 16, outline: 'none',
     transition: 'border-color 0.2s',
     WebkitAppearance: 'none',
-    fontFamily: 'Inter, -apple-system, sans-serif',
+    fontFamily: "'DM Sans', -apple-system, sans-serif",
   };
 }
 

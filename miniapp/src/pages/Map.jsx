@@ -160,9 +160,9 @@ export default function MapPage() {
 
     const icon = L.divIcon({
       html: `<div style="position:relative;width:16px;height:16px;">
-        <div style="position:absolute;inset:-12px;border-radius:50%;background:rgba(124,58,237,0.22);animation:userPing 2s ease-out infinite;"></div>
-        <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(124,58,237,0.12);animation:userPing 2s ease-out 0.7s infinite;"></div>
-        <div style="width:16px;height:16px;border-radius:50%;background:#7C3AED;border:2.5px solid #070B14;box-shadow:0 0 12px rgba(124,58,237,0.8);"></div>
+        <div style="position:absolute;inset:-12px;border-radius:50%;background:rgba(198,241,53,0.18);animation:userPing 2s ease-out infinite;"></div>
+        <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(198,241,53,0.10);animation:userPing 2s ease-out 0.7s infinite;"></div>
+        <div style="width:16px;height:16px;border-radius:50%;background:#C6F135;border:2.5px solid #090B10;"></div>
       </div>`,
       className: '', iconSize: [16, 16], iconAnchor: [8, 8],
     });
@@ -185,11 +185,11 @@ export default function MapPage() {
         html: `<div style="
           display:inline-block;
           transform:translate(-50%,-100%);
-          background:linear-gradient(135deg,#7C3AED,#6366F1);
-          color:#fff;padding:5px 11px;border-radius:20px;
+          background:#C6F135;
+          color:#090B10;padding:5px 11px;border-radius:20px;
           font-size:12px;font-weight:800;white-space:nowrap;
-          box-shadow:0 4px 14px rgba(124,58,237,0.5);border:1.5px solid rgba(255,255,255,0.12);
-          font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+          border:1.5px solid rgba(198,241,53,0.3);
+          font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
           pointer-events:none;
         ">+${formatGeo(c.reward_amount)} GEO</div>`,
         className: '',
@@ -397,9 +397,9 @@ export default function MapPage() {
                   </div>
                 </div>
                 <div style={{
-                  background: 'rgba(124,58,237,0.14)',
-                  border: '1px solid rgba(124,58,237,0.22)',
-                  color: C.purpleL, borderRadius: 10, padding: '8px 12px',
+                  background: 'rgba(198,241,53,0.10)',
+                  border: '0.5px solid rgba(198,241,53,0.20)',
+                  color: '#C6F135', borderRadius: 10, padding: '8px 12px',
                   fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
                   +{formatGeo(c.reward_amount)} GEO

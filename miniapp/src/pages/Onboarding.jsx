@@ -1,40 +1,33 @@
 import { useState } from 'react';
-import { MapPin, Wallet, CreditCard, User, Store, Check, Sparkles } from 'lucide-react';
-import { C, G, E } from '../lib/design';
+import { MapPin, Wallet, CreditCard, User, Store, Check } from 'lucide-react';
+import { C, E } from '../lib/design';
+
+const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 const SLIDES = [
   {
     Icon: MapPin,
-    bg: 'linear-gradient(160deg, #070B14 0%, #0D0B20 60%, #070B14 100%)',
-    accent: C.purple,
-    accentL: C.purpleL,
-    glowColor: 'rgba(124,58,237,0.16)',
+    accent: C.geo,
+    accentDim: C.geoDim,
+    accentGl:  C.geoGl,
     title: 'Добро пожаловать\nв GeoEarn',
     text: 'Зарабатывайте GEO-монеты, просто посещая любимые заведения. Реальные деньги за каждый визит.',
-    gradient: G.accent,
-    btnColor: '#fff',
   },
   {
     Icon: Wallet,
-    bg: 'linear-gradient(160deg, #070B14 0%, #0B0E1A 60%, #070B14 100%)',
-    accent: C.indigo,
-    accentL: '#818CF8',
-    glowColor: 'rgba(99,102,241,0.14)',
+    accent: C.green,
+    accentDim: C.greenFt,
+    accentGl:  C.greenGl,
     title: 'Как работает\nGEO Economy',
-    text: 'Сканируете QR → система проверяет геолокацию → GEO-монеты мгновенно зачисляются на кошелёк.',
-    gradient: G.accent,
-    btnColor: '#fff',
+    text: 'Сканируете QR — система проверяет геолокацию — GEO-монеты мгновенно зачисляются на кошелёк.',
   },
   {
     Icon: CreditCard,
-    bg: 'linear-gradient(160deg, #070B14 0%, #14100A 60%, #070B14 100%)',
     accent: C.gold,
-    accentL: '#FCD34D',
-    glowColor: 'rgba(245,158,11,0.13)',
+    accentDim: C.goldFt,
+    accentGl:  C.goldGl,
     title: 'Вывод\nна Payme',
     text: 'Конвертируйте GEO в сумы и выводите на Payme в любой момент. Без комиссии для пользователей.',
-    gradient: G.gold,
-    btnColor: '#1a0800',
   },
 ];
 
@@ -55,11 +48,10 @@ function SlidePhase({ onDone }) {
 
   return (
     <div style={{
-      minHeight: '100vh', background: s.bg,
+      minHeight: '100vh', background: C.bg,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'space-between',
       padding: '60px 28px 52px', textAlign: 'center',
-      transition: 'background 0.5s ease',
     }}>
       {/* Skip */}
       <button onClick={onDone} style={{
@@ -74,39 +66,38 @@ function SlidePhase({ onDone }) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         {/* Icon circle */}
         <div key={`icon-${key}`} style={{
-          width: 124, height: 124, borderRadius: '50%',
-          background: s.glowColor,
-          border: `1.5px solid ${s.accent}30`,
+          width: 112, height: 112, borderRadius: '50%',
+          background: s.accentDim,
+          border: `0.5px solid ${s.accentGl}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 40,
           animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
-          boxShadow: `0 0 60px ${s.glowColor}, 0 0 120px ${s.glowColor}40`,
         }}>
-          <s.Icon size={54} color={s.accent} strokeWidth={1.5} />
+          <s.Icon size={48} color={s.accent} strokeWidth={1.5} />
         </div>
 
-        {/* Counter pill */}
+        {/* Counter */}
         <div key={`pill-${key}`} style={{
-          background: `${s.accent}1A`, border: `1px solid ${s.accent}30`,
+          background: s.accentDim, border: `0.5px solid ${s.accentGl}`,
           borderRadius: 20, padding: '4px 14px', fontSize: 10,
-          color: s.accentL, fontWeight: 700, letterSpacing: 1.4,
-          textTransform: 'uppercase', marginBottom: 22,
+          color: s.accent, fontWeight: 700, letterSpacing: 1.6,
+          textTransform: 'uppercase', marginBottom: 20,
           animation: 'fadeUp 0.5s 0.05s ease both',
         }}>
           GeoEarn · {slide + 1}/{SLIDES.length}
         </div>
 
         <div key={`title-${key}`} style={{
-          fontSize: 30, fontWeight: 900, color: C.t1,
+          ...SYNE, fontSize: 28, fontWeight: 700, color: C.t1,
           marginBottom: 18, lineHeight: 1.2, whiteSpace: 'pre-line',
-          letterSpacing: -0.5,
+          letterSpacing: -0.4,
           animation: 'fadeUp 0.5s 0.1s ease both',
         }}>
           {s.title}
         </div>
 
         <div key={`text-${key}`} style={{
-          fontSize: 16, color: C.t3,
+          fontSize: 15, color: C.t3,
           lineHeight: 1.65, maxWidth: 300,
           animation: 'fadeUp 0.5s 0.18s ease both',
         }}>
@@ -115,13 +106,12 @@ function SlidePhase({ onDone }) {
       </div>
 
       {/* Dots */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
         {SLIDES.map((_, i) => (
           <div key={i} style={{
-            width: i === slide ? 28 : 8, height: 8, borderRadius: 4,
+            width: i === slide ? 24 : 7, height: 7, borderRadius: 4,
             background: i === slide ? s.accent : C.b2,
             transition: 'all 0.32s ease',
-            boxShadow: i === slide ? `0 0 8px ${s.accent}` : 'none',
           }} />
         ))}
       </div>
@@ -130,12 +120,11 @@ function SlidePhase({ onDone }) {
         onClick={next}
         style={{
           width: '100%', maxWidth: 340,
-          background: s.gradient,
-          color: s.btnColor,
-          border: 'none', borderRadius: 18,
-          padding: '17px', fontSize: 17, fontWeight: 800,
+          background: s.accent,
+          color: C.bg,
+          border: 'none', borderRadius: 14,
+          padding: '16px', fontSize: 16, fontWeight: 700,
           cursor: 'pointer',
-          boxShadow: `0 8px 32px ${s.glowColor}`,
           transition: `transform 0.12s ${E.spring}`,
           WebkitTapHighlightColor: 'transparent',
         }}
@@ -159,86 +148,78 @@ function ModePhase({ onChoose }) {
       Icon: User,
       label: 'Покупатель',
       desc: 'Зарабатываю GEO-монеты, посещая заведения',
-      accent: C.purple,
-      accentL: C.purpleL,
-      bg: C.purpleFt,
-      border: 'rgba(124,58,237,0.25)',
-      gradient: G.accent,
-      btnColor: '#fff',
+      accent: C.geo,
+      accentDim: C.geoDim,
+      accentGl:  C.geoGl,
     },
     {
       id: 'business',
       Icon: Store,
       label: 'Бизнес',
       desc: 'Управляю кампаниями и привлекаю клиентов',
-      accent: C.indigo,
-      accentL: '#818CF8',
-      bg: C.indigoFt,
-      border: 'rgba(99,102,241,0.25)',
-      gradient: G.accent,
-      btnColor: '#fff',
+      accent: C.green,
+      accentDim: C.greenFt,
+      accentGl:  C.greenGl,
     },
   ];
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(160deg, #070B14 0%, #0D0B20 100%)',
+      background: C.bg,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '40px 24px',
     }}>
       <div style={{ animation: 'fadeUp 0.5s ease both', width: '100%', maxWidth: 380 }}>
-        <div style={{ textAlign: 'center', marginBottom: 44 }}>
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            background: C.purpleFt,
-            border: `1.5px solid rgba(124,58,237,0.22)`,
+            width: 72, height: 72, borderRadius: '50%',
+            background: C.geoDim,
+            border: `0.5px solid ${C.geoGl}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
+            margin: '0 auto 18px',
             animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
-            boxShadow: `0 0 40px rgba(124,58,237,0.2)`,
           }}>
-            <Sparkles size={38} color={C.purple} strokeWidth={1.75} />
+            <MapPin size={32} color={C.geo} strokeWidth={1.75} />
           </div>
-          <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, marginBottom: 10, lineHeight: 1.2, letterSpacing: -0.5 }}>
+          <div style={{ ...SYNE, fontSize: 26, fontWeight: 700, color: C.t1, marginBottom: 8, lineHeight: 1.2, letterSpacing: -0.4 }}>
             Кто вы?
           </div>
-          <div style={{ fontSize: 15, color: C.t3, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.5 }}>
             Выберите режим использования GeoEarn
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 32 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
           {modes.map(m => (
             <button
               key={m.id}
               onClick={() => setChosen(m.id)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 18,
-                background: chosen === m.id ? m.bg : 'rgba(255,255,255,0.03)',
-                border: `2px solid ${chosen === m.id ? m.accent : C.b1}`,
-                borderRadius: 20, padding: '20px 22px',
+                display: 'flex', alignItems: 'center', gap: 16,
+                background: chosen === m.id ? m.accentDim : 'rgba(255,255,255,0.02)',
+                border: `0.5px solid ${chosen === m.id ? m.accentGl : C.b1}`,
+                borderRadius: 18, padding: '18px 20px',
                 cursor: 'pointer', textAlign: 'left',
-                transition: `all 0.2s ${E.smooth}`,
-                boxShadow: chosen === m.id ? `0 4px 24px ${m.border}` : 'none',
+                transition: `all 0.18s ${E.smooth}`,
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
               <div style={{
-                width: 56, height: 56, borderRadius: 16, flexShrink: 0,
-                background: chosen === m.id ? m.bg : C.b0,
-                border: `1.5px solid ${chosen === m.id ? m.border : C.b1}`,
+                width: 50, height: 50, borderRadius: 14, flexShrink: 0,
+                background: chosen === m.id ? m.accentDim : C.b0,
+                border: `0.5px solid ${chosen === m.id ? m.accentGl : C.b1}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: `all 0.2s ${E.smooth}`,
+                transition: `all 0.18s ${E.smooth}`,
               }}>
-                <m.Icon size={26} color={chosen === m.id ? m.accent : C.t3} strokeWidth={1.75} />
+                <m.Icon size={24} color={chosen === m.id ? m.accent : C.t3} strokeWidth={1.75} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 17, fontWeight: 800,
+                  fontSize: 16, fontWeight: 700,
                   color: chosen === m.id ? C.t1 : C.t2,
-                  marginBottom: 4, transition: 'color 0.15s',
+                  marginBottom: 3, transition: 'color 0.15s',
                 }}>
                   {m.label}
                 </div>
@@ -248,12 +229,12 @@ function ModePhase({ onChoose }) {
               </div>
               {chosen === m.id && (
                 <div style={{
-                  width: 24, height: 24, borderRadius: '50%',
+                  width: 22, height: 22, borderRadius: '50%',
                   background: m.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
                   animation: 'pop 0.3s cubic-bezier(0.175,0.885,0.32,1.275)',
                 }}>
-                  <Check size={13} color="#fff" strokeWidth={3} />
+                  <Check size={12} color={C.bg} strokeWidth={3} />
                 </div>
               )}
             </button>
@@ -265,13 +246,13 @@ function ModePhase({ onChoose }) {
           disabled={!chosen}
           style={{
             width: '100%',
-            background: chosen ? G.accent : C.b1,
-            color: chosen ? '#fff' : C.t3,
-            border: 'none', borderRadius: 18,
-            padding: '17px', fontSize: 17, fontWeight: 800,
+            background: chosen ? C.geo : C.card,
+            color: chosen ? C.bg : C.t3,
+            border: `0.5px solid ${chosen ? 'transparent' : C.b2}`,
+            borderRadius: 14,
+            padding: '16px', fontSize: 16, fontWeight: 700,
             cursor: chosen ? 'pointer' : 'not-allowed',
-            boxShadow: chosen ? `0 8px 32px ${C.purpleGl}` : 'none',
-            transition: `all 0.25s ${E.smooth}`,
+            transition: `all 0.2s ${E.smooth}`,
             WebkitTapHighlightColor: 'transparent',
           }}
         >

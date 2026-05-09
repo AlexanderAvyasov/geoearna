@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Zap, Map as MapIcon } from 'lucide-react';
+import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
-import { C, G, E, cardBase, pressable } from '../lib/design';
+import { C, E, cardBase, pressable } from '../lib/design';
 
 const TASK_ICONS = {
   visit:    MapPin,
@@ -17,10 +17,12 @@ const TASK_LABELS = {
   review:   'Отзыв',
 };
 
+const SYNE = { fontFamily: "'Syne', sans-serif" };
+
 function SkeletonCard() {
   const shimmer = {
-    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.05) 50%, ${C.card} 100%)`,
-    backgroundSize: '800px 100%',
+    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.04) 50%, ${C.card} 100%)`,
+    backgroundSize: '600px 100%',
     animation: 'shimmer 1.6s ease-in-out infinite',
   };
   return (
@@ -29,7 +31,7 @@ function SkeletonCard() {
         <div style={{ background: C.cardHi, borderRadius: 6, height: 14, width: '60%', marginBottom: 10, ...shimmer }} />
         <div style={{ background: C.cardHi, borderRadius: 6, height: 10, width: '35%', ...shimmer }} />
       </div>
-      <div style={{ background: C.cardHi, borderRadius: 12, height: 38, width: 100, marginLeft: 14, ...shimmer }} />
+      <div style={{ background: C.cardHi, borderRadius: 12, height: 36, width: 96, marginLeft: 14, ...shimmer }} />
     </div>
   );
 }
@@ -47,7 +49,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.75)',
+          background: 'rgba(0,0,0,0.7)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
           zIndex: 200, animation: 'backdropIn 0.22s ease',
@@ -56,83 +58,74 @@ function CampaignSheet({ campaign, userPos, onClose }) {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: C.surf,
-        borderRadius: '28px 28px 0 0',
-        border: `1px solid rgba(255,255,255,0.08)`,
+        borderRadius: '24px 24px 0 0',
+        border: `0.5px solid rgba(255,255,255,0.08)`,
         borderBottom: 'none',
         padding: '0 0 40px',
         zIndex: 201,
         maxWidth: 480, margin: '0 auto',
         animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
-        boxShadow: '0 -12px 60px rgba(0,0,0,0.7)',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 24px' }} />
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: C.b2, margin: '14px auto 22px' }} />
 
-        <div style={{ padding: '0 22px' }}>
-          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 4, color: C.t1, letterSpacing: -0.5 }}>
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ ...SYNE, fontWeight: 700, fontSize: 22, marginBottom: 4, color: C.t1, letterSpacing: -0.3 }}>
             {campaign.business_name}
           </div>
 
           {campaign.address && (
-            <div style={{ fontSize: 14, color: C.t3, marginBottom: dist !== null ? 4 : 20, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <MapPin size={13} color={C.t3} />
+            <div style={{ fontSize: 13, color: C.t3, marginBottom: dist !== null ? 4 : 18, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <MapPin size={12} color={C.t3} />
               <span>{campaign.address}</span>
             </div>
           )}
 
           {dist !== null && (
-            <div style={{ fontSize: 13, color: C.purpleL, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Compass size={13} color={C.purpleL} />
+            <div style={{ fontSize: 13, color: C.geo, fontWeight: 600, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Compass size={12} color={C.geo} />
               {formatDistance(dist)} от вас
             </div>
           )}
 
-          {/* Reward hero */}
+          {/* Reward */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(99,102,241,0.10) 100%)',
-            border: `1.5px solid rgba(124,58,237,0.25)`,
-            borderRadius: 20, padding: '22px',
-            textAlign: 'center', marginBottom: 14,
-            position: 'relative', overflow: 'hidden',
+            background: C.geoDim,
+            border: `0.5px solid ${C.geoGl}`,
+            borderRadius: 20, padding: '20px',
+            textAlign: 'center', marginBottom: 12,
           }}>
-            <div style={{
-              position: 'absolute', top: -20, right: -20,
-              width: 100, height: 100, borderRadius: '50%',
-              background: 'rgba(124,58,237,0.08)',
-              pointerEvents: 'none',
-            }} />
-            <div style={{ fontSize: 11, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
               Вознаграждение
             </div>
-            <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: -1.5, color: C.t1 }}>
+            <div style={{ ...SYNE, fontSize: 48, fontWeight: 800, letterSpacing: -1.5, color: C.geo, lineHeight: 1 }}>
               +{formatGeo(campaign.reward_amount)}
-              <span style={{ fontSize: 18, fontWeight: 700, color: C.purpleL, marginLeft: 8 }}>GEO</span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: C.t2, marginLeft: 8 }}>GEO</span>
             </div>
           </div>
 
           {/* Task type */}
-          <div style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '14px 16px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
+          <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 10 }}>
+            <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
               Тип задания
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <TaskIcon size={16} color={C.purple} strokeWidth={2} />
+            <div style={{ fontWeight: 600, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TaskIcon size={15} color={C.geo} strokeWidth={2} />
               {TASK_LABELS[campaign.task_type] || 'Визит'}
             </div>
             {campaign.task_description && (
-              <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.5, marginTop: 6 }}>
+              <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.55, marginTop: 6 }}>
                 {campaign.task_description}
               </div>
             )}
           </div>
 
-          {/* PIN required */}
           {campaign.requires_pin && (
             <div style={{
-              background: C.goldFt, border: `1.5px solid rgba(245,158,11,0.2)`,
+              background: C.goldFt, border: `0.5px solid rgba(245,166,35,0.20)`,
               borderRadius: 14, padding: '12px 14px', marginBottom: 10,
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
-              <Lock size={17} color={C.gold} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <Lock size={16} color={C.gold} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: C.gold, marginBottom: 2 }}>Требуется PIN</div>
                 <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.4 }}>
@@ -143,8 +136,8 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           )}
 
           {/* How to earn */}
-          <div style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '14px 16px', marginBottom: 20 }}>
-            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 12 }}>
+          <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 18 }}>
+            <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
               Как получить
             </div>
             {[
@@ -153,7 +146,13 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               [Wallet,   'GEO зачислятся мгновенно'],
             ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <Icon size={16} color={C.purple} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                <div style={{
+                  width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                  background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={14} color={C.geo} strokeWidth={2} />
+                </div>
                 <span style={{ fontSize: 13, color: C.t2 }}>{text}</span>
               </div>
             ))}
@@ -163,9 +162,9 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             onClick={onClose}
             style={{
               width: '100%', background: C.card,
-              border: `1px solid ${C.b1}`,
-              borderRadius: 16, padding: '15px',
-              fontSize: 16, fontWeight: 700,
+              border: `0.5px solid ${C.b2}`,
+              borderRadius: 14, padding: '14px',
+              fontSize: 15, fontWeight: 600,
               color: C.t2, cursor: 'pointer',
             }}
           >
@@ -190,10 +189,9 @@ function CampaignCard({ campaign, onTap, index }) {
       onTouchEnd={() => setPressed(false)}
       style={{
         ...cardBase,
-        padding: '15px 16px',
-        marginBottom: 10,
+        padding: '14px 16px',
+        marginBottom: 8,
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        border: `1px solid rgba(255,255,255,0.07)`,
         cursor: 'pointer',
         ...pressable(pressed),
         animation: `fadeUp 0.32s ${E.smooth} both`,
@@ -203,13 +201,13 @@ function CampaignCard({ campaign, onTap, index }) {
       }}
     >
       <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
           {campaign.business_name}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ fontSize: 12, color: C.purpleL, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Compass size={11} color={C.purpleL} />
+            <span style={{ fontSize: 12, color: C.geo, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Compass size={11} color={C.geo} />
               {formatDistance(campaign.dist)}
             </span>
           )}
@@ -223,7 +221,7 @@ function CampaignCard({ campaign, onTap, index }) {
             <span style={{
               fontSize: 10, color: C.gold, fontWeight: 700,
               background: C.goldFt, borderRadius: 6, padding: '2px 6px',
-              border: `1px solid rgba(245,158,11,0.2)`,
+              border: `0.5px solid rgba(245,166,35,0.20)`,
               display: 'inline-flex', alignItems: 'center', gap: 3,
             }}>
               <Lock size={9} color={C.gold} /> PIN
@@ -233,10 +231,10 @@ function CampaignCard({ campaign, onTap, index }) {
       </div>
       <div style={{ flexShrink: 0, textAlign: 'right' }}>
         <div style={{
-          background: 'rgba(124,58,237,0.15)',
-          border: `1px solid rgba(124,58,237,0.25)`,
-          color: C.purpleL, borderRadius: 12, padding: '9px 13px',
-          fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap',
+          background: C.geoDim,
+          border: `0.5px solid ${C.geoGl}`,
+          color: C.geo, borderRadius: 12, padding: '8px 12px',
+          fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
         }}>
           +{formatGeo(campaign.reward_amount)} GEO
         </div>
@@ -290,154 +288,116 @@ export default function Home() {
   return (
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s ease both' }}>
       {/* Hero */}
-      <div style={{
-        background: G.hero,
-        padding: '34px 20px 54px',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Ambient glows */}
-        <div style={{
-          position: 'absolute', top: -60, right: -60,
-          width: 220, height: 220, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none', animation: 'glowPulse 5s ease-in-out infinite',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: -30, left: -40,
-          width: 180, height: 180, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, letterSpacing: 1.8, marginBottom: 12, textTransform: 'uppercase' }}>
-          GeoEarn · Discover
+      <div style={{ padding: '44px 20px 28px', position: 'relative' }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, letterSpacing: 2, marginBottom: 10, textTransform: 'uppercase' }}>
+          GeoEarn
         </div>
-        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, lineHeight: 1.1, letterSpacing: -0.8, color: C.t1, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, marginBottom: 8, lineHeight: 1.15, letterSpacing: -0.5, color: C.t1 }}>
           Зарабатывайте GEO
-          <div style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: 'rgba(124,58,237,0.15)',
-            border: '1px solid rgba(124,58,237,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <Zap size={18} color={C.purpleL} strokeWidth={2} />
-          </div>
         </div>
-        <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.65, maxWidth: 280 }}>
-          Посещайте заведения и получайте GEO‑монеты за каждый визит
+        <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.6, maxWidth: 280 }}>
+          Посещайте заведения и получайте GEO-монеты за каждый визит
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
           {userPos && !loading && displayed.length > 0 && (
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: C.purpleFt, border: `1px solid rgba(124,58,237,0.2)`,
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
               borderRadius: 20, padding: '5px 12px',
-              fontSize: 12, color: C.purpleL, fontWeight: 700,
+              fontSize: 12, color: C.geo, fontWeight: 600,
             }}>
-              <Compass size={12} color={C.purpleL} />
-              По расстоянию от вас
+              <Compass size={11} color={C.geo} />
+              По расстоянию
             </div>
           )}
           <button
             onClick={() => navigate('/map')}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: 'rgba(255,255,255,0.07)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: 'transparent',
+              border: `0.5px solid ${C.b2}`,
               borderRadius: 20, padding: '5px 14px',
-              fontSize: 12, color: C.t2, fontWeight: 700,
+              fontSize: 12, color: C.t2, fontWeight: 600,
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
               outline: 'none',
             }}
-            onTouchStart={e => { e.currentTarget.style.opacity = '0.7'; }}
-            onTouchEnd={e => { e.currentTarget.style.opacity = '1'; }}
           >
-            <MapIcon size={13} color={C.t2} strokeWidth={1.75} />
+            <MapIcon size={12} color={C.t2} strokeWidth={1.75} />
             Карта
           </button>
         </div>
       </div>
 
-      {/* Content panel */}
-      <div style={{
-        marginTop: -22, borderRadius: '26px 26px 0 0',
-        background: C.bg,
-        border: `1px solid rgba(255,255,255,0.05)`,
-        borderBottom: 'none',
-        minHeight: '70vh',
-        paddingTop: 20,
-      }}>
-        <div style={{ padding: '0 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
+      {/* Divider */}
+      <div style={{ height: '0.5px', background: C.b1, marginBottom: 8 }} />
+
+      {/* Content */}
+      <div style={{ padding: '12px 16px 32px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.2 }}>
             Активные кампании
           </div>
           {!loading && displayed.length > 0 && (
             <div style={{
-              fontSize: 11, color: C.purpleL, fontWeight: 700,
-              background: C.purpleFt, borderRadius: 8, padding: '3px 8px',
+              fontSize: 11, color: C.geo, fontWeight: 700,
+              background: C.geoDim, borderRadius: 8, padding: '3px 9px',
+              border: `0.5px solid ${C.geoGl}`,
             }}>
               {displayed.length}
             </div>
           )}
         </div>
 
-        <div style={{ padding: '0 16px' }}>
-          {loading && [1, 2, 3].map(i => <SkeletonCard key={i} />)}
+        {loading && [1, 2, 3].map(i => <SkeletonCard key={i} />)}
 
-          {!loading && error && (
-            <div style={{ textAlign: 'center', paddingTop: 56 }}>
-              <AlertCircle size={52} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
-              <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
-              <div style={{ color: C.t3, fontSize: 14, marginBottom: 20 }}>{error}</div>
-              <button onClick={loadCampaigns} style={{
-                background: C.blueFt, border: `1.5px solid ${C.blueGl}`,
-                color: C.blue, borderRadius: 14, padding: '12px 28px',
-                fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              }}>
-                Повторить
-              </button>
+        {!loading && error && (
+          <div style={{ textAlign: 'center', paddingTop: 56 }}>
+            <AlertCircle size={48} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
+            <div style={{ color: C.t3, fontSize: 14, marginBottom: 20 }}>{error}</div>
+            <button onClick={loadCampaigns} style={{
+              background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
+              color: C.geo, borderRadius: 12, padding: '11px 28px',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            }}>
+              Повторить
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && displayed.length === 0 && (
+          <div style={{ textAlign: 'center', paddingTop: 56, paddingBottom: 24 }}>
+            <Store size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
+            <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активных кампаний</div>
+            <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
+              Пока нет заведений с активными акциями.<br />Загляните позже!
             </div>
-          )}
+          </div>
+        )}
 
-          {!loading && !error && displayed.length === 0 && (
-            <div style={{ textAlign: 'center', paddingTop: 56, paddingBottom: 24 }}>
-              <Store size={60} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.3 }} />
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активных кампаний</div>
-              <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-                Пока нет заведений с активными акциями.<br />Загляните позже!
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && displayed.map((c, i) => (
-            <CampaignCard key={c.id} campaign={c} onTap={setSelected} index={i} />
-          ))}
-        </div>
+        {!loading && !error && displayed.map((c, i) => (
+          <CampaignCard key={c.id} campaign={c} onTap={setSelected} index={i} />
+        ))}
 
         {!loading && !error && displayed.length > 0 && (
-          <div style={{
-            margin: '8px 16px 32px',
-            ...cardBase,
-            border: `1px solid ${C.b0}`,
-            padding: 16,
-          }}>
-            <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 12, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+          <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '16px', marginTop: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 12, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
               Как это работает
             </div>
             {[
-              [ScanLine, 'Нажмите сканер и наведите на QR‑код'],
+              [ScanLine, 'Нажмите сканер и наведите на QR-код'],
               [MapPin,   'Разрешите доступ к геолокации'],
-              [Wallet,   'GEO‑монеты зачислятся мгновенно'],
+              [Wallet,   'GEO-монеты зачислятся мгновенно'],
             ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <div style={{
-                  width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                  background: C.purpleFt, border: `1px solid rgba(124,58,237,0.15)`,
+                  width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                  background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={16} color={C.purple} strokeWidth={1.75} />
+                  <Icon size={14} color={C.geo} strokeWidth={2} />
                 </div>
                 <span style={{ fontSize: 14, color: C.t2 }}>{text}</span>
               </div>
