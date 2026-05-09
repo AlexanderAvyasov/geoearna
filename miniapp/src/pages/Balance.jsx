@@ -140,17 +140,15 @@ export default function Balance() {
             <div style={{ fontSize: 17, color: C.t3, fontWeight: 500 }}>
               ≈ {formatUzs(geoToUzs(shownBalance, geoRate))} UZS
             </div>
-            {geoRate !== 1 && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: C.blueFt, border: `1px solid ${C.blueGl}`,
-                borderRadius: 20, padding: '4px 12px', marginTop: 14,
-                fontSize: 12, color: C.blue, fontWeight: 700,
-              }}>
-                <TrendingUp size={12} color={C.blue} />
-                1 GEO = {geoRate} UZS
-              </div>
-            )}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: C.blueFt, border: `1px solid ${C.blueGl}`,
+              borderRadius: 20, padding: '4px 12px', marginTop: 14,
+              fontSize: 12, color: C.blue, fontWeight: 700,
+            }}>
+              <TrendingUp size={12} color={C.blue} />
+              1 GEO = {geoRate} UZS
+            </div>
           </>
         )}
 
