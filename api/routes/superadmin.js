@@ -67,7 +67,7 @@ router.get('/api/superadmin/withdrawals', ...SA, async (req, res) => {
 
     let q = supabase
       .from('withdrawals')
-      .select('id, amount, phone, status, note, created_at, processed_at, users(telegram_id, username, balance)')
+      .select('id, amount, phone, status, created_at, processed_at, users(telegram_id, username, balance)')
       .order('created_at', { ascending: false })
       .limit(200);
 

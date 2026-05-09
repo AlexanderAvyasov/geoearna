@@ -67,4 +67,21 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
   }
 });
 
+router.get('/api/me/withdrawals', validateTma, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('withdrawals')
+      .select('id, amount, phone, status, created_at, processed_at')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) throw error;
+    return res.json({ withdrawals: data || [] });
+  } catch (err) {
+    console.error('GET /api/me/withdrawals error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 module.exports = router;

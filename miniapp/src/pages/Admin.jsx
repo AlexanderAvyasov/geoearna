@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MapPin, Wallet, Lock, Store, CheckCircle, AlertTriangle, Loader2,
   RefreshCw, Zap, Copy, Calendar, StopCircle, ShoppingBag, Star,
@@ -1033,7 +1034,10 @@ function TopupTab({ business, stats }) {
         );
       })}
 
-      {payment && <PaymentModal payment={payment} onClose={() => setPayment(null)} />}
+      {payment && createPortal(
+        <PaymentModal payment={payment} onClose={() => setPayment(null)} />,
+        document.body
+      )}
     </div>
   );
 }
@@ -1208,12 +1212,13 @@ export default function Admin() {
         </div>
       </div>
 
-      {showForm && (
+      {showForm && createPortal(
         <CampaignForm
           balance={business.balance || 0}
           onClose={() => setShowForm(false)}
           onCreated={() => { setShowForm(false); loadBusiness(); loadStats(); }}
-        />
+        />,
+        document.body
       )}
     </div>
   );

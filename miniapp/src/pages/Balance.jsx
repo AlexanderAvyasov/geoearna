@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Coins, TrendingUp, Map, Calendar, CreditCard, AlertCircle, ArrowRight } from 'lucide-react';
+import { Coins, TrendingUp, Map, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
@@ -53,24 +53,34 @@ function useCountUp(target, running) {
   return value;
 }
 
+const WD_STATUS = {
+  pending:  { label: 'Ожидает',  Icon: Clock,         color: '#f59e0b' },
+  approved: { label: 'Одобрено', Icon: CheckCircle,   color: '#00e676' },
+  rejected: { label: 'Отклонено', Icon: XCircle,      color: '#ff5252' },
+};
+
 export default function Balance() {
-  const [user,    setUser]    = useState(null);
-  const [visits,  setVisits]  = useState([]);
-  const [geoRate, setGeoRate] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState('');
+  const [user,        setUser]        = useState(null);
+  const [visits,      setVisits]      = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [geoRate,     setGeoRate]     = useState(1);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState('');
+  const [activeTab,   setActiveTab]   = useState('visits');
 
   useEffect(() => {
     const h = { initdata: initData };
     Promise.all([
-      fetch(`${API_BASE}/api/me`,     { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/visits`, { headers: h }).then(r => r.json()),
+      fetch(`${API_BASE}/api/me`,             { headers: h }).then(r => r.json()),
+      fetch(`${API_BASE}/api/visits`,          { headers: h }).then(r => r.json()),
       fetch(`${API_BASE}/api/config`).then(r => r.json()).catch(() => ({ geoRate: 1 })),
+      fetch(`${API_BASE}/api/me/withdrawals`,  { headers: h }).then(r => r.json()).catch(() => ({ withdrawals: [] })),
     ])
-      .then(([me, vis, cfg]) => {
+      .then(([me, vis, cfg, wds]) => {
         setUser(me.user);
         setVisits(vis.visits || []);
         setGeoRate(cfg.geoRate || 1);
+        setWithdrawals(wds.withdrawals || []);
       })
       .catch(() => setError('Не удалось загрузить данные.'))
       .finally(() => setLoading(false));
@@ -185,57 +195,142 @@ export default function Balance() {
           </Link>
         </div>
 
-        {/* Activity header */}
-        <div style={{ padding: '0 16px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            История активности
-          </div>
-          {!loading && visits.length > 0 && (
-            <div style={{ fontSize: 12, color: C.t3, fontWeight: 600 }}>{visits.length} записей</div>
-          )}
+        {/* Tab switcher */}
+        <div style={{ padding: '0 16px 14px', display: 'flex', gap: 8 }}>
+          {[
+            { key: 'visits',      label: 'Активность' },
+            { key: 'withdrawals', label: 'Выводы', badge: withdrawals.filter(w => w.status === 'pending').length },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1, padding: '9px 4px', borderRadius: 12,
+                border: activeTab === tab.key ? `1.5px solid ${C.blue}` : `1px solid ${C.b1}`,
+                background: activeTab === tab.key ? C.blueFt : C.card,
+                color: activeTab === tab.key ? C.blue : C.t3,
+                fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                transition: 'all 0.18s',
+              }}
+            >
+              {tab.label}
+              {tab.badge > 0 && (
+                <span style={{
+                  background: '#f59e0b', color: '#000',
+                  borderRadius: 10, fontSize: 10, fontWeight: 800,
+                  padding: '1px 6px', lineHeight: 1.4,
+                }}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {loading && [1, 2, 3].map(i => <SkeletonRow key={i} />)}
+          {/* Visits tab */}
+          {activeTab === 'visits' && (
+            <>
+              {loading && [1, 2, 3].map(i => <SkeletonRow key={i} />)}
 
-          {!loading && visits.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-              <Map size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
-              <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
-                Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
-              </div>
-            </div>
+              {!loading && visits.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '56px 16px' }}>
+                  <Map size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
+                  <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
+                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
+                    Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
+                  </div>
+                </div>
+              )}
+
+              {!loading && visits.map((v, i) => (
+                <div key={v.id} style={{
+                  ...cardBase,
+                  border: `1px solid ${C.b1}`,
+                  padding: '14px 16px', marginBottom: 10,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  animation: `fadeUp 0.35s ${E.smooth} both`,
+                  animationDelay: `${i * 0.04}s`,
+                }}>
+                  <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+                      {v.business_name || 'Заведение'}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Calendar size={11} color={C.t3} />
+                      {formatDate(v.created_at)}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                    <div style={{ color: C.geo, fontWeight: 800, fontSize: 16 }}>
+                      +{formatGeo(v.rewarded)} GEO
+                    </div>
+                    <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
+                      ≈ {formatUzs(geoToUzs(v.rewarded, geoRate))} UZS
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
 
-          {!loading && visits.map((v, i) => (
-            <div key={v.id} style={{
-              ...cardBase,
-              border: `1px solid ${C.b1}`,
-              padding: '14px 16px', marginBottom: 10,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              animation: `fadeUp 0.35s ${E.smooth} both`,
-              animationDelay: `${i * 0.04}s`,
-            }}>
-              <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
-                  {v.business_name || 'Заведение'}
+          {/* Withdrawals tab */}
+          {activeTab === 'withdrawals' && (
+            <>
+              {loading && [1, 2].map(i => <SkeletonRow key={i} />)}
+
+              {!loading && withdrawals.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '56px 16px' }}>
+                  <ArrowDownCircle size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
+                  <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет заявок</div>
+                  <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
+                    Заявки на вывод появятся здесь
+                  </div>
                 </div>
-                <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <Calendar size={11} color={C.t3} />
-                  {formatDate(v.created_at)}
-                </div>
-              </div>
-              <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                <div style={{ color: C.geo, fontWeight: 800, fontSize: 16 }}>
-                  +{formatGeo(v.rewarded)} GEO
-                </div>
-                <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
-                  ≈ {formatUzs(geoToUzs(v.rewarded, geoRate))} UZS
-                </div>
-              </div>
-            </div>
-          ))}
+              )}
+
+              {!loading && withdrawals.map((w, i) => {
+                const st = WD_STATUS[w.status] || WD_STATUS.pending;
+                return (
+                  <div key={w.id} style={{
+                    ...cardBase,
+                    border: `1px solid ${C.b1}`,
+                    padding: '14px 16px', marginBottom: 10,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    animation: `fadeUp 0.35s ${E.smooth} both`,
+                    animationDelay: `${i * 0.04}s`,
+                  }}>
+                    <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        background: `${st.color}18`, borderRadius: 8,
+                        padding: '3px 8px', marginBottom: 5,
+                      }}>
+                        <st.Icon size={12} color={st.color} strokeWidth={2.5} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: st.color }}>{st.label}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Calendar size={11} color={C.t3} />
+                        {formatDate(w.created_at)}
+                      </div>
+                      {w.phone && (
+                        <div style={{ fontSize: 11, color: C.t3, marginTop: 3 }}>{w.phone}</div>
+                      )}
+                    </div>
+                    <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                      <div style={{ color: w.status === 'rejected' ? C.t3 : C.t1, fontWeight: 800, fontSize: 16, textDecoration: w.status === 'rejected' ? 'line-through' : 'none' }}>
+                        -{formatGeo(w.amount)} GEO
+                      </div>
+                      <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
+                        ≈ {formatUzs(geoToUzs(w.amount, geoRate))} UZS
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
     </div>
