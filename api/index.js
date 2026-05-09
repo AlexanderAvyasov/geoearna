@@ -48,8 +48,9 @@ app.use(cors({
     if (
       !origin ||              // no Origin header (server-to-server, bot)
       origin === 'null' ||   // native Telegram iOS/Android webview opaque origin
-      origin === WEBAPP_ORIGIN ||
-      origin === 'https://web.telegram.org'
+      origin === 'https://web.telegram.org' ||
+      (WEBAPP_ORIGIN && origin === WEBAPP_ORIGIN) ||
+      !WEBAPP_ORIGIN          // WEBAPP_URL not configured — allow all origins
     ) {
       return cb(null, true);
     }

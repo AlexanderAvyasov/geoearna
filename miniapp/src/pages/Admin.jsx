@@ -6,8 +6,7 @@ import {
   BarChart2, Megaphone, CreditCard, Download, TrendingUp, TrendingDown,
   Users, Clock, AlertCircle,
 } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E, cardBase, inputStyle } from '../lib/design';
 
@@ -311,9 +310,9 @@ function CampaignForm({ balance, onClose, onCreated }) {
     setError('');
     setLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/admin/campaign`, {
+      const r = await apiFetch('/api/admin/campaign', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', initdata: initData },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           budget: budgetNum, max_visits: visitsNum,
           task_type: taskType, task_description: desc || null,
@@ -864,8 +863,8 @@ function TopupTab({ business, stats }) {
   const [topupsLoaded, setTopupsLoaded] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/config`).then(r => r.json()).then(d => setGeoRate(d.geoRate || 1)).catch(() => {});
-    fetch(`${API_BASE}/api/admin/topups`, { headers: { initdata: initData } })
+    apiFetch('/api/config').then(r => r.json()).then(d => setGeoRate(d.geoRate || 1)).catch(() => {});
+    apiFetch('/api/admin/topups')
       .then(r => r.json())
       .then(d => { setTopups(d.requests || []); setTopupsLoaded(true); })
       .catch(() => setTopupsLoaded(true));
@@ -882,9 +881,9 @@ function TopupTab({ business, stats }) {
     setPayLoading(true);
     try {
       const geo = PACKAGES[selected].geo;
-      const r = await fetch(`${API_BASE}/api/admin/topup`, {
+      const r = await apiFetch('/api/admin/topup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', initdata: initData },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: geo }),
       });
       const d = await r.json();
@@ -1061,7 +1060,7 @@ export default function Admin() {
   const webappUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
   const loadBusiness = useCallback(() => {
-    fetch(`${API_BASE}/api/admin/business`, { headers: { initdata: initData } })
+    apiFetch('/api/admin/business')
       .then(async r => {
         if (r.status === 404 || r.status === 403) { setNotOwner(true); return; }
         const d = await r.json();
@@ -1072,7 +1071,7 @@ export default function Admin() {
   }, []);
 
   const loadStats = useCallback(() => {
-    fetch(`${API_BASE}/api/admin/stats`, { headers: { initdata: initData } })
+    apiFetch('/api/admin/stats')
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setStats(d); })
       .catch(() => {})
@@ -1084,7 +1083,7 @@ export default function Admin() {
   async function generatePin() {
     setPinLoading(true);
     try {
-      const r = await fetch(`${API_BASE}/api/admin/pin`, { method: 'POST', headers: { initdata: initData } });
+      const r = await apiFetch('/api/admin/pin', { method: 'POST' });
       const d = await r.json();
       if (r.ok) { setPin(d.pin); setPinExpires(new Date(d.expiresAt)); setPinCopied(false); }
     } finally { setPinLoading(false); }
@@ -1100,8 +1099,8 @@ export default function Admin() {
   async function stopCampaign(id) {
     setStopping(id);
     try {
-      const r = await fetch(`${API_BASE}/api/admin/campaign/${id}/stop`, {
-        method: 'POST', headers: { initdata: initData },
+      const r = await apiFetch(`/api/admin/campaign/${id}/stop`, {
+        method: 'POST',
       });
       if (r.ok) loadBusiness();
     } finally { setStopping(null); }

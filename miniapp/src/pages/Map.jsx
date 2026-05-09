@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C, G, E, cardBase } from '../lib/design';
 
@@ -119,7 +118,7 @@ export default function MapPage() {
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/campaigns`, { headers: { initdata: initData } })
+    apiFetch('/api/campaigns')
       .then(r => r.ok ? r.json() : [])
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => {})

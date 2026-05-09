@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Map as MapIcon } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C, E, cardBase, pressable } from '../lib/design';
 
@@ -257,7 +256,7 @@ export default function Home() {
   const loadCampaigns = () => {
     setLoading(true);
     setError('');
-    fetch(`${API_BASE}/api/campaigns`, { headers: { initdata: initData } })
+    apiFetch('/api/campaigns')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => setError('Не удалось загрузить предложения.'))

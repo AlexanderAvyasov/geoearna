@@ -7,8 +7,8 @@ import {
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X,
 } from 'lucide-react';
-import { user, initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { user } from '../hooks/useTelegram';
+import { API_BASE, waitForInitData } from '../lib/api';
 import { formatGeo, formatUzs, geoToUzs } from '../lib/geo';
 import { C, G, cardBase } from '../lib/design';
 
@@ -17,7 +17,6 @@ import { C, G, cardBase } from '../lib/design';
 const SA_ID    = 930826522;
 const isSA     = user?.id === SA_ID;
 const SA_COLOR = '#A050FF';
-const H        = { initdata: initData };
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -31,9 +30,10 @@ function fmtDay(s) {
 }
 
 async function saFetch(path, opts = {}) {
+  const initdata = await waitForInitData();
   const r = await fetch(`${API_BASE}${path}`, {
     ...opts,
-    headers: { ...H, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    headers: { initdata, 'Content-Type': 'application/json', ...(opts.headers || {}) },
   });
   const data = await r.json();
   if (!r.ok) throw Object.assign(new Error(data.error || 'API_ERROR'), { detail: data.detail });

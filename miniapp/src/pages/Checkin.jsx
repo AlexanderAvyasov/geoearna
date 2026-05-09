@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { MapPin, Clock, ClipboardList, Link2, Lock, Key, Ban, Timer, XCircle, Wifi, CheckCircle, AlertTriangle } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
 import { useLocation } from '../hooks/useLocation';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E } from '../lib/design';
 
@@ -50,7 +49,7 @@ export default function Checkin() {
       setErrInfo({ Icon: Link2, title: 'Нет токена', text: 'Откройте приложение через Telegram-бота или QR-код.' });
       return;
     }
-    fetch(`${API_BASE}/api/checkin/info?token=${encodeURIComponent(token)}`)
+    apiFetch(`/api/checkin/info?token=${encodeURIComponent(token)}`)
       .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
       .then(({ ok, data }) => {
         if (!ok) {
@@ -88,9 +87,9 @@ export default function Checkin() {
     sent.current = true;
     setStatus('submitting');
     try {
-      const r = await fetch(`${API_BASE}/api/checkin`, {
+      const r = await apiFetch('/api/checkin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', initdata: initData },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ qrToken: token, lat, lng, pin: pinValue || undefined }),
       });
       const data = await r.json().catch(() => ({}));

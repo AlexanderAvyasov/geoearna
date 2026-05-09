@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs, isValidUzPhone, normalizePhone } from '../lib/geo';
 import { C, E, cardBase, inputStyle } from '../lib/design';
 
@@ -45,10 +44,9 @@ export default function Withdraw() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const h = { initdata: initData };
     Promise.all([
-      fetch(`${API_BASE}/api/me`, { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/config`).then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
+      apiFetch('/api/me').then(r => r.json()),
+      apiFetch('/api/config').then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
     ])
       .then(([me, cfg]) => {
         setBalance(me.user?.balance || 0);
@@ -77,9 +75,9 @@ export default function Withdraw() {
 
     setSubmitting(true);
     try {
-      const r = await fetch(`${API_BASE}/api/withdraw`, {
+      const r = await apiFetch('/api/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', initdata: initData },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: normalizePhone(phone), amount: geoVal }),
       });
       const data = await r.json();

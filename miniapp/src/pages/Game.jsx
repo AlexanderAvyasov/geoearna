@@ -3,8 +3,7 @@ import {
   Flame, Trophy, Crown, Gift, Users, Zap, TrendingUp,
   Copy, Check, CheckCircle2, Lock, Loader2, Star, Target,
 } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { C, cardBase } from '../lib/design';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
@@ -387,7 +386,7 @@ export default function Game() {
   const [toast,   setToast]   = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/me/game`, { headers: { initdata: initData } })
+    apiFetch('/api/me/game')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(setData)
       .catch(() => setData(null))
@@ -403,9 +402,8 @@ export default function Game() {
     if (claiming) return;
     setClaiming(taskKey);
     try {
-      const r = await fetch(`${API_BASE}/api/me/tasks/${taskKey}/claim`, {
+      const r = await apiFetch(`/api/me/tasks/${taskKey}/claim`, {
         method: 'POST',
-        headers: { initdata: initData },
       });
       const body = await r.json();
       if (!r.ok) {

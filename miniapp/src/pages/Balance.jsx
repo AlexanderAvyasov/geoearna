@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
-import { initData } from '../hooks/useTelegram';
-import { API_BASE } from '../lib/api';
+import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
 import { C, E, sk, cardBase } from '../lib/design';
 
@@ -71,12 +70,11 @@ export default function Balance() {
   const [activeTab,   setActiveTab]   = useState('visits');
 
   useEffect(() => {
-    const h = { initdata: initData };
     Promise.all([
-      fetch(`${API_BASE}/api/me`,            { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/visits`,         { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/config`).then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
-      fetch(`${API_BASE}/api/me/withdrawals`, { headers: h }).then(r => r.json()).catch(() => ({ withdrawals: [] })),
+      apiFetch('/api/me').then(r => r.json()),
+      apiFetch('/api/visits').then(r => r.json()),
+      apiFetch('/api/config').then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
+      apiFetch('/api/me/withdrawals').then(r => r.json()).catch(() => ({ withdrawals: [] })),
     ])
       .then(([me, vis, cfg, wds]) => {
         setUser(me.user);
