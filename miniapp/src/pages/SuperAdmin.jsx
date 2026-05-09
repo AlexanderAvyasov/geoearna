@@ -5,7 +5,7 @@ import {
   Loader2, Clock, User, Smartphone, FileText, MapPin, Lock, Shield,
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
-  ArrowDownToLine, Coins, Star,
+  ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X,
 } from 'lucide-react';
 import { user, initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
@@ -1314,6 +1314,295 @@ function SystemTab() {
   );
 }
 
+// ─── Tab: Gamification ────────────────────────────────────────────────────────
+
+const TYPE_LABEL = { daily: 'Ежедневные', weekly: 'Еженедельные', onetime: 'Разовые' };
+const TYPE_COLOR = { daily: C.blue, weekly: '#10B981', onetime: C.gold };
+
+function InlineEdit({ value, onSave, type = 'text', style = {} }) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState(value);
+  if (!editing) return (
+    <span
+      onClick={() => { setVal(value); setEditing(true); }}
+      style={{ cursor: 'pointer', borderBottom: `1px dashed ${C.b2}`, ...style }}
+    >
+      {value}
+    </span>
+  );
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+      <input
+        autoFocus
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        type={type}
+        style={{ background: C.card, border: `1.5px solid ${SA_COLOR}50`, borderRadius: 6, padding: '3px 7px', color: C.t1, fontSize: 'inherit', width: type === 'number' ? 70 : 160, outline: 'none' }}
+        onKeyDown={e => { if (e.key === 'Enter') { onSave(val); setEditing(false); } if (e.key === 'Escape') setEditing(false); }}
+      />
+      <button onClick={() => { onSave(val); setEditing(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#10B981', padding: 2 }}><Check size={13} /></button>
+      <button onClick={() => setEditing(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, padding: 2 }}><X size={13} /></button>
+    </span>
+  );
+}
+
+function GamificationTab() {
+  const [section,      setSection]      = useState('tasks');
+  const [tasks,        setTasks]        = useState([]);
+  const [achs,         setAchs]         = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [busy,         setBusy]         = useState(null);
+  const [showAddTask,  setShowAddTask]  = useState(false);
+  const [showAddAch,   setShowAddAch]   = useState(false);
+  const [newTask,      setNewTask]      = useState({ key: '', type: 'daily', title: '', geo_reward: '', xp_reward: '' });
+  const [newAch,       setNewAch]       = useState({ key: '', title: '', description: '', geo_reward: '', xp_reward: '' });
+  const [msg,          setMsg]          = useState('');
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      saFetch('/api/superadmin/tasks'),
+      saFetch('/api/superadmin/achievements'),
+    ])
+      .then(([t, a]) => { setTasks(t.tasks || []); setAchs(a.achievements || []); })
+      .catch(e => setMsg(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function patchTask(key, updates) {
+    setBusy(key);
+    try {
+      await saFetch(`/api/superadmin/tasks/${key}`, { method: 'PATCH', body: JSON.stringify(updates) });
+      setTasks(prev => prev.map(t => t.key === key ? { ...t, ...updates } : t));
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  async function deleteTask(key) {
+    if (!window.confirm(`Удалить задание "${key}"?`)) return;
+    setBusy(key);
+    try {
+      await saFetch(`/api/superadmin/tasks/${key}`, { method: 'DELETE' });
+      setTasks(prev => prev.filter(t => t.key !== key));
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  async function createTask() {
+    if (!newTask.key || !newTask.title) return setMsg('Заполните key и title');
+    setBusy('create_task');
+    try {
+      const d = await saFetch('/api/superadmin/tasks', { method: 'POST', body: JSON.stringify({
+        ...newTask, geo_reward: Number(newTask.geo_reward), xp_reward: Number(newTask.xp_reward), requirement: {},
+      }) });
+      setTasks(prev => [...prev, d.task]);
+      setNewTask({ key: '', type: 'daily', title: '', geo_reward: '', xp_reward: '' });
+      setShowAddTask(false);
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  async function patchAch(key, updates) {
+    setBusy(key);
+    try {
+      await saFetch(`/api/superadmin/achievements/${key}`, { method: 'PATCH', body: JSON.stringify(updates) });
+      setAchs(prev => prev.map(a => a.key === key ? { ...a, ...updates } : a));
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  async function deleteAch(key) {
+    if (!window.confirm(`Удалить достижение "${key}"?`)) return;
+    setBusy(key);
+    try {
+      await saFetch(`/api/superadmin/achievements/${key}`, { method: 'DELETE' });
+      setAchs(prev => prev.filter(a => a.key !== key));
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  async function createAch() {
+    if (!newAch.key || !newAch.title || !newAch.description) return setMsg('Заполните key, title, description');
+    setBusy('create_ach');
+    try {
+      const d = await saFetch('/api/superadmin/achievements', { method: 'POST', body: JSON.stringify({
+        ...newAch, geo_reward: Number(newAch.geo_reward), xp_reward: Number(newAch.xp_reward), requirement: {},
+      }) });
+      setAchs(prev => [...prev, d.achievement]);
+      setNewAch({ key: '', title: '', description: '', geo_reward: '', xp_reward: '' });
+      setShowAddAch(false);
+    } catch (e) { setMsg(e.message); }
+    setBusy(null);
+  }
+
+  const inStyle = { width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: `1.5px solid ${C.b2}`, background: C.card, color: C.t1, fontSize: 13, outline: 'none', marginBottom: 8 };
+
+  const taskGroups = ['daily', 'weekly', 'onetime'];
+
+  return (
+    <div>
+      {msg && (
+        <div style={{ background: `${C.red}10`, border: `1.5px solid ${C.red}30`, borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: C.red }}>
+          {msg} <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontWeight: 700, marginLeft: 8 }}>×</button>
+        </div>
+      )}
+
+      {/* Section switcher */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[['tasks', 'Задания', Target], ['achievements', 'Достижения', Trophy]].map(([k, lbl, Icon]) => (
+          <button key={k} onClick={() => setSection(k)} style={{
+            flex: 1, padding: '10px 4px', borderRadius: 12, fontSize: 13, fontWeight: 700,
+            border: `1.5px solid ${section === k ? SA_COLOR : C.b1}`,
+            background: section === k ? `${SA_COLOR}18` : 'transparent',
+            color: section === k ? SA_COLOR : C.t3, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            <Icon size={14} color={section === k ? SA_COLOR : C.t3} />
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {loading && [1,2,3].map(i => (
+        <div key={i} style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '14px 16px', marginBottom: 8, borderRadius: 14 }}>
+          <Skel h={13} w="60%" r={6} /><div style={{ marginTop: 8 }}><Skel h={10} w="40%" r={5} /></div>
+        </div>
+      ))}
+
+      {/* ── Tasks ── */}
+      {!loading && section === 'tasks' && (
+        <div>
+          {taskGroups.map(type => {
+            const items = tasks.filter(t => t.type === type);
+            if (!items.length) return null;
+            return (
+              <div key={type} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: TYPE_COLOR[type], textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
+                  {TYPE_LABEL[type]}
+                </div>
+                {items.map(t => (
+                  <div key={t.key} style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '13px 14px', marginBottom: 8, borderRadius: 14 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, marginBottom: 4 }}>
+                          <InlineEdit value={t.title} onSave={v => patchTask(t.key, { title: v })} />
+                        </div>
+                        <code style={{ fontSize: 11, color: C.t3, background: C.b1, padding: '1px 6px', borderRadius: 5 }}>{t.key}</code>
+                      </div>
+                      <button
+                        onClick={() => deleteTask(t.key)}
+                        disabled={busy === t.key}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, opacity: 0.7, padding: '2px 4px', flexShrink: 0 }}
+                      >
+                        {busy === t.key ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={14} />}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}>
+                      <span style={{ color: C.t3 }}>GEO:</span>
+                      <span style={{ color: C.gold, fontWeight: 700 }}>
+                        <InlineEdit value={t.geo_reward} onSave={v => patchTask(t.key, { geo_reward: Number(v) })} type="number" />
+                      </span>
+                      <span style={{ color: C.t3, marginLeft: 8 }}>XP:</span>
+                      <span style={{ color: '#8B5CF6', fontWeight: 700 }}>
+                        <InlineEdit value={t.xp_reward} onSave={v => patchTask(t.key, { xp_reward: Number(v) })} type="number" />
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+
+          {/* Add task */}
+          {showAddTask ? (
+            <div style={{ ...cardBase, border: `1.5px solid ${SA_COLOR}40`, padding: '16px', borderRadius: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: SA_COLOR, marginBottom: 12 }}>Новое задание</div>
+              <input value={newTask.key} onChange={e => setNewTask(p => ({ ...p, key: e.target.value }))} placeholder="key (snake_case)" style={inStyle} />
+              <select value={newTask.type} onChange={e => setNewTask(p => ({ ...p, type: e.target.value }))} style={{ ...inStyle, appearance: 'none' }}>
+                <option value="daily">Ежедневное</option>
+                <option value="weekly">Еженедельное</option>
+                <option value="onetime">Разовое</option>
+              </select>
+              <input value={newTask.title} onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))} placeholder="Название задания" style={inStyle} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={newTask.geo_reward} onChange={e => setNewTask(p => ({ ...p, geo_reward: e.target.value }))} placeholder="GEO" type="number" style={{ ...inStyle, flex: 1 }} />
+                <input value={newTask.xp_reward} onChange={e => setNewTask(p => ({ ...p, xp_reward: e.target.value }))} placeholder="XP" type="number" style={{ ...inStyle, flex: 1 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn variant="ghost" size="sm" onClick={() => setShowAddTask(false)} style={{ flex: 1 }}>Отмена</Btn>
+                <Btn variant="purple" size="sm" onClick={createTask} loading={busy === 'create_task'} style={{ flex: 2 }}>Создать</Btn>
+              </div>
+            </div>
+          ) : (
+            <Btn variant="ghost" size="sm" onClick={() => setShowAddTask(true)} style={{ width: '100%', marginTop: 4 }}>
+              <Plus size={14} /> Добавить задание
+            </Btn>
+          )}
+        </div>
+      )}
+
+      {/* ── Achievements ── */}
+      {!loading && section === 'achievements' && (
+        <div>
+          {achs.map(a => (
+            <div key={a.key} style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '13px 14px', marginBottom: 8, borderRadius: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 6 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.gold, marginBottom: 3 }}>
+                    <InlineEdit value={a.title} onSave={v => patchAch(a.key, { title: v })} />
+                  </div>
+                  <div style={{ fontSize: 12, color: C.t3, marginBottom: 4 }}>
+                    <InlineEdit value={a.description} onSave={v => patchAch(a.key, { description: v })} />
+                  </div>
+                  <code style={{ fontSize: 11, color: C.t3, background: C.b1, padding: '1px 6px', borderRadius: 5 }}>{a.key}</code>
+                </div>
+                <button
+                  onClick={() => deleteAch(a.key)}
+                  disabled={busy === a.key}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.red, opacity: 0.7, padding: '2px 4px', flexShrink: 0 }}
+                >
+                  {busy === a.key ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={14} />}
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 13 }}>
+                <span style={{ color: C.t3 }}>GEO:</span>
+                <span style={{ color: C.gold, fontWeight: 700 }}>
+                  <InlineEdit value={a.geo_reward} onSave={v => patchAch(a.key, { geo_reward: Number(v) })} type="number" />
+                </span>
+                <span style={{ color: C.t3, marginLeft: 8 }}>XP:</span>
+                <span style={{ color: '#8B5CF6', fontWeight: 700 }}>
+                  <InlineEdit value={a.xp_reward} onSave={v => patchAch(a.key, { xp_reward: Number(v) })} type="number" />
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {showAddAch ? (
+            <div style={{ ...cardBase, border: `1.5px solid ${SA_COLOR}40`, padding: '16px', borderRadius: 16, marginTop: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: SA_COLOR, marginBottom: 12 }}>Новое достижение</div>
+              <input value={newAch.key} onChange={e => setNewAch(p => ({ ...p, key: e.target.value }))} placeholder="key (snake_case)" style={inStyle} />
+              <input value={newAch.title} onChange={e => setNewAch(p => ({ ...p, title: e.target.value }))} placeholder="Название" style={inStyle} />
+              <input value={newAch.description} onChange={e => setNewAch(p => ({ ...p, description: e.target.value }))} placeholder="Описание" style={inStyle} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input value={newAch.geo_reward} onChange={e => setNewAch(p => ({ ...p, geo_reward: e.target.value }))} placeholder="GEO" type="number" style={{ ...inStyle, flex: 1 }} />
+                <input value={newAch.xp_reward} onChange={e => setNewAch(p => ({ ...p, xp_reward: e.target.value }))} placeholder="XP" type="number" style={{ ...inStyle, flex: 1 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn variant="ghost" size="sm" onClick={() => setShowAddAch(false)} style={{ flex: 1 }}>Отмена</Btn>
+                <Btn variant="purple" size="sm" onClick={createAch} loading={busy === 'create_ach'} style={{ flex: 2 }}>Создать</Btn>
+              </div>
+            </div>
+          ) : (
+            <Btn variant="ghost" size="sm" onClick={() => setShowAddAch(true)} style={{ width: '100%', marginTop: 4 }}>
+              <Plus size={14} /> Добавить достижение
+            </Btn>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── useGeoRate ───────────────────────────────────────────────────────────────
 
 function useGeoRate() {
@@ -1330,13 +1619,14 @@ function useGeoRate() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { key: 'overview',   label: 'Обзор',    Icon: LayoutDashboard },
-  { key: 'fraud',      label: 'Фрод',     Icon: ShieldAlert     },
-  { key: 'businesses', label: 'Бизнесы',  Icon: Store           },
-  { key: 'campaigns',  label: 'Кампании', Icon: Megaphone       },
-  { key: 'finance',    label: 'Финансы',  Icon: Wallet          },
-  { key: 'users',      label: 'Юзеры',    Icon: Users           },
-  { key: 'system',     label: 'Система',  Icon: Settings        },
+  { key: 'overview',      label: 'Обзор',      Icon: LayoutDashboard },
+  { key: 'fraud',         label: 'Фрод',       Icon: ShieldAlert     },
+  { key: 'businesses',    label: 'Бизнесы',    Icon: Store           },
+  { key: 'campaigns',     label: 'Кампании',   Icon: Megaphone       },
+  { key: 'finance',       label: 'Финансы',    Icon: Wallet          },
+  { key: 'users',         label: 'Юзеры',      Icon: Users           },
+  { key: 'gamification',  label: 'Геймиф.',    Icon: Trophy          },
+  { key: 'system',        label: 'Система',    Icon: Settings        },
 ];
 
 export default function SuperAdmin() {
@@ -1393,13 +1683,14 @@ export default function SuperAdmin() {
 
       {/* Content */}
       <div style={{ padding: '16px 16px 100px' }}>
-        {tab === 'overview'   && <OverviewTab />}
-        {tab === 'fraud'      && <FraudTab />}
-        {tab === 'businesses' && <BusinessesTab />}
-        {tab === 'campaigns'  && <CampaignsTab />}
-        {tab === 'finance'    && <FinanceTab geoRate={geoRate} />}
-        {tab === 'users'      && <UsersTab />}
-        {tab === 'system'     && <SystemTab />}
+        {tab === 'overview'     && <OverviewTab />}
+        {tab === 'fraud'        && <FraudTab />}
+        {tab === 'businesses'   && <BusinessesTab />}
+        {tab === 'campaigns'    && <CampaignsTab />}
+        {tab === 'finance'      && <FinanceTab geoRate={geoRate} />}
+        {tab === 'users'        && <UsersTab />}
+        {tab === 'gamification' && <GamificationTab />}
+        {tab === 'system'       && <SystemTab />}
       </div>
     </div>
   );

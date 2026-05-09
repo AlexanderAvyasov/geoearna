@@ -256,13 +256,17 @@ export default function Home() {
   const [selected,  setSelected]  = useState(null);
   const [userPos,   setUserPos]   = useState(null);
 
-  useEffect(() => {
+  const loadCampaigns = () => {
+    setLoading(true);
+    setError('');
     fetch(`${API_BASE}/api/campaigns`, { headers: { initdata: initData } })
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => setError('Не удалось загрузить предложения.'))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadCampaigns(); }, []);
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -386,7 +390,14 @@ export default function Home() {
             <div style={{ textAlign: 'center', paddingTop: 56 }}>
               <AlertCircle size={52} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
               <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
-              <div style={{ color: C.t3, fontSize: 14 }}>{error}</div>
+              <div style={{ color: C.t3, fontSize: 14, marginBottom: 20 }}>{error}</div>
+              <button onClick={loadCampaigns} style={{
+                background: C.blueFt, border: `1.5px solid ${C.blueGl}`,
+                color: C.blue, borderRadius: 14, padding: '12px 28px',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              }}>
+                Повторить
+              </button>
             </div>
           )}
 

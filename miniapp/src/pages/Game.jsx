@@ -145,7 +145,7 @@ function ProfileCard({ data }) {
 // ── Tasks tab ─────────────────────────────────────────────────────────────────
 function TaskCard({ task, onClaim, claiming }) {
   const req   = task.requirement || {};
-  const total = req.distinct_businesses || req.streak_days || req.checkin_count || req.referral_activated || 1;
+  const total = req.distinct_businesses || req.distinct_categories || req.streak_days || req.checkin_count || req.referral_activated || req.withdrawal_count || 1;
   const prog  = Math.min(task.progress || 0, total);
   const pct   = total > 1 ? prog / total : 0;
   const canClaim = task.completed && !task.claimed;

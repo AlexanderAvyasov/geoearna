@@ -205,6 +205,14 @@ async function checkAndUpdateTasks(userId, businessId, today, weekStart, newStre
       let completed = false;
 
       switch (td.key) {
+        case 'daily_1_checkin':
+        case 'daily_3_checkins': {
+          const { data: v } = await supabase.from('visits').select('id')
+            .eq('user_id', userId).gte('created_at', dayStart).lt('created_at', dayEnd);
+          progress = (v || []).length;
+          completed = progress >= (td.requirement.checkin_count || 1);
+          break;
+        }
         case 'daily_2_places': {
           const { data: v } = await supabase.from('visits').select('business_id')
             .eq('user_id', userId).gte('created_at', dayStart).lt('created_at', dayEnd);
@@ -215,6 +223,20 @@ async function checkAndUpdateTasks(userId, businessId, today, weekStart, newStre
         case 'daily_before_noon':
           if (isBeforeNoon) { progress = 1; completed = true; }
           break;
+        case 'daily_new_place': {
+          // true if today's visits include a business_id never visited before today
+          const { data: todayV } = await supabase.from('visits').select('business_id')
+            .eq('user_id', userId).gte('created_at', dayStart).lt('created_at', dayEnd);
+          const todayIds = [...new Set((todayV || []).map(x => x.business_id))];
+          if (todayIds.length > 0) {
+            const { data: prevV } = await supabase.from('visits').select('business_id')
+              .eq('user_id', userId).lt('created_at', dayStart);
+            const prevIds = new Set((prevV || []).map(x => x.business_id));
+            progress = todayIds.some(id => !prevIds.has(id)) ? 1 : 0;
+            completed = progress >= 1;
+          }
+          break;
+        }
         case 'weekly_5_places': {
           const { data: v } = await supabase.from('visits').select('business_id')
             .eq('user_id', userId).gte('created_at', weekStartUTC);
@@ -226,10 +248,33 @@ async function checkAndUpdateTasks(userId, businessId, today, weekStart, newStre
           progress = newStreak;
           completed = newStreak >= td.requirement.streak_days;
           break;
+        case 'weekly_15_checkins': {
+          const { data: v } = await supabase.from('visits').select('id')
+            .eq('user_id', userId).gte('created_at', weekStartUTC);
+          progress = (v || []).length;
+          completed = progress >= (td.requirement.checkin_count || 15);
+          break;
+        }
+        case 'weekly_3_categories': {
+          const { data: v } = await supabase
+            .from('visits').select('campaign_id, campaigns!campaign_id(task_type)')
+            .eq('user_id', userId).gte('created_at', weekStartUTC);
+          const cats = new Set((v || []).map(x => x.campaigns?.task_type).filter(Boolean));
+          progress = cats.size;
+          completed = progress >= (td.requirement.distinct_categories || 3);
+          break;
+        }
         case 'onetime_first': {
           const { count } = await supabase.from('visits').select('id', { count: 'exact', head: true }).eq('user_id', userId);
           progress = count || 0;
           completed = progress >= td.requirement.checkin_count;
+          break;
+        }
+        case 'onetime_withdrawal': {
+          const { count } = await supabase.from('withdrawals').select('id', { count: 'exact', head: true })
+            .eq('user_id', userId).in('status', ['approved', 'pending']);
+          progress = count || 0;
+          completed = progress >= (td.requirement.withdrawal_count || 1);
           break;
         }
         case 'onetime_referral': {

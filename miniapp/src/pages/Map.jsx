@@ -221,9 +221,9 @@ export default function MapPage() {
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0, zIndex: 20,
+        flexShrink: 0, position: 'relative', zIndex: 20,
       }}>
-        <button onClick={() => navigate(-1)} style={{
+        <button onClick={() => navigate('/')} style={{
           background: 'none', border: 'none', cursor: 'pointer',
           color: C.blue, padding: '4px 8px 4px 0',
           display: 'flex', alignItems: 'center',

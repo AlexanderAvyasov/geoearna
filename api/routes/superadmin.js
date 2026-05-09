@@ -496,7 +496,7 @@ router.post('/api/superadmin/users/:id/adjust', ...SA, async (req, res) => {
     const { data: userRow } = await supabase.from('users').select('balance').eq('id', userId).single();
     if (!userRow) return res.status(404).json({ error: 'NOT_FOUND' });
 
-    const newBalance = Math.max(0, userRow.balance + amount);
+    const newBalance = Math.round(Math.max(0, userRow.balance + amount));
     const { error } = await supabase.from('users').update({ balance: newBalance }).eq('id', userId);
     if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
 
@@ -654,6 +654,130 @@ router.get('/api/superadmin/audit-log', ...SA, async (req, res) => {
 
     if (error) return res.json({ log: [], warning: 'sa_audit_log table not yet created' });
     return res.json({ log: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Gamification: task definitions CRUD ──────────────────────────────────────
+
+router.get('/api/superadmin/tasks', ...SA, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('task_definitions').select('*').order('type').order('key');
+    if (error) throw error;
+    return res.json({ tasks: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/tasks', ...SA, async (req, res) => {
+  try {
+    const { key, type, title, geo_reward, xp_reward, requirement } = req.body;
+    if (!key || !type || !title) return res.status(400).json({ error: 'INVALID_PARAMS' });
+    if (!['daily', 'weekly', 'onetime'].includes(type)) return res.status(400).json({ error: 'INVALID_TYPE' });
+    const { data, error } = await supabase.from('task_definitions').insert({
+      key: key.trim(),
+      type,
+      title: title.trim(),
+      geo_reward: Number(geo_reward) || 0,
+      xp_reward: Number(xp_reward) || 0,
+      requirement: requirement || {},
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ task: data });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.patch('/api/superadmin/tasks/:key', ...SA, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { title, geo_reward, xp_reward } = req.body;
+    const updates = {};
+    if (title !== undefined)      updates.title      = title;
+    if (geo_reward !== undefined) updates.geo_reward = Number(geo_reward);
+    if (xp_reward !== undefined)  updates.xp_reward  = Number(xp_reward);
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+    const { error } = await supabase.from('task_definitions').update(updates).eq('key', key);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.delete('/api/superadmin/tasks/:key', ...SA, async (req, res) => {
+  try {
+    const { key } = req.params;
+    await supabase.from('user_tasks').delete().eq('task_key', key);
+    const { error } = await supabase.from('task_definitions').delete().eq('key', key);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Gamification: achievement definitions CRUD ────────────────────────────────
+
+router.get('/api/superadmin/achievements', ...SA, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('achievement_definitions').select('*').order('key');
+    if (error) throw error;
+    return res.json({ achievements: data || [] });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/achievements', ...SA, async (req, res) => {
+  try {
+    const { key, title, description, geo_reward, xp_reward, requirement } = req.body;
+    if (!key || !title || !description) return res.status(400).json({ error: 'INVALID_PARAMS' });
+    const { data, error } = await supabase.from('achievement_definitions').insert({
+      key: key.trim(),
+      title: title.trim(),
+      description: description.trim(),
+      geo_reward: Number(geo_reward) || 0,
+      xp_reward: Number(xp_reward) || 0,
+      requirement: requirement || {},
+    }).select().single();
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ achievement: data });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.patch('/api/superadmin/achievements/:key', ...SA, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const { title, description, geo_reward, xp_reward } = req.body;
+    const updates = {};
+    if (title !== undefined)       updates.title       = title;
+    if (description !== undefined) updates.description = description;
+    if (geo_reward !== undefined)  updates.geo_reward  = Number(geo_reward);
+    if (xp_reward !== undefined)   updates.xp_reward   = Number(xp_reward);
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+    const { error } = await supabase.from('achievement_definitions').update(updates).eq('key', key);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.delete('/api/superadmin/achievements/:key', ...SA, async (req, res) => {
+  try {
+    const { key } = req.params;
+    await supabase.from('user_achievements').delete().eq('achievement_key', key);
+    const { error } = await supabase.from('achievement_definitions').delete().eq('key', key);
+    if (error) throw error;
+    return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }

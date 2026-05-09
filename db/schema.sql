@@ -616,20 +616,35 @@ $$ LANGUAGE plpgsql;
 
 -- ── Seed: task definitions ────────────────────────────────────────────────────
 INSERT INTO task_definitions (key, type, title, geo_reward, xp_reward, requirement) VALUES
-  ('daily_2_places',    'daily',   'Посетить 2 разных места за день',         200, 15, '{"distinct_businesses": 2}'),
-  ('daily_before_noon', 'daily',   'Чекин до 12:00 (Ташкент)',                150, 10, '{"before_hour": 12}'),
-  ('weekly_5_places',   'weekly',  'Посетить 5 разных мест за неделю',       1500, 50, '{"distinct_businesses": 5}'),
-  ('weekly_streak_7',   'weekly',  'Держать стрик 7 дней подряд',            2000, 30, '{"streak_days": 7}'),
-  ('onetime_first',     'onetime', 'Первый чекин',                            500, 25, '{"checkin_count": 1}'),
-  ('onetime_referral',  'onetime', 'Пригласить друга по реферальной ссылке', 1000, 50, '{"referral_activated": 1}')
-ON CONFLICT (key) DO NOTHING;
+  ('daily_1_checkin',     'daily',   'Сделать 1 чекин за день',                  5,  5, '{"checkin_count": 1}'),
+  ('daily_2_places',      'daily',   'Посетить 2 разных места за день',          20, 15, '{"distinct_businesses": 2}'),
+  ('daily_before_noon',   'daily',   'Чекин до 12:00 (Ташкент)',                 10, 10, '{"before_noon": true}'),
+  ('daily_3_checkins',    'daily',   'Сделать 3 чекина за день',                 25, 20, '{"checkin_count": 3}'),
+  ('daily_new_place',     'daily',   'Посетить новое место',                     15, 10, '{"new_place": 1}'),
+  ('weekly_5_places',     'weekly',  'Посетить 5 разных мест за неделю',         75, 50, '{"distinct_businesses": 5}'),
+  ('weekly_streak_7',     'weekly',  'Держать стрик 7 дней подряд',             100, 30, '{"streak_days": 7}'),
+  ('weekly_15_checkins',  'weekly',  'Сделать 15 чекинов за неделю',            120, 50, '{"checkin_count": 15}'),
+  ('weekly_3_categories', 'weekly',  'Посетить 3 категории заведений',           50, 25, '{"distinct_categories": 3}'),
+  ('onetime_first',       'onetime', 'Первый чекин',                             15, 10, '{"checkin_count": 1}'),
+  ('onetime_withdrawal',  'onetime', 'Первый вывод средств',                     25, 15, '{"withdrawal_count": 1}'),
+  ('onetime_referral',    'onetime', 'Первое приглашение друга',                 50, 20, '{"referral_activated": 1}')
+ON CONFLICT (key) DO UPDATE SET
+  title = EXCLUDED.title,
+  geo_reward = EXCLUDED.geo_reward,
+  xp_reward = EXCLUDED.xp_reward,
+  requirement = EXCLUDED.requirement;
 
 -- ── Seed: achievement definitions ────────────────────────────────────────────
 INSERT INTO achievement_definitions (key, title, description, geo_reward, xp_reward, requirement) VALUES
-  ('pioneer',        'Первооткрыватель', 'Побывать в 10 разных заведениях',          500,  25, '{"distinct_businesses": 10}'),
-  ('unbreakable',    'Несломленный',     'Стрик 30 дней подряд',                    5000, 100, '{"streak_days": 30}'),
-  ('recruiter',      'Рекрутёр',         'Пригласить 5 друзей',                     3000,  75, '{"referrals_activated": 5}'),
-  ('early_bird',     'Ранняя пташка',    'Сделать 7 чекинов до 09:00 (Ташкент)',     800,  40, '{"early_checkins": 7}'),
-  ('loyal',          'Преданный',        'Посетить одно заведение 10 раз',          1000,  50, '{"same_business_visits": 10}'),
-  ('legend_quarter', 'Легенда квартала', 'Попасть в топ-10 по GEO за месяц',           0, 200, '{"monthly_top10": true}')
-ON CONFLICT (key) DO NOTHING;
+  ('pioneer',        'Первооткрыватель', 'Побывать в 10 разных заведениях',           100,  25, '{"distinct_businesses": 10}'),
+  ('unbreakable',    'Несломленный',     'Стрик 30 дней подряд',                      500, 100, '{"streak_days": 30}'),
+  ('recruiter',      'Рекрутёр',         'Пригласить 5 друзей',                       300,  75, '{"referrals_activated": 5}'),
+  ('early_bird',     'Ранняя пташка',    'Сделать 7 чекинов до 12:00 (Ташкент)',       80,  40, '{"early_checkins": 7}'),
+  ('loyal',          'Преданный',        'Посетить одно заведение 10 раз',            100,  50, '{"same_business_visits": 10}'),
+  ('legend_quarter', 'Легенда квартала', 'Попасть в топ-10 по GEO за месяц',         1000, 200, '{"monthly_top10": true}')
+ON CONFLICT (key) DO UPDATE SET
+  title = EXCLUDED.title,
+  description = EXCLUDED.description,
+  geo_reward = EXCLUDED.geo_reward,
+  xp_reward = EXCLUDED.xp_reward,
+  requirement = EXCLUDED.requirement;
