@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
-import { C, E, sk, cardBase } from '../lib/design';
+import { C, E, cardBase } from '../lib/design';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
@@ -15,18 +15,13 @@ function formatDate(str) {
 }
 
 function SkeletonRow() {
-  const shimmer = {
-    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.04) 50%, ${C.card} 100%)`,
-    backgroundSize: '600px 100%',
-    animation: 'shimmer 1.6s ease-in-out infinite',
-  };
   return (
     <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ ...sk(14, 140, 6), ...shimmer, marginBottom: 8 }} />
-        <div style={{ ...sk(10, 90, 5), ...shimmer }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="sk" style={{ height: 14, width: 140, borderRadius: 6, marginBottom: 8 }} />
+        <div className="sk" style={{ height: 10, width: 90, borderRadius: 5 }} />
       </div>
-      <div style={{ ...sk(22, 84, 8), ...shimmer }} />
+      <div className="sk" style={{ height: 22, width: 84, borderRadius: 8 }} />
     </div>
   );
 }
@@ -108,9 +103,9 @@ export default function Balance() {
         </div>
 
         {loading ? (
-          <div>
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, height: 52, width: 200, animation: 'pulse 1.4s infinite', marginBottom: 10 }} />
-            <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 6, height: 18, width: 120, animation: 'pulse 1.4s infinite' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div className="sk" style={{ height: 50, width: 180, borderRadius: 10 }} />
+            <div className="sk" style={{ height: 16, width: 110, borderRadius: 6 }} />
           </div>
         ) : (
           <>

@@ -43,14 +43,7 @@ async function saFetch(path, opts = {}) {
 // ─── shared components ────────────────────────────────────────────────────────
 
 function Skel({ h = 16, w = '100%', r = 8 }) {
-  return (
-    <div style={{
-      height: h, width: w, borderRadius: r, flexShrink: 0,
-      background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.06) 50%, ${C.card} 100%)`,
-      backgroundSize: '600px 100%',
-      animation: 'shimmer 1.6s ease-in-out infinite',
-    }} />
-  );
+  return <div className="sk" style={{ height: h, width: w, borderRadius: r }} />;
 }
 
 function Badge({ label, color, bg }) {

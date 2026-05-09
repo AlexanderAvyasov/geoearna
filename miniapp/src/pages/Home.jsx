@@ -19,18 +19,13 @@ const TASK_LABELS = {
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 function SkeletonCard() {
-  const shimmer = {
-    background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.04) 50%, ${C.card} 100%)`,
-    backgroundSize: '600px 100%',
-    animation: 'shimmer 1.6s ease-in-out infinite',
-  };
   return (
     <div style={{ ...cardBase, padding: '16px 18px', marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ background: C.cardHi, borderRadius: 6, height: 14, width: '60%', marginBottom: 10, ...shimmer }} />
-        <div style={{ background: C.cardHi, borderRadius: 6, height: 10, width: '35%', ...shimmer }} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="sk" style={{ height: 14, width: '58%', borderRadius: 6, marginBottom: 10 }} />
+        <div className="sk" style={{ height: 10, width: '33%', borderRadius: 5 }} />
       </div>
-      <div style={{ background: C.cardHi, borderRadius: 12, height: 36, width: 96, marginLeft: 14, ...shimmer }} />
+      <div className="sk" style={{ height: 36, width: 92, borderRadius: 12, marginLeft: 14 }} />
     </div>
   );
 }

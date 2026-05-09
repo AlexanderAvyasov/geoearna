@@ -55,14 +55,7 @@ const labelStyle = {
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 function Skel({ h = 20, w = '100%', r = 8 }) {
-  return (
-    <div style={{
-      height: h, width: w, borderRadius: r, flexShrink: 0,
-      background: `linear-gradient(90deg, ${C.card} 0%, rgba(255,255,255,0.06) 50%, ${C.card} 100%)`,
-      backgroundSize: '600px 100%',
-      animation: 'shimmer 1.6s ease-in-out infinite',
-    }} />
-  );
+  return <div className="sk" style={{ height: h, width: w, borderRadius: r }} />;
 }
 
 function Toggle({ on, onToggle }) {
@@ -1251,10 +1244,25 @@ export default function Admin() {
   if (loading) {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', padding: 20 }}>
-        <Skel h={120} r={20} />
-        <div style={{ marginTop: 16 }}><Skel h={56} r={12} /></div>
-        <div style={{ marginTop: 16 }}><Skel h={80} r={20} /></div>
-        <div style={{ marginTop: 12 }}><Skel h={80} r={20} /></div>
+        {/* Business header card */}
+        <Skel h={118} r={20} />
+        {/* Tab bar */}
+        <div style={{ marginTop: 14 }}><Skel h={48} r={12} /></div>
+        {/* Stats 2×2 */}
+        <div style={{ marginTop: 14, display: 'flex', gap: 10 }}>
+          <Skel h={82} r={16} />
+          <Skel h={82} r={16} />
+        </div>
+        <div style={{ marginTop: 10, display: 'flex', gap: 10 }}>
+          <Skel h={82} r={16} />
+          <Skel h={82} r={16} />
+        </div>
+        {/* Campaign rows */}
+        {[1, 2, 3].map(i => (
+          <div key={i} style={{ marginTop: 10 }}>
+            <Skel h={74} r={16} />
+          </div>
+        ))}
       </div>
     );
   }

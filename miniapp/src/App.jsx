@@ -101,6 +101,34 @@ export const GLOBAL_CSS = `
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
+
+  /* ── Skeleton sweep — replaces pulse/shimmer across all pages ── */
+  @keyframes skSweep {
+    0%   { transform: translateX(-180%) skewX(-10deg); }
+    100% { transform: translateX(280%)  skewX(-10deg); }
+  }
+  .sk {
+    position: relative;
+    overflow: hidden;
+    background: rgba(255,255,255,0.055);
+    flex-shrink: 0;
+  }
+  .sk::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 55%; height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent            0%,
+      rgba(255,255,255,0.07) 40%,
+      rgba(198,241,53,0.05)  50%,
+      rgba(255,255,255,0.07) 60%,
+      transparent            100%
+    );
+    animation: skSweep 1.7s ease-in-out infinite;
+  }
+
   @keyframes splashLogoIn {
     0%   { opacity: 0; transform: scale(0.72) translateY(12px); }
     60%  { opacity: 1; transform: scale(1.04) translateY(-2px); }

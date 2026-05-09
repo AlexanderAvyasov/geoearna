@@ -28,22 +28,28 @@ function xpPct(xp, level) {
 }
 
 function Skeleton() {
-  const s = (h, w = '100%') => ({
-    height: h, width: w, borderRadius: 8,
-    background: 'rgba(255,255,255,0.06)',
-    animation: 'pulse 1.5s ease-in-out infinite',
-  });
   return (
     <div style={{ padding: '0 16px', animation: 'fadeUp 0.3s ease both' }}>
+      {/* XP / profile card */}
       <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: 20, marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={s(26, 120)} /><div style={s(26, 90)} />
+          <div className="sk" style={{ height: 26, width: 120, borderRadius: 7 }} />
+          <div className="sk" style={{ height: 26, width: 90, borderRadius: 7 }} />
         </div>
-        <div style={s(5)} /><div style={{ ...s(10, 60), marginTop: 6 }} />
+        <div className="sk" style={{ height: 6, borderRadius: 3 }} />
+        <div className="sk" style={{ height: 10, width: 60, borderRadius: 5, marginTop: 6 }} />
       </div>
-      {[1,2,3].map(i => <div key={i} style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: 16, marginBottom: 8 }}>
-        <div style={s(13, '70%')} /><div style={{ ...s(10, '40%'), marginTop: 8 }} />
-      </div>)}
+      {/* Task / achievement rows */}
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="sk" style={{ height: 40, width: 40, borderRadius: '50%' }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="sk" style={{ height: 13, width: '68%', borderRadius: 6 }} />
+            <div className="sk" style={{ height: 10, width: '42%', borderRadius: 5, marginTop: 8 }} />
+          </div>
+          <div className="sk" style={{ height: 28, width: 68, borderRadius: 8 }} />
+        </div>
+      ))}
     </div>
   );
 }

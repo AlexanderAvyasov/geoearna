@@ -325,14 +325,13 @@ export default function MapPage() {
             <div key={i} style={{
               ...cardBase, border: `1px solid ${C.b0}`,
               padding: '14px 16px', marginBottom: 8,
-              display: 'flex', justifyContent: 'space-between',
-              animation: 'pulse 1.4s infinite',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <div>
-                <div style={{ background: C.cardHi, borderRadius: 6, height: 14, width: 130, marginBottom: 8 }} />
-                <div style={{ background: C.cardHi, borderRadius: 6, height: 11, width: 70 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="sk" style={{ height: 14, width: 130, borderRadius: 6, marginBottom: 8 }} />
+                <div className="sk" style={{ height: 11, width: 70, borderRadius: 5 }} />
               </div>
-              <div style={{ background: C.cardHi, borderRadius: 10, height: 36, width: 100, alignSelf: 'center' }} />
+              <div className="sk" style={{ height: 36, width: 100, borderRadius: 10 }} />
             </div>
           ))}
 

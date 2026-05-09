@@ -83,8 +83,8 @@ export const E = {
 export function sk(h, w = '100%', r = 8) {
   return {
     height: h, width: w, borderRadius: r, flexShrink: 0,
-    background: 'rgba(255,255,255,0.05)',
-    animation: 'pulse 1.5s ease-in-out infinite',
+    position: 'relative', overflow: 'hidden',
+    background: 'rgba(255,255,255,0.055)',
   };
 }
 
