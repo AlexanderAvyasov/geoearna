@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MapPin, Wallet, Lock, QrCode, Store, CheckCircle, AlertTriangle, Loader2, RefreshCw, Zap, Copy } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { formatGeo } from '../lib/geo';
@@ -97,9 +98,9 @@ function CampaignForm({ balance, onClose, onCreated }) {
   }
 
   const TASK_TYPES = [
-    { value: 'visit',    label: '📍 Визит' },
-    { value: 'purchase', label: '🛍 Покупка' },
-    { value: 'review',   label: '⭐ Отзыв' },
+    { value: 'visit',    label: 'Визит' },
+    { value: 'purchase', label: 'Покупка' },
+    { value: 'review',   label: 'Отзыв' },
   ];
 
   return (
@@ -180,7 +181,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
                 </div>
                 {reward < 1 && (
                   <div style={{ color: C.red, fontSize: 12, marginTop: 8, fontWeight: 600 }}>
-                    ↑ Увеличьте бюджет или уменьшите активации
+                    Увеличьте бюджет или уменьшите активации
                   </div>
                 )}
               </div>
@@ -227,9 +228,12 @@ function CampaignForm({ balance, onClose, onCreated }) {
                 borderRadius: 14, padding: '14px 16px',
                 marginBottom: 22, cursor: 'pointer',
               }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: C.t1 }}>🔐 Требовать PIN</div>
-                <div style={{ fontSize: 12, color: C.t3, marginTop: 2 }}>Сотрудник называет PIN клиенту</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Lock size={18} color={requiresPin ? C.gold : C.t3} strokeWidth={2} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: C.t1 }}>Требовать PIN</div>
+                  <div style={{ fontSize: 12, color: C.t3, marginTop: 2 }}>Сотрудник называет PIN клиенту</div>
+                </div>
               </div>
               <Toggle on={requiresPin} onToggle={() => setRequiresPin(p => !p)} />
             </div>
@@ -239,8 +243,10 @@ function CampaignForm({ balance, onClose, onCreated }) {
                 background: C.redFt, color: C.red, borderRadius: 12,
                 padding: '10px 14px', fontSize: 14, fontWeight: 600,
                 marginBottom: 16, border: `1px solid rgba(255,59,92,0.2)`,
+                display: 'flex', alignItems: 'center', gap: 8,
               }}>
-                ⚠️ {error}
+                <AlertTriangle size={15} color={C.red} strokeWidth={2} style={{ flexShrink: 0 }} />
+                {error}
               </div>
             )}
 
@@ -254,8 +260,12 @@ function CampaignForm({ balance, onClose, onCreated }) {
                 cursor: canSubmit && !loading ? 'pointer' : 'not-allowed',
                 boxShadow: canSubmit && !loading ? `0 6px 24px ${C.blueGl}` : 'none',
                 transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}>
-              {loading ? '⏳ Создаём...' : `Запустить · ${formatGeo(reward)} GEO / задание`}
+              {loading
+                ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> Создаём...</>
+                : `Запустить · ${formatGeo(reward)} GEO / задание`
+              }
             </button>
           </form>
         </div>
@@ -318,7 +328,7 @@ export default function Admin() {
   if (notOwner) {
     return (
       <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, textAlign: 'center' }}>
-        <div style={{ fontSize: 64, marginBottom: 20 }}>🏪</div>
+        <Store size={64} color={C.t3} strokeWidth={1.25} style={{ marginBottom: 20, opacity: 0.4 }} />
         <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 12, color: C.t1 }}>Панель бизнеса</div>
         <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.6, maxWidth: 280 }}>
           Вы не зарегистрированы как владелец заведения.<br /><br />
@@ -352,7 +362,10 @@ export default function Admin() {
           {business.name}
         </div>
         {business.address && (
-          <div style={{ fontSize: 13, color: C.t3 }}>📍 {business.address}</div>
+          <div style={{ fontSize: 13, color: C.t3, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <MapPin size={13} color={C.t3} />
+            {business.address}
+          </div>
         )}
       </div>
 
@@ -377,7 +390,7 @@ export default function Admin() {
                   <span style={{ fontSize: 15, fontWeight: 600, color: C.t3, marginLeft: 8 }}>GEO</span>
                 </div>
               </div>
-              <div style={{ fontSize: 38 }}>💰</div>
+              <Wallet size={36} color={C.gold} strokeWidth={1.5} style={{ opacity: 0.7 }} />
             </div>
             {/* Campaign CTA */}
             <button
@@ -387,8 +400,10 @@ export default function Admin() {
                 color: '#071a0c', border: 'none', borderRadius: 14, padding: '14px',
                 fontSize: 15, fontWeight: 800, cursor: 'pointer',
                 boxShadow: `0 4px 16px ${C.geoGl}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}>
-              + Создать кампанию
+              <Zap size={16} color="#071a0c" strokeWidth={2.5} />
+              Создать кампанию
             </button>
           </div>
 
@@ -399,8 +414,9 @@ export default function Admin() {
               padding: '20px', marginBottom: 14,
               animation: 'fadeUp 0.35s 0.05s ease both',
             }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.geo, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 16 }}>
-                🟢 Активная кампания
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.geo, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.geo, boxShadow: `0 0 6px ${C.geo}` }} />
+                Активная кампания
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 {[
@@ -422,8 +438,10 @@ export default function Admin() {
                 <div style={{
                   marginTop: 12, background: C.goldFt, border: `1.5px solid ${C.goldGl}`,
                   borderRadius: 10, padding: '10px 12px', fontSize: 13, color: C.gold, fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: 8,
                 }}>
-                  🔐 Кампания требует PIN-подтверждение
+                  <Lock size={13} color={C.gold} strokeWidth={2} />
+                  Кампания требует PIN-подтверждение
                 </div>
               )}
             </div>
@@ -445,8 +463,11 @@ export default function Admin() {
                   textAlign: 'center', cursor: 'pointer', marginBottom: 12,
                   boxShadow: `0 6px 24px ${C.goldGl}`,
                 }}>
-                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.5)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    {pinCopied ? '✅ СКОПИРОВАНО' : 'НАЖМИТЕ ЧТОБЫ СКОПИРОВАТЬ'}
+                  <div style={{ fontSize: 11, color: 'rgba(0,0,0,0.5)', marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    {pinCopied
+                      ? <><CheckCircle size={12} color="rgba(0,0,0,0.5)" /> СКОПИРОВАНО</>
+                      : <><Copy size={12} color="rgba(0,0,0,0.5)" /> НАЖМИТЕ ЧТОБЫ СКОПИРОВАТЬ</>
+                    }
                   </div>
                   <div style={{ fontSize: 52, fontWeight: 900, color: '#1a0800', letterSpacing: 14 }}>{pin}</div>
                   <div style={{ fontSize: 12, color: 'rgba(0,0,0,0.45)', marginTop: 8 }}>
@@ -457,7 +478,9 @@ export default function Admin() {
                   width: '100%', background: C.card, border: `1px solid ${C.b1}`,
                   borderRadius: 12, padding: '13px', fontSize: 15,
                   fontWeight: 700, color: C.t2, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                 }}>
+                  <RefreshCw size={15} color={C.t2} />
                   Сгенерировать новый
                 </button>
               </div>
@@ -475,8 +498,12 @@ export default function Admin() {
                   cursor: pinLoading ? 'not-allowed' : 'pointer',
                   boxShadow: pinLoading ? 'none' : `0 6px 24px ${C.goldGl}`,
                   transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
-                  {pinLoading ? '⏳ Генерируем...' : '🔐 Создать PIN'}
+                  {pinLoading
+                    ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> Генерируем...</>
+                    : <><Lock size={18} color="#1a0800" strokeWidth={2} /> Создать PIN</>
+                  }
                 </button>
               </>
             )}
@@ -489,7 +516,8 @@ export default function Admin() {
             animation: 'fadeUp 0.35s 0.15s ease both',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 16, textAlign: 'left' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 16, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <QrCode size={13} color={C.t3} />
               QR-код заведения
             </div>
             <div style={{

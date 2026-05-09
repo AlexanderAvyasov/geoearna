@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react';
+import { MapPin, Compass, ScanLine, Coins, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C, G, E, sk, cardBase, pressable } from '../lib/design';
 
-const TASK_LABEL = { visit: '📍 Визит', purchase: '🛍 Покупка', review: '⭐ Отзыв' };
+const TASK_ICONS = {
+  visit:    MapPin,
+  purchase: ShoppingBag,
+  review:   Star,
+};
+const TASK_LABELS = {
+  visit:    'Визит',
+  purchase: 'Покупка',
+  review:   'Отзыв',
+};
 
 function SkeletonCard() {
   const shimmer = {
@@ -27,6 +37,8 @@ function CampaignSheet({ campaign, userPos, onClose }) {
   const dist = userPos && campaign.lat && campaign.lng
     ? haversineMeters(userPos, { lat: +campaign.lat, lng: +campaign.lng })
     : null;
+
+  const TaskIcon = TASK_ICONS[campaign.task_type] || MapPin;
 
   return (
     <>
@@ -52,24 +64,24 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         animation: 'slideUp 0.35s cubic-bezier(0.32,0.72,0,1)',
         boxShadow: '0 -8px 60px rgba(0,0,0,0.6)',
       }}>
-        {/* Handle */}
         <div style={{ width: 38, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 24px' }} />
 
         <div style={{ padding: '0 22px' }}>
-          {/* Business name */}
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 4, color: C.t1, letterSpacing: -0.4 }}>
             {campaign.business_name}
           </div>
 
           {campaign.address && (
             <div style={{ fontSize: 14, color: C.t3, marginBottom: dist !== null ? 4 : 20, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>📍</span><span>{campaign.address}</span>
+              <MapPin size={14} color={C.t3} />
+              <span>{campaign.address}</span>
             </div>
           )}
 
           {dist !== null && (
-            <div style={{ fontSize: 13, color: C.blue, fontWeight: 700, marginBottom: 20 }}>
-              🧭 {formatDistance(dist)} от вас
+            <div style={{ fontSize: 13, color: C.blue, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Compass size={13} color={C.blue} />
+              {formatDistance(dist)} от вас
             </div>
           )}
 
@@ -97,11 +109,12 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 
           {/* Task type */}
           <div style={{ background: C.card, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '14px 16px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
+            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
               Тип задания
             </div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: C.t1 }}>
-              {TASK_LABEL[campaign.task_type] || '📍 Визит'}
+            <div style={{ fontWeight: 700, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <TaskIcon size={16} color={C.blue} strokeWidth={2} />
+              {TASK_LABELS[campaign.task_type] || 'Визит'}
             </div>
             {campaign.task_description && (
               <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.5, marginTop: 6 }}>
@@ -117,7 +130,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               borderRadius: 14, padding: '12px 14px', marginBottom: 10,
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
-              <span style={{ fontSize: 18 }}>🔐</span>
+              <Lock size={18} color={C.gold} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
                 <div style={{ fontWeight: 700, fontSize: 14, color: C.gold, marginBottom: 2 }}>Требуется PIN</div>
                 <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.4 }}>
@@ -133,12 +146,12 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               Как получить
             </div>
             {[
-              ['📷', 'Отсканируйте QR-код в заведении'],
-              ['📍', 'Разрешите доступ к геолокации'],
-              ['💎', 'GEO зачислятся мгновенно'],
-            ].map(([icon, text]) => (
+              [ScanLine, 'Отсканируйте QR-код в заведении'],
+              [MapPin,   'Разрешите доступ к геолокации'],
+              [Coins,    'GEO зачислятся мгновенно'],
+            ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <span style={{ fontSize: 17, flexShrink: 0 }}>{icon}</span>
+                <Icon size={17} color={C.blue} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: C.t2 }}>{text}</span>
               </div>
             ))}
@@ -194,13 +207,15 @@ function CampaignCard({ campaign, onTap, index }) {
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ fontSize: 12, color: C.blue, fontWeight: 600 }}>
-              🧭 {formatDistance(campaign.dist)}
+            <span style={{ fontSize: 12, color: C.blue, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <Compass size={11} color={C.blue} />
+              {formatDistance(campaign.dist)}
             </span>
           )}
           {campaign.address && campaign.dist === undefined && (
-            <span style={{ fontSize: 12, color: C.t3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              📍 {campaign.address}
+            <span style={{ fontSize: 12, color: C.t3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <MapPin size={11} color={C.t3} />
+              {campaign.address}
             </span>
           )}
           {campaign.requires_pin && (
@@ -208,7 +223,10 @@ function CampaignCard({ campaign, onTap, index }) {
               fontSize: 10, color: C.gold, fontWeight: 700,
               background: C.goldFt, borderRadius: 6, padding: '2px 6px',
               border: `1px solid ${C.goldGl}`,
-            }}>🔐 PIN</span>
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              <Lock size={9} color={C.gold} /> PIN
+            </span>
           )}
         </div>
       </div>
@@ -221,7 +239,9 @@ function CampaignCard({ campaign, onTap, index }) {
         }}>
           +{formatGeo(campaign.reward_amount)} GEO
         </div>
-        <div style={{ fontSize: 11, color: C.t3, marginTop: 5 }}>Подробнее →</div>
+        <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+          Подробнее <ChevronRight size={10} color={C.t3} />
+        </div>
       </div>
     </div>
   );
@@ -269,7 +289,6 @@ export default function Home() {
         padding: '32px 20px 52px',
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* ambient glow */}
         <div style={{
           position: 'absolute', top: -40, right: -40,
           width: 200, height: 200, borderRadius: '50%',
@@ -286,8 +305,9 @@ export default function Home() {
         <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, letterSpacing: 1.5, marginBottom: 10, textTransform: 'uppercase' }}>
           GeoEarn · Discover
         </div>
-        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, lineHeight: 1.1, letterSpacing: -0.8, color: C.t1 }}>
-          Зарабатывайте GEO 💎
+        <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 8, lineHeight: 1.1, letterSpacing: -0.8, color: C.t1, display: 'flex', alignItems: 'center', gap: 10 }}>
+          Зарабатывайте GEO
+          <Coins size={28} color={C.geo} strokeWidth={1.75} />
         </div>
         <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.6, maxWidth: 280 }}>
           Посещайте заведения и получайте GEO-монеты за каждый визит
@@ -300,7 +320,8 @@ export default function Home() {
             borderRadius: 20, padding: '5px 12px', marginTop: 16,
             fontSize: 12, color: C.geo, fontWeight: 700,
           }}>
-            🧭 Сортировка по расстоянию
+            <Compass size={12} color={C.geo} />
+            Сортировка по расстоянию
           </div>
         )}
       </div>
@@ -330,7 +351,7 @@ export default function Home() {
 
           {!loading && error && (
             <div style={{ textAlign: 'center', paddingTop: 56 }}>
-              <div style={{ fontSize: 52, marginBottom: 12 }}>😕</div>
+              <AlertCircle size={52} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
               <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
               <div style={{ color: C.t3, fontSize: 14 }}>{error}</div>
             </div>
@@ -338,7 +359,7 @@ export default function Home() {
 
           {!loading && !error && displayed.length === 0 && (
             <div style={{ textAlign: 'center', paddingTop: 56 }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>🏪</div>
+              <Store size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.4 }} />
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активных кампаний</div>
               <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
                 Пока нет заведений с активными акциями.<br />Загляните позже!
@@ -362,12 +383,12 @@ export default function Home() {
               Как это работает
             </div>
             {[
-              ['📷', 'Нажмите 📷 и отсканируйте QR-код в заведении'],
-              ['📍', 'Разрешите доступ к геолокации'],
-              ['💎', 'GEO-монеты зачислятся мгновенно'],
-            ].map(([icon, text]) => (
+              [ScanLine, 'Нажмите кнопку сканера и отсканируйте QR-код'],
+              [MapPin,   'Разрешите доступ к геолокации'],
+              [Coins,    'GEO-монеты зачислятся мгновенно'],
+            ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                <span style={{ fontSize: 20, flexShrink: 0 }}>{icon}</span>
+                <Icon size={20} color={C.blue} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: 14, color: C.t2 }}>{text}</span>
               </div>
             ))}

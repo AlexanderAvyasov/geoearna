@@ -10,6 +10,7 @@ const campaignsRoutes = require('./routes/campaigns');
 const adminRoutes = require('./routes/admin');
 const operatorRoutes = require('./routes/operator');
 const configRoutes = require('./routes/config');
+const superadminRoutes = require('./routes/superadmin');
 
 dotenv.config();
 
@@ -47,6 +48,7 @@ app.use(campaignsRoutes);
 app.use(adminRoutes);
 app.use(operatorRoutes);
 app.use(configRoutes);
+app.use(superadminRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });

@@ -1,31 +1,32 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { MapPin, Clock, ClipboardList, Link2, Lock, Key, Ban, Timer, XCircle, Wifi, CheckCircle, AlertCircle, AlertTriangle } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { useLocation } from '../hooks/useLocation';
 import { API_BASE } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E } from '../lib/design';
 
-const BURST = [
-  { tx: '-72px', ty: '-80px', delay: '0s',    emoji: '💎' },
-  { tx:   '0px', ty: '-96px', delay: '0.06s', emoji: '⭐' },
-  { tx:  '72px', ty: '-80px', delay: '0.04s', emoji: '💎' },
-  { tx:  '96px', ty:   '0px', delay: '0.08s', emoji: '⭐' },
-  { tx:  '72px', ty:  '80px', delay: '0.06s', emoji: '💎' },
-  { tx:   '0px', ty:  '96px', delay: '0.1s',  emoji: '⭐' },
-  { tx: '-72px', ty:  '80px', delay: '0.04s', emoji: '💎' },
-  { tx: '-96px', ty:   '0px', delay: '0.02s', emoji: '⭐' },
+const BURST_COLORS = [
+  { tx: '-72px', ty: '-80px', delay: '0s',    color: C.geo  },
+  { tx:   '0px', ty: '-96px', delay: '0.06s', color: C.gold },
+  { tx:  '72px', ty: '-80px', delay: '0.04s', color: C.geo  },
+  { tx:  '96px', ty:   '0px', delay: '0.08s', color: C.gold },
+  { tx:  '72px', ty:  '80px', delay: '0.06s', color: C.geo  },
+  { tx:   '0px', ty:  '96px', delay: '0.1s',  color: '#2AABEE' },
+  { tx: '-72px', ty:  '80px', delay: '0.04s', color: C.geo  },
+  { tx: '-96px', ty:   '0px', delay: '0.02s', color: C.gold },
 ];
 
 const ERRORS = {
-  TOO_FAR:            { icon: '📍', title: 'Слишком далеко',      text: 'Подойдите ближе к заведению и попробуйте снова.' },
-  TOO_SOON:           { icon: '⏰', title: 'Уже чекинились',     text: 'Вы недавно были в этом заведении. Возвращайтесь завтра!' },
-  NO_ACTIVE_CAMPAIGN: { icon: '📋', title: 'Нет акции',           text: 'В данный момент нет активных акций для этого заведения.' },
-  INVALID_QR_TOKEN:   { icon: '🔗', title: 'Неверный QR',         text: 'QR-код недействителен. Попробуйте отсканировать заново.' },
-  PIN_REQUIRED:       { icon: '🔐', title: 'Нужен PIN',            text: 'Для этого заведения требуется PIN-код от сотрудника.' },
-  INVALID_PIN:        { icon: '🔑', title: 'Неверный PIN',         text: 'Введённый PIN-код неверен. Попросите сотрудника повторить.' },
-  PIN_USED:           { icon: '🚫', title: 'PIN уже использован', text: 'Этот PIN уже использован. Попросите новый.' },
-  PIN_EXPIRED:        { icon: '⌛', title: 'PIN устарел',          text: 'Срок действия PIN истёк. Попросите сотрудника сгенерировать новый.' },
+  TOO_FAR:            { Icon: MapPin,        title: 'Слишком далеко',      text: 'Подойдите ближе к заведению и попробуйте снова.' },
+  TOO_SOON:           { Icon: Clock,         title: 'Уже чекинились',     text: 'Вы недавно были в этом заведении. Возвращайтесь завтра!' },
+  NO_ACTIVE_CAMPAIGN: { Icon: ClipboardList, title: 'Нет акции',           text: 'В данный момент нет активных акций для этого заведения.' },
+  INVALID_QR_TOKEN:   { Icon: Link2,         title: 'Неверный QR',         text: 'QR-код недействителен. Попробуйте отсканировать заново.' },
+  PIN_REQUIRED:       { Icon: Lock,          title: 'Нужен PIN',            text: 'Для этого заведения требуется PIN-код от сотрудника.' },
+  INVALID_PIN:        { Icon: Key,           title: 'Неверный PIN',         text: 'Введённый PIN-код неверен. Попросите сотрудника повторить.' },
+  PIN_USED:           { Icon: Ban,           title: 'PIN уже использован', text: 'Этот PIN уже использован. Попросите новый.' },
+  PIN_EXPIRED:        { Icon: Timer,         title: 'PIN устарел',          text: 'Срок действия PIN истёк. Попросите сотрудника сгенерировать новый.' },
 };
 
 export default function Checkin() {
@@ -46,7 +47,7 @@ export default function Checkin() {
   useEffect(() => {
     if (!token) {
       setStatus('error');
-      setErrInfo({ icon: '🔗', title: 'Нет токена', text: 'Откройте приложение через Telegram-бота или QR-код.' });
+      setErrInfo({ Icon: Link2, title: 'Нет токена', text: 'Откройте приложение через Telegram-бота или QR-код.' });
       return;
     }
     fetch(`${API_BASE}/api/checkin/info?token=${encodeURIComponent(token)}`)
@@ -54,14 +55,14 @@ export default function Checkin() {
       .then(({ ok, data }) => {
         if (!ok) {
           const code = data?.error || 'UNKNOWN';
-          setErrInfo(ERRORS[code] || { icon: '❌', title: 'Ошибка', text: 'Не удалось найти заведение.' });
+          setErrInfo(ERRORS[code] || { Icon: XCircle, title: 'Ошибка', text: 'Не удалось найти заведение.' });
           setStatus('error');
         } else {
           setBusinessInfo(data);
         }
       })
       .catch(() => {
-        setErrInfo({ icon: '🌐', title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
+        setErrInfo({ Icon: Wifi, title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
         setStatus('error');
       });
   }, [token]);
@@ -70,7 +71,7 @@ export default function Checkin() {
     if (!businessInfo || sent.current || status === 'error') return;
     if (locError) {
       setStatus('error');
-      setErrInfo({ icon: '📍', title: 'Нет геолокации', text: locError });
+      setErrInfo({ Icon: MapPin, title: 'Нет геолокации', text: locError });
       return;
     }
     if (locLoading || lat == null || lng == null) return;
@@ -101,7 +102,7 @@ export default function Checkin() {
           setStatus('pin');
           setPin('');
         } else {
-          setErrInfo(ERRORS[code] || { icon: '❌', title: 'Ошибка', text: 'Не удалось выполнить чекин.' });
+          setErrInfo(ERRORS[code] || { Icon: XCircle, title: 'Ошибка', text: 'Не удалось выполнить чекин.' });
           setStatus('error');
         }
       } else {
@@ -111,7 +112,7 @@ export default function Checkin() {
         setTimeout(() => setShowBurst(false), 1200);
       }
     } catch {
-      setErrInfo({ icon: '🌐', title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
+      setErrInfo({ Icon: Wifi, title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
       setStatus('error');
     }
   }
@@ -124,8 +125,6 @@ export default function Checkin() {
   }
 
   const isSuccess = status === 'success';
-  const isError   = status === 'error';
-  const isLight   = isError && !isSuccess;
 
   return (
     <div style={{
@@ -135,21 +134,22 @@ export default function Checkin() {
       padding: '32px 24px',
       background: isSuccess
         ? 'linear-gradient(160deg, #030A0F 0%, #051A0F 50%, #030A0F 100%)'
-        : isError ? C.bg : C.bg,
+        : C.bg,
       textAlign: 'center',
       transition: 'background 0.6s ease',
     }}>
-      {/* COIN BURST */}
+      {/* PARTICLE BURST */}
       {showBurst && (
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {BURST.map((c, i) => (
+          {BURST_COLORS.map((c, i) => (
             <div key={i} style={{
-              position: 'absolute', fontSize: 30,
+              position: 'absolute',
+              width: 10, height: 10, borderRadius: '50%',
+              background: c.color,
+              boxShadow: `0 0 6px ${c.color}`,
               '--tx': c.tx, '--ty': c.ty,
               animation: `coinBurst 1.0s ${c.delay} cubic-bezier(0.25,0.46,0.45,0.94) forwards`,
-            }}>
-              {c.emoji}
-            </div>
+            }} />
           ))}
         </div>
       )}
@@ -173,9 +173,8 @@ export default function Checkin() {
               width: 96, height: 96, borderRadius: '50%',
               background: C.surf, border: `1px solid ${C.b1}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 38,
             }}>
-              {status === 'submitting' ? '✔️' : '📍'}
+              <MapPin size={38} color={C.blue} strokeWidth={1.75} />
             </div>
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
@@ -198,10 +197,12 @@ export default function Checkin() {
             width: 80, height: 80, borderRadius: '50%',
             background: G.gold,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 38, margin: '0 auto 24px',
+            margin: '0 auto 24px',
             boxShadow: `0 6px 28px ${C.goldGl}`,
             animation: 'pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275)',
-          }}>🔐</div>
+          }}>
+            <Lock size={38} color="#1a0800" strokeWidth={2} />
+          </div>
 
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 6, color: C.t1 }}>Введите PIN-код</div>
           <div style={{ color: C.blue, fontSize: 15, marginBottom: 6, fontWeight: 600 }}>{businessInfo.businessName}</div>
@@ -232,8 +233,10 @@ export default function Checkin() {
                 background: C.redFt, color: C.red, borderRadius: 10,
                 padding: '10px 12px', fontSize: 14, fontWeight: 600,
                 marginBottom: 16, border: `1px solid rgba(255,59,92,0.2)`,
+                display: 'flex', alignItems: 'center', gap: 7,
               }}>
-                ⚠️ {pinError}
+                <AlertTriangle size={15} color={C.red} strokeWidth={2} style={{ flexShrink: 0 }} />
+                {pinError}
               </div>
             )}
             <button type="submit" disabled={pin.length < 4} style={{
@@ -265,10 +268,10 @@ export default function Checkin() {
             width: 116, height: 116, borderRadius: '50%',
             background: G.geo,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 56, marginBottom: 32,
+            marginBottom: 32,
             animation: 'pop 0.55s cubic-bezier(0.175,0.885,0.32,1.275), successGlow 2.5s 0.6s ease-in-out infinite',
           }}>
-            ✅
+            <CheckCircle size={56} color="#071a0c" strokeWidth={2.5} />
           </div>
 
           <div style={{ fontWeight: 900, fontSize: 28, marginBottom: 6, color: C.t1, letterSpacing: -0.5, animation: 'fadeUp 0.4s 0.2s both' }}>
@@ -307,7 +310,7 @@ export default function Checkin() {
             boxShadow: `0 6px 28px ${C.blueGl}`,
             animation: 'fadeUp 0.4s 0.45s both',
           }}>
-            Перейти к балансу →
+            Перейти к балансу
           </Link>
           <Link to="/" style={{
             display: 'block', marginTop: 18,
@@ -326,10 +329,10 @@ export default function Checkin() {
             width: 104, height: 104, borderRadius: '50%',
             background: C.surf, border: `1px solid ${C.b1}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 52, marginBottom: 24,
+            marginBottom: 24,
             animation: 'pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275)',
           }}>
-            {errInfo.icon}
+            <errInfo.Icon size={48} color={C.red} strokeWidth={1.5} />
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
             {errInfo.title}

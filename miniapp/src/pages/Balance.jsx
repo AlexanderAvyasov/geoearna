@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Coins, TrendingUp, Map, Calendar, CreditCard, AlertCircle, ArrowRight } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
@@ -82,7 +83,7 @@ export default function Balance() {
 
   if (error) return (
     <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: 52 }}>😕</div>
+      <AlertCircle size={52} color={C.red} strokeWidth={1.5} />
       <div style={{ color: C.red, fontWeight: 600 }}>{error}</div>
     </div>
   );
@@ -95,14 +96,12 @@ export default function Balance() {
         padding: '36px 22px 60px',
         position: 'relative', overflow: 'hidden',
       }}>
-        {/* Blue ambient glow */}
         <div style={{
           position: 'absolute', top: -60, right: -60,
           width: 240, height: 240, borderRadius: '50%',
           background: 'radial-gradient(circle, rgba(42,171,238,0.14) 0%, transparent 70%)',
           pointerEvents: 'none', animation: 'glowPulse 4s ease-in-out infinite',
         }} />
-        {/* Green ambient */}
         <div style={{
           position: 'absolute', bottom: -40, left: -40,
           width: 180, height: 180, borderRadius: '50%',
@@ -110,8 +109,9 @@ export default function Balance() {
           pointerEvents: 'none',
         }} />
 
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14 }}>
-          💎 GEO Wallet
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Coins size={14} color={C.geo} strokeWidth={2} />
+          GEO Wallet
         </div>
 
         {loading ? (
@@ -137,7 +137,8 @@ export default function Balance() {
                 borderRadius: 20, padding: '4px 12px', marginTop: 14,
                 fontSize: 12, color: C.blue, fontWeight: 700,
               }}>
-                📈 1 GEO = {geoRate} UZS
+                <TrendingUp size={12} color={C.blue} />
+                1 GEO = {geoRate} UZS
               </div>
             )}
           </>
@@ -179,7 +180,7 @@ export default function Balance() {
             boxShadow: `0 8px 28px ${C.blueGl}`,
             animation: 'fadeUp 0.35s ease both',
           }}>
-            <span style={{ fontSize: 20 }}>💳</span>
+            <CreditCard size={20} color="#fff" strokeWidth={2} />
             Вывести GEO → UZS
           </Link>
         </div>
@@ -199,7 +200,7 @@ export default function Balance() {
 
           {!loading && visits.length === 0 && (
             <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-              <div style={{ fontSize: 64, marginBottom: 16 }}>🗺️</div>
+              <Map size={64} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.35 }} />
               <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
               <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
                 Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
@@ -220,8 +221,9 @@ export default function Balance() {
                 <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
                   {v.business_name || 'Заведение'}
                 </div>
-                <div style={{ fontSize: 12, color: C.t3 }}>
-                  📅 {formatDate(v.created_at)}
+                <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Calendar size={11} color={C.t3} />
+                  {formatDate(v.created_at)}
                 </div>
               </div>
               <div style={{ flexShrink: 0, textAlign: 'right' }}>

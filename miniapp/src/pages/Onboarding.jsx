@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { MapPin, Coins, CreditCard, User, Store, Check, Sparkles } from 'lucide-react';
 import { C, G, E } from '../lib/design';
 
 const SLIDES = [
   {
-    icon: '📍',
+    Icon: MapPin,
     bg: 'linear-gradient(160deg, #050810 0%, #0C1428 60%, #050810 100%)',
     accent: C.blue,
     glowColor: 'rgba(42,171,238,0.18)',
@@ -11,7 +12,7 @@ const SLIDES = [
     text: 'Зарабатывайте GEO-монеты, просто посещая любимые заведения. Реальные деньги за каждый визит.',
   },
   {
-    icon: '💎',
+    Icon: Coins,
     bg: 'linear-gradient(160deg, #050810 0%, #071A10 60%, #050810 100%)',
     accent: C.geo,
     glowColor: 'rgba(0,230,118,0.15)',
@@ -19,7 +20,7 @@ const SLIDES = [
     text: 'Сканируете QR → система проверяет геолокацию → GEO-монеты мгновенно зачисляются на ваш кошелёк.',
   },
   {
-    icon: '💳',
+    Icon: CreditCard,
     bg: 'linear-gradient(160deg, #050810 0%, #1A1200 60%, #050810 100%)',
     accent: C.gold,
     glowColor: 'rgba(255,184,0,0.13)',
@@ -68,11 +69,11 @@ function SlidePhase({ onDone }) {
           background: s.glowColor,
           border: `1.5px solid ${s.accent}35`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 62, marginBottom: 40,
+          marginBottom: 40,
           animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
           boxShadow: `0 0 60px ${s.glowColor}`,
         }}>
-          {s.icon}
+          <s.Icon size={56} color={s.accent} strokeWidth={1.5} />
         </div>
 
         {/* Counter pill */}
@@ -134,7 +135,7 @@ function SlidePhase({ onDone }) {
         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        {slide < SLIDES.length - 1 ? 'Далее →' : 'Выбрать режим'}
+        {slide < SLIDES.length - 1 ? 'Далее' : 'Выбрать режим'}
       </button>
     </div>
   );
@@ -146,7 +147,7 @@ function ModePhase({ onChoose }) {
   const modes = [
     {
       id: 'user',
-      icon: '🧑',
+      Icon: User,
       label: 'Покупатель',
       desc: 'Зарабатываю GEO-монеты, посещая заведения',
       accent: C.blue,
@@ -156,7 +157,7 @@ function ModePhase({ onChoose }) {
     },
     {
       id: 'business',
-      icon: '🏪',
+      Icon: Store,
       label: 'Бизнес',
       desc: 'Управляю кампаниями и привлекаю клиентов',
       accent: C.geo,
@@ -177,10 +178,14 @@ function ModePhase({ onChoose }) {
       <div style={{ animation: 'fadeUp 0.5s ease both', width: '100%', maxWidth: 380 }}>
         <div style={{ textAlign: 'center', marginBottom: 44 }}>
           <div style={{
-            fontSize: 56, marginBottom: 20,
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'rgba(42,171,238,0.12)',
+            border: '1.5px solid rgba(42,171,238,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px',
             animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
           }}>
-            👋
+            <Sparkles size={38} color={C.blue} strokeWidth={1.75} />
           </div>
           <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, marginBottom: 10, lineHeight: 1.2, letterSpacing: -0.5 }}>
             Кто вы?
@@ -211,9 +216,9 @@ function ModePhase({ onChoose }) {
                 background: chosen === m.id ? m.bg : C.b0,
                 border: `1.5px solid ${chosen === m.id ? m.border : C.b1}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 28, transition: `all 0.2s ${E.smooth}`,
+                transition: `all 0.2s ${E.smooth}`,
               }}>
-                {m.icon}
+                <m.Icon size={26} color={chosen === m.id ? m.accent : C.t3} strokeWidth={1.75} />
               </div>
               <div>
                 <div style={{
@@ -231,11 +236,10 @@ function ModePhase({ onChoose }) {
                 <div style={{
                   marginLeft: 'auto', width: 24, height: 24, borderRadius: '50%',
                   background: m.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, color: m.id === 'business' ? '#071a0c' : '#fff',
-                  fontWeight: 900, flexShrink: 0,
+                  flexShrink: 0,
                   animation: 'pop 0.3s cubic-bezier(0.175,0.885,0.32,1.275)',
                 }}>
-                  ✓
+                  <Check size={13} color={m.id === 'business' ? '#071a0c' : '#fff'} strokeWidth={3} />
                 </div>
               )}
             </button>
@@ -259,7 +263,7 @@ function ModePhase({ onChoose }) {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          {chosen ? 'Начать →' : 'Выберите режим'}
+          {chosen ? 'Начать' : 'Выберите режим'}
         </button>
       </div>
     </div>

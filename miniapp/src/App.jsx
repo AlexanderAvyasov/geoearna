@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { useTelegram, tg } from './hooks/useTelegram';
+import { useTelegram, tg, user } from './hooks/useTelegram';
+import { Home as HomeIcon, Map as MapIcon, ScanLine, Coins, Store as StoreIcon, Shield, Loader2 } from 'lucide-react';
 import { C, G, E } from './lib/design';
 import Home       from './pages/Home';
 import MapPage    from './pages/Map';
@@ -8,7 +9,10 @@ import Checkin    from './pages/Checkin';
 import Balance    from './pages/Balance';
 import Withdraw   from './pages/Withdraw';
 import Admin      from './pages/Admin';
+import SuperAdmin from './pages/SuperAdmin';
 import Onboarding from './pages/Onboarding';
+
+const IS_SUPER_ADMIN = user?.id === 930826522;
 
 export const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; }
@@ -95,6 +99,10 @@ export const GLOBAL_CSS = `
     50%  { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
   }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
 `;
 
 function parseToken(raw) {
@@ -160,9 +168,10 @@ function ScanQrButton({ onToast }) {
       onMouseDown={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.88)'; }}
       onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
     >
-      <span style={{ fontSize: 26, lineHeight: 1, filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))' }}>
-        {scanning ? '⏳' : '📷'}
-      </span>
+      {scanning
+        ? <Loader2 size={24} strokeWidth={2} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+        : <ScanLine size={24} strokeWidth={2} color="#fff" />
+      }
     </button>
   );
 }
@@ -189,11 +198,13 @@ function Toast({ message }) {
 }
 
 const NAV_ITEMS = [
-  { to: '/',        icon: '🏠', label: 'Главная' },
-  { to: '/map',     icon: '🗺️', label: 'Карта'   },
+  { to: '/',        Icon: HomeIcon,  label: 'Главная' },
+  { to: '/map',     Icon: MapIcon,   label: 'Карта'   },
   null,
-  { to: '/balance', icon: '💎', label: 'Кошелёк' },
-  { to: '/admin',   icon: '🏪', label: 'Бизнес'  },
+  { to: '/balance', Icon: Coins,     label: 'Кошелёк' },
+  IS_SUPER_ADMIN
+    ? { to: '/superadmin', Icon: Shield,    label: 'SA Panel' }
+    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес'   },
 ];
 
 function BottomNav() {
@@ -201,6 +212,7 @@ function BottomNav() {
   const [toast, setToast] = useState(null);
 
   if (pathname === '/checkin' || pathname === '/withdraw') return null;
+  if (IS_SUPER_ADMIN && pathname === '/admin') return null;
 
   function showToast(msg) {
     setToast(msg);
@@ -237,8 +249,10 @@ function BottomNav() {
             : pathname.startsWith(item.to);
 
           const activeColor = item.to === '/balance' ? C.geo
-            : item.to === '/admin' ? C.gold
+            : item.to === '/admin' || item.to === '/superadmin' ? C.gold
             : C.blue;
+
+          const iconColor = isActive ? activeColor : 'rgba(255,255,255,0.3)';
 
           return (
             <NavLink
@@ -251,18 +265,20 @@ function BottomNav() {
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <span style={{
-                fontSize: 22, lineHeight: 1,
-                filter: isActive ? 'none' : 'grayscale(1) opacity(0.35)',
-                transition: `filter 0.15s, transform 0.15s ${E.spring}`,
-                transform: isActive ? 'scale(1.12)' : 'scale(1)',
-                display: 'block',
-              }}>
-                {item.icon}
-              </span>
+              <item.Icon
+                size={22}
+                strokeWidth={isActive ? 2 : 1.75}
+                color={iconColor}
+                style={{
+                  transition: `color 0.15s, transform 0.15s ${E.spring}`,
+                  transform: isActive ? 'scale(1.12)' : 'scale(1)',
+                  display: 'block',
+                  filter: isActive ? `drop-shadow(0 0 6px ${activeColor}80)` : 'none',
+                }}
+              />
               <span style={{
                 fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
-                color: isActive ? activeColor : C.t3,
+                color: isActive ? activeColor : 'rgba(255,255,255,0.3)',
                 transition: 'color 0.15s',
                 textTransform: 'uppercase',
               }}>
@@ -289,8 +305,9 @@ function BottomNav() {
 
 function AppLayout() {
   const { pathname } = useLocation();
-  const hasNav = pathname !== '/checkin' && pathname !== '/withdraw';
-  const isMap  = pathname === '/map';
+  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw';
+  const isMap   = pathname === '/map';
+  const isSAPage = pathname === '/superadmin';
 
   return (
     <div style={{
@@ -303,7 +320,7 @@ function AppLayout() {
       <div style={{
         maxWidth: 480, margin: '0 auto',
         paddingBottom: hasNav && !isMap ? 80 : 0,
-        height: isMap ? '100vh' : undefined,
+        height: isMap ? '100vh' : isSAPage ? 'auto' : undefined,
         overflow: isMap ? 'hidden' : undefined,
       }}>
         <Routes>
@@ -312,7 +329,8 @@ function AppLayout() {
           <Route path="/checkin"  element={<Checkin />} />
           <Route path="/balance"  element={<Balance />} />
           <Route path="/withdraw" element={<Withdraw />} />
-          <Route path="/admin"    element={<Admin />} />
+          <Route path="/admin"      element={<Admin />} />
+          <Route path="/superadmin" element={<SuperAdmin />} />
         </Routes>
       </div>
       <BottomNav />

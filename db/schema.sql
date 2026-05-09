@@ -254,3 +254,40 @@ BEGIN
   RETURN QUERY SELECT v_new_balance, v_wid;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- SuperAdmin additions
+-- ============================================================
+
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS note TEXT;
+ALTER TABLE withdrawals ADD COLUMN IF NOT EXISTS processed_at TIMESTAMPTZ;
+
+-- Atomic rejection: marks withdrawal as rejected, refunds GEO to user
+CREATE OR REPLACE FUNCTION reject_withdrawal(
+  p_withdrawal_id INTEGER,
+  p_note          TEXT DEFAULT NULL
+) RETURNS void AS $$
+DECLARE
+  v_user_id INTEGER;
+  v_amount  INTEGER;
+BEGIN
+  SELECT user_id, amount INTO v_user_id, v_amount
+    FROM withdrawals
+   WHERE id = p_withdrawal_id AND status = 'pending'
+     FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'NOT_FOUND';
+  END IF;
+
+  UPDATE withdrawals
+     SET status       = 'rejected',
+         note         = p_note,
+         processed_at = NOW()
+   WHERE id = p_withdrawal_id;
+
+  UPDATE users
+     SET balance = balance + v_amount
+   WHERE id = v_user_id;
+END;
+$$ LANGUAGE plpgsql;

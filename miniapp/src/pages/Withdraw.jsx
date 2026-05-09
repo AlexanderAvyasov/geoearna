@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Coins, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { initData } from '../hooks/useTelegram';
 import { API_BASE } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs, isValidUzPhone, normalizePhone } from '../lib/geo';
@@ -108,9 +109,11 @@ export default function Withdraw() {
       }}>
         <button onClick={() => navigate('/balance')} style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          color: C.blue, fontSize: 22, padding: '4px 8px 4px 0',
+          color: C.blue, padding: '4px 8px 4px 0',
           display: 'flex', alignItems: 'center',
-        }}>←</button>
+        }}>
+          <ArrowLeft size={22} color={C.blue} strokeWidth={2} />
+        </button>
         <div style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>Вывод GEO → UZS</div>
       </div>
 
@@ -132,8 +135,9 @@ export default function Withdraw() {
               background: 'radial-gradient(circle, rgba(42,171,238,0.12) 0%, transparent 70%)',
               pointerEvents: 'none',
             }} />
-            <div style={{ fontSize: 11, color: C.t3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1 }}>
-              💎 Доступно
+            <div style={{ fontSize: 11, color: C.t3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Coins size={12} color={C.geo} strokeWidth={2} />
+              Доступно
             </div>
             <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -1.5 }}>
               {formatGeo(balance)}
@@ -152,10 +156,12 @@ export default function Withdraw() {
               width: 96, height: 96, borderRadius: '50%',
               background: G.geo,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 46, margin: '0 auto 24px',
+              margin: '0 auto 24px',
               boxShadow: `0 8px 32px ${C.geoGl}`,
               animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
-            }}>✅</div>
+            }}>
+              <CheckCircle size={46} color="#071a0c" strokeWidth={2.5} />
+            </div>
 
             <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 8, color: C.t1 }}>Заявка принята!</div>
 
@@ -251,8 +257,10 @@ export default function Withdraw() {
                 borderRadius: 12, padding: '12px 14px',
                 fontSize: 14, fontWeight: 600, marginBottom: 16,
                 border: `1px solid rgba(255,59,92,0.2)`,
+                display: 'flex', alignItems: 'center', gap: 8,
               }}>
-                ⚠️ {error}
+                <AlertTriangle size={16} color={C.red} strokeWidth={2} style={{ flexShrink: 0 }} />
+                {error}
               </div>
             )}
 
@@ -265,8 +273,12 @@ export default function Withdraw() {
               cursor: (submitting || loading) ? 'not-allowed' : 'pointer',
               boxShadow: (submitting || loading) ? 'none' : `0 6px 24px ${C.blueGl}`,
               transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
-              {submitting ? '⏳ Отправляем...' : 'Вывести GEO'}
+              {submitting
+                ? <><Loader2 size={18} color="#fff" style={{ animation: 'spin 1s linear infinite' }} /> Отправляем...</>
+                : 'Вывести GEO'
+              }
             </button>
 
             <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: C.t3 }}>
