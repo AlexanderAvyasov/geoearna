@@ -63,7 +63,7 @@ export default function Balance() {
   const [user,        setUser]        = useState(null);
   const [visits,      setVisits]      = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
-  const [geoRate,     setGeoRate]     = useState(1);
+  const [geoRate,     setGeoRate]     = useState(1000);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
   const [activeTab,   setActiveTab]   = useState('visits');
@@ -73,13 +73,13 @@ export default function Balance() {
     Promise.all([
       fetch(`${API_BASE}/api/me`,            { headers: h }).then(r => r.json()),
       fetch(`${API_BASE}/api/visits`,         { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/config`).then(r => r.json()).catch(() => ({ geoRate: 1 })),
+      fetch(`${API_BASE}/api/config`).then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
       fetch(`${API_BASE}/api/me/withdrawals`, { headers: h }).then(r => r.json()).catch(() => ({ withdrawals: [] })),
     ])
       .then(([me, vis, cfg, wds]) => {
         setUser(me.user);
         setVisits(vis.visits || []);
-        setGeoRate(cfg.geoRate || 1);
+        setGeoRate(cfg.geoRate || 1000);
         setWithdrawals(wds.withdrawals || []);
       })
       .catch(() => setError('Не удалось загрузить данные.'))

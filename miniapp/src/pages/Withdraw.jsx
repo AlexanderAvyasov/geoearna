@@ -35,7 +35,7 @@ export default function Withdraw() {
   const [phone,     setPhone]     = useState('');
   const [amount,    setAmount]    = useState('');
   const [balance,   setBalance]   = useState(0);
-  const [geoRate,   setGeoRate]   = useState(1);
+  const [geoRate,   setGeoRate]   = useState(1000);
   const [success,   setSuccess]   = useState(false);
   const [successData, setSuccessData] = useState(null);
   const [error,     setError]     = useState('');
@@ -47,11 +47,11 @@ export default function Withdraw() {
     const h = { initdata: initData };
     Promise.all([
       fetch(`${API_BASE}/api/me`, { headers: h }).then(r => r.json()),
-      fetch(`${API_BASE}/api/config`).then(r => r.json()).catch(() => ({ geoRate: 1 })),
+      fetch(`${API_BASE}/api/config`).then(r => r.ok ? r.json() : { geoRate: 1000 }).catch(() => ({ geoRate: 1000 })),
     ])
       .then(([me, cfg]) => {
         setBalance(me.user?.balance || 0);
-        setGeoRate(cfg.geoRate || 1);
+        setGeoRate(cfg.geoRate || 1000);
       })
       .catch(() => setError('Не удалось загрузить баланс.'))
       .finally(() => setLoading(false));

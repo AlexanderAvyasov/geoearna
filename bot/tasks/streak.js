@@ -1,63 +1,77 @@
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../../api/services/notify');
 
+// 20:00 Tashkent = 15:00 UTC
+const REMINDER_UTC_HOUR = 15;
+
 async function sendStreakReminders() {
   try {
-    const h48ago = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-    const h72ago = new Date(Date.now() - 72 * 3600 * 1000).toISOString();
+    // Find users whose last_checkin_date was yesterday (Tashkent game day).
+    // We can't easily compute the game day in SQL, so we approximate:
+    // "last check-in was exactly 1 calendar day ago in UTC" is close enough for reminders.
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    // Users who visited 48–72h ago (window: missed yesterday, not today)
-    const { data: candidateVisits } = await supabase
-      .from('visits')
-      .select('user_id')
-      .gte('created_at', h72ago)
-      .lt('created_at', h48ago);
+    const { data: atRisk } = await supabase
+      .from('user_streaks')
+      .select('user_id, current_streak, freeze_available')
+      .eq('last_checkin_date', yesterdayStr)
+      .gt('current_streak', 0);
 
-    if (!candidateVisits || candidateVisits.length === 0) return;
+    if (!atRisk || atRisk.length === 0) return;
 
-    const candidateIds = [...new Set(candidateVisits.map(v => v.user_id))];
-
-    // Remove users who already visited in last 48h (still active)
-    const { data: recentVisits } = await supabase
-      .from('visits')
-      .select('user_id')
-      .gte('created_at', h48ago)
-      .in('user_id', candidateIds);
-
-    const activeIds = new Set((recentVisits || []).map(v => v.user_id));
-    const toNotifyIds = candidateIds.filter(id => !activeIds.has(id));
-
-    if (toNotifyIds.length === 0) return;
+    const userIds = atRisk.map(r => r.user_id);
 
     const { data: users } = await supabase
       .from('users')
-      .select('telegram_id')
-      .in('id', toNotifyIds);
+      .select('id, telegram_id')
+      .in('id', userIds);
 
-    for (const user of (users || [])) {
+    const userMap = Object.fromEntries((users || []).map(u => [u.id, u.telegram_id]));
+
+    for (const row of atRisk) {
+      const telegramId = userMap[row.user_id];
+      if (!telegramId) continue;
+
+      const streak = row.current_streak;
+      const hasFreeze = row.freeze_available > 0;
+
+      const freezeNote = hasFreeze
+        ? '\n❄️ У вас есть заморозка — она защитит ваш стрик, но лучше зайти сегодня!'
+        : '';
+
       await sendMessage(
-        user.telegram_id,
-        '⏰ *Не пропустите бонус!*\n\n' +
-        'Вы давно не заходили в GeoEarn.\n' +
-        'Посетите заведение сегодня и получите вознаграждение! 📍'
+        telegramId,
+        `🔥 *Ваш ${streak}-дневный стрик под угрозой!*\n\n` +
+        `Вы ещё не заходили сегодня. Посетите заведение и сохраните свою серию!${freezeNote} 📍`
       );
+
       // 100ms pause to stay within Telegram rate limits (~30 msg/sec)
       await new Promise(r => setTimeout(r, 100));
     }
 
-    console.log(`[streak] reminders sent to ${toNotifyIds.length} users`);
+    console.log(`[streak] reminders sent to ${atRisk.length} users`);
   } catch (err) {
     console.error('[streak] error', err?.message);
   }
 }
 
+// Schedule the reminder to fire at 15:00 UTC (= 20:00 Tashkent) every day.
 function startStreakTask() {
-  // Run once at startup (offset), then every 24h
-  const INTERVAL_MS = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const nextFire = new Date(now);
+  nextFire.setUTCHours(REMINDER_UTC_HOUR, 0, 0, 0);
+  if (nextFire <= now) nextFire.setUTCDate(nextFire.getUTCDate() + 1);
+
+  const msUntilFirst = nextFire.getTime() - now.getTime();
+
   setTimeout(() => {
     sendStreakReminders();
-    setInterval(sendStreakReminders, INTERVAL_MS);
-  }, 5 * 60 * 1000); // first run 5 minutes after bot starts
+    setInterval(sendStreakReminders, 24 * 60 * 60 * 1000);
+  }, msUntilFirst);
+
+  console.log(`[streak] next reminder scheduled in ${Math.round(msUntilFirst / 60000)} minutes`);
 }
 
 module.exports = { startStreakTask };

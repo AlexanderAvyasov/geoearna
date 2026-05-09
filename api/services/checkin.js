@@ -1,5 +1,17 @@
 const { supabase } = require('../../db/index');
 const { getDistance } = require('./geo');
+const {
+  getTashkentDay,
+  getWeekStart,
+  getLevelInfo,
+  getStreakAndLevel,
+  getActiveBoosts,
+  computeMultipliers,
+  applyStreakUpdate,
+  grantXp,
+  checkAndUpdateTasks,
+  checkAchievements,
+} = require('./gamification');
 
 async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   const { data: business, error: businessError } = await supabase
@@ -12,13 +24,11 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
     console.error('checkin business lookup error', businessError);
     throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
   }
-
   if (!business) {
     throw Object.assign(new Error('INVALID_QR_TOKEN'), { code: 'INVALID_QR_TOKEN' });
   }
 
   const distance = getDistance({ lat, lng }, { lat: business.lat, lng: business.lng });
-
   if (distance > business.radius_m) {
     throw Object.assign(new Error('TOO_FAR'), { code: 'TOO_FAR' });
   }
@@ -43,16 +53,13 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   if (!campaign) {
     throw Object.assign(new Error('NO_ACTIVE_CAMPAIGN'), { code: 'NO_ACTIVE_CAMPAIGN' });
   }
-
   if (business.balance < campaign.reward_amount) {
     throw Object.assign(new Error('BUSINESS_INSUFFICIENT_FUNDS'), { code: 'BUSINESS_INSUFFICIENT_FUNDS' });
   }
 
-  // PIN validation when campaign requires it
+  // PIN validation
   if (campaign.requires_pin) {
-    if (!pin) {
-      throw Object.assign(new Error('PIN_REQUIRED'), { code: 'PIN_REQUIRED' });
-    }
+    if (!pin) throw Object.assign(new Error('PIN_REQUIRED'), { code: 'PIN_REQUIRED' });
 
     const { data: pinRecord, error: pinError } = await supabase
       .from('verification_pins')
@@ -69,35 +76,94 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
     await supabase.from('verification_pins').update({ used: true }).eq('id', pinRecord.id);
   }
 
-  const { error: rpcError } = await supabase.rpc('process_checkin', {
-    p_user_id: userId,
+  // ── Gamification pre-computation ─────────────────────────────────────────
+  const [{ streak, user }, boosts, { count: prevVisitCount }] = await Promise.all([
+    getStreakAndLevel(userId),
+    getActiveBoosts(business.id),
+    supabase.from('visits').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId).eq('business_id', business.id),
+  ]);
+
+  const levelInfo = getLevelInfo(user?.xp || 0);
+  const { streakMult, levelMult, boostMult, newPlaceBonus, isBeforeNoon, projectedStreak: projStreak } =
+    computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt: business.created_at });
+
+  const baseReward = campaign.reward_amount;
+  const effectiveReward = Math.round(baseReward * levelMult * streakMult * boostMult);
+  const platformBonus = effectiveReward - baseReward + newPlaceBonus;
+
+  // ── Atomic checkin (business pays base reward) ────────────────────────────
+  const { data: visitId, error: rpcError } = await supabase.rpc('process_checkin', {
+    p_user_id:     userId,
     p_business_id: business.id,
     p_campaign_id: campaign.id,
-    p_lat: lat,
-    p_lng: lng,
-    p_reward: campaign.reward_amount,
+    p_lat:         lat,
+    p_lng:         lng,
+    p_reward:      baseReward,
   });
 
   if (rpcError) {
+    const code = rpcError.message?.includes('BUSINESS_INSUFFICIENT_FUNDS') ? 'BUSINESS_INSUFFICIENT_FUNDS'
+      : rpcError.message?.includes('NO_ACTIVE_CAMPAIGN') ? 'NO_ACTIVE_CAMPAIGN'
+      : 'INTERNAL_ERROR';
     console.error('checkin rpc error', rpcError);
-    throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
+    throw Object.assign(new Error(code), { code });
   }
 
-  const { data: updatedUser, error: updatedUserError } = await supabase
-    .from('users')
-    .select('balance')
-    .eq('id', userId)
-    .single();
-
-  if (updatedUserError) {
-    console.error('checkin user balance lookup error', updatedUserError);
-    throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
+  // Platform covers multiplier bonus + new-place bonus
+  if (platformBonus > 0) {
+    await supabase.rpc('apply_checkin_bonus', { p_user_id: userId, p_amount: platformBonus });
   }
+
+  // Fetch updated balance
+  const { data: updatedUser } = await supabase
+    .from('users').select('balance').eq('id', userId).single();
+
+  // ── Gamification pipeline (fire-and-forget) ───────────────────────────────
+  const today     = getTashkentDay();
+  const weekStart = getWeekStart(today);
+  const isFirstVisitToThisBusiness = (prevVisitCount || 0) === 0;
+
+  ;(async () => {
+    try {
+      const streakResult = await applyStreakUpdate(userId, today);
+      const newStreak = streakResult.newStreak;
+
+      const xpAmount =
+        10 +
+        (isFirstVisitToThisBusiness ? 20 : 0) +
+        (!streakResult.alreadyDone ? 5 : 0);
+      await grantXp(userId, xpAmount, 'checkin');
+
+      await Promise.all([
+        supabase.rpc('activate_referral', { p_referred_id: userId }),
+        visitId
+          ? supabase.rpc('process_referral_income', { p_referred_id: userId, p_visit_id: visitId, p_reward: baseReward })
+          : Promise.resolve(),
+        checkAndUpdateTasks(userId, business.id, today, weekStart, newStreak, isBeforeNoon),
+        checkAchievements(userId, business.id, newStreak),
+      ]);
+    } catch (e) {
+      console.error('[gamification] pipeline error', e?.message);
+    }
+  })();
 
   return {
-    reward: campaign.reward_amount,
-    totalBalance: updatedUser.balance,
+    reward:       effectiveReward + newPlaceBonus,
+    baseReward,
+    bonusReward:  platformBonus,
+    totalBalance: updatedUser?.balance || 0,
     businessName: business.name,
+    streakInfo: {
+      projected: projStreak,
+      streakMult,
+    },
+    levelInfo: {
+      level: levelInfo.level,
+      label: levelInfo.label,
+      levelMult,
+    },
+    newPlaceBonus,
   };
 }
 

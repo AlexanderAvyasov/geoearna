@@ -3,14 +3,19 @@ const { supabase } = require('../../db/index');
 
 async function startHandler(ctx) {
   try {
-    const qrToken = ctx.match || null;
+    const param      = ctx.match || null; // full /start parameter
     const telegramId = String(ctx.from?.id);
-    const username = ctx.from?.username || null;
-    const firstName = ctx.from?.first_name || 'пользователь';
+    const username   = ctx.from?.username || null;
+    const firstName  = ctx.from?.first_name || 'пользователь';
 
     if (!telegramId) {
       return ctx.reply('Не удалось определить ваш Telegram ID. Попробуйте снова.');
     }
+
+    // Determine whether param is a referral code or a QR token
+    const isReferral  = param && param.startsWith('ref_');
+    const referralCode = isReferral ? param : null;
+    const qrToken      = isReferral ? null : param;
 
     if (!ctx.session) ctx.session = {};
     if (qrToken) ctx.session.pendingQrToken = qrToken;
@@ -27,6 +32,7 @@ async function startHandler(ctx) {
     }
 
     if (!existingUser) {
+      // New user — create account
       const { data: insertedUser, error: insertError } = await supabase
         .from('users')
         .insert({ telegram_id: telegramId, username })
@@ -36,6 +42,11 @@ async function startHandler(ctx) {
       if (insertError) {
         console.error('start insert user error', insertError);
         return ctx.reply('Ошибка при регистрации. Попробуйте позже.');
+      }
+
+      // Record referral if the user arrived via a referral link
+      if (referralCode) {
+        await recordReferral(insertedUser.id, referralCode);
       }
 
       ctx.session.awaitingPhone = true;
@@ -59,6 +70,26 @@ async function startHandler(ctx) {
   }
 }
 
+// Look up the referrer by referral_code and create a referrals row
+async function recordReferral(newUserId, referralCode) {
+  try {
+    const { data: referrer } = await supabase
+      .from('users')
+      .select('id')
+      .eq('referral_code', referralCode)
+      .maybeSingle();
+
+    if (!referrer || referrer.id === newUserId) return;
+
+    await supabase.from('referrals').insert({
+      referrer_id: referrer.id,
+      referred_id: newUserId,
+    });
+  } catch (e) {
+    console.error('[referral] recordReferral error', e?.message);
+  }
+}
+
 async function sendMainMenu(ctx, user) {
   const qrToken = ctx.session?.pendingQrToken || null;
   if (qrToken) {
@@ -77,7 +108,7 @@ async function sendMainMenu(ctx, user) {
 
   return ctx.reply(
     `Добро пожаловать, ${ctx.from?.first_name || 'пользователь'}!\n\n` +
-    `Баланс: *${(user?.balance || 0).toLocaleString('ru-RU')} сум*\n\n` +
+    `Баланс: *${(user?.balance || 0).toLocaleString('ru-RU')} GEO*\n\n` +
     `Сканируйте QR-коды в заведениях и получайте вознаграждение.\n\n` +
     `Команды:\n/myqr — QR-код вашего заведения\n/mypin — одноразовый PIN для клиента`,
     { reply_markup: keyboard, parse_mode: 'Markdown' }

@@ -2,6 +2,7 @@ const express = require('express');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
+const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
       return res.status(400).json({ error: 'INVALID_PHONE' });
     }
 
-    const geoRate = parseFloat(process.env.GEO_RATE) || 1000;
+    const geoRate = getGeoRate();
 
     const { data, error } = await supabase.rpc('process_withdrawal', {
       p_user_id: req.user.id,

@@ -1,10 +1,11 @@
 const express = require('express');
+const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
 router.get('/api/config', (req, res) => {
   res.json({
-    geoRate: parseFloat(process.env.GEO_RATE) || 1000,
+    geoRate: getGeoRate(),
     currency: 'GEO',
     fiatCurrency: 'UZS',
   });

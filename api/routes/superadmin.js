@@ -2,6 +2,7 @@ const express = require('express');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
+const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
@@ -103,7 +104,7 @@ router.post('/api/superadmin/withdrawals/:id/approve', ...SA, async (req, res) =
 
     if (error) throw error;
 
-    const geoRate   = parseFloat(process.env.GEO_RATE) || 1000;
+    const geoRate   = getGeoRate();
     const uzsAmount = Math.round(wd.amount * geoRate);
 
     sendMessage(
@@ -250,6 +251,403 @@ router.post('/api/superadmin/campaigns/:id/toggle', ...SA, async (req, res) => {
     return res.json({ ok: true, active: !camp.active });
   } catch (err) {
     console.error('superadmin/campaigns toggle', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Enhanced overview (God View) ──────────────────────────────────────────────
+
+router.get('/api/superadmin/overview', ...SA, async (req, res) => {
+  try {
+    const now = new Date();
+    const todayMs        = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayStart     = new Date(todayMs).toISOString();
+    const yesterdayStart = new Date(todayMs - 86400_000).toISOString();
+    const monthStart     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const lastMonStart   = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+
+    const [
+      { data: todayViz },
+      { data: ydayViz },
+      { data: monthViz },
+      { data: lastMonViz },
+      { count: checkinsToday },
+      { count: pendingCount },
+      { data: pendingAmts },
+      { data: platform },
+      { count: totalBiz },
+      { count: bizZero },
+      { count: activeCamps },
+    ] = await Promise.all([
+      supabase.from('visits').select('user_id, business_id').gte('created_at', todayStart),
+      supabase.from('visits').select('user_id').gte('created_at', yesterdayStart).lt('created_at', todayStart),
+      supabase.from('visits').select('user_id').gte('created_at', monthStart),
+      supabase.from('visits').select('user_id').gte('created_at', lastMonStart).lt('created_at', monthStart),
+      supabase.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
+      supabase.from('withdrawals').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('withdrawals').select('amount').eq('status', 'pending'),
+      supabase.from('platform_wallet').select('balance').single(),
+      supabase.from('businesses').select('*', { count: 'exact', head: true }),
+      supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('balance', 0),
+      supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('active', true),
+    ]);
+
+    const dau     = new Set((todayViz   || []).map(v => v.user_id)).size;
+    const dauPrev = new Set((ydayViz    || []).map(v => v.user_id)).size;
+    const mau     = new Set((monthViz   || []).map(v => v.user_id)).size;
+    const mauPrev = new Set((lastMonViz || []).map(v => v.user_id)).size;
+    const dauTrend = dauPrev > 0 ? Math.round((dau - dauPrev) / dauPrev * 100) : null;
+    const mauTrend = mauPrev > 0 ? Math.round((mau - mauPrev) / mauPrev * 100) : null;
+
+    const bizPerUser = {};
+    (todayViz || []).forEach(v => {
+      if (!bizPerUser[v.user_id]) bizPerUser[v.user_id] = new Set();
+      bizPerUser[v.user_id].add(v.business_id);
+    });
+    const fraudSuspectsCount = Object.values(bizPerUser).filter(s => s.size > 3).length;
+    const pendingGeo = (pendingAmts || []).reduce((s, w) => s + (w.amount || 0), 0);
+
+    return res.json({
+      dau, dauTrend,
+      mau, mauTrend,
+      checkinsToday:      checkinsToday || 0,
+      pendingWithdrawals: pendingCount  || 0,
+      pendingGeo,
+      platformBalance:    platform?.balance || 0,
+      totalBiz:           totalBiz || 0,
+      bizZeroBalance:     bizZero  || 0,
+      activeCamps:        activeCamps || 0,
+      fraudSuspectsCount,
+      geoRate:            getGeoRate(),
+    });
+  } catch (err) {
+    console.error('superadmin/overview', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Fraud suspects ────────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/fraud', ...SA, async (req, res) => {
+  try {
+    const h24 = new Date(Date.now() - 86400_000).toISOString();
+
+    const { data: recentVisits, error } = await supabase
+      .from('visits')
+      .select('user_id, business_id, created_at, rewarded, users(id, telegram_id, username)')
+      .gte('created_at', h24)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const userMap = {};
+    (recentVisits || []).forEach(v => {
+      const uid = v.user_id;
+      if (!userMap[uid]) {
+        userMap[uid] = {
+          user_id:     uid,
+          db_id:       v.users?.id,
+          telegram_id: v.users?.telegram_id,
+          username:    v.users?.username,
+          visits:      [],
+          bizSet:      new Set(),
+          totalGeo:    0,
+        };
+      }
+      userMap[uid].visits.push({ created_at: v.created_at, business_id: v.business_id });
+      userMap[uid].bizSet.add(v.business_id);
+      userMap[uid].totalGeo += v.rewarded || 0;
+    });
+
+    const suspects = Object.values(userMap)
+      .map(u => ({
+        user_id:      u.user_id,
+        db_id:        u.db_id,
+        telegram_id:  u.telegram_id,
+        username:     u.username,
+        visitCount24h:  u.visits.length,
+        distinctBiz24h: u.bizSet.size,
+        totalGeo24h:    u.totalGeo,
+        lastVisit:      u.visits[0]?.created_at,
+        flag: u.bizSet.size > 4 || u.visits.length > 8 ? 'HIGH'
+            : u.bizSet.size > 2 || u.visits.length > 4 ? 'MEDIUM'
+            : null,
+      }))
+      .filter(u => u.flag !== null)
+      .sort((a, b) => b.visitCount24h - a.visitCount24h)
+      .slice(0, 50);
+
+    return res.json({ suspects });
+  } catch (err) {
+    console.error('superadmin/fraud', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── All campaigns ─────────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/campaigns', ...SA, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('id, active, budget, reward_amount, visits_count, max_visits, task_type, requires_pin, ends_at, created_at, businesses(id, name, owner_telegram_id)')
+      .order('created_at', { ascending: false })
+      .limit(300);
+
+    if (error) throw error;
+
+    const campaigns = (data || []).map(c => ({
+      ...c,
+      business_name:        c.businesses?.name,
+      business_id:          c.businesses?.id,
+      owner_telegram_id:    c.businesses?.owner_telegram_id,
+      fillRate:             c.max_visits > 0 ? Math.round(c.visits_count / c.max_visits * 100) : 0,
+      isAnomaly:            c.reward_amount > 5000,
+      businesses:           undefined,
+    }));
+
+    return res.json({ campaigns });
+  } catch (err) {
+    console.error('superadmin/campaigns', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── User detail card ──────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/users/:id/card', ...SA, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (!userId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    const [{ data: userRow }, { data: visits }, { data: wds }] = await Promise.all([
+      supabase.from('users').select('*').eq('id', userId).single(),
+      supabase.from('visits').select('id, rewarded, created_at, businesses(name)').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      supabase.from('withdrawals').select('id, amount, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+    ]);
+
+    if (!userRow) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    return res.json({
+      user:               userRow,
+      recentVisits:       (visits || []).map(v => ({ ...v, business_name: v.businesses?.name, businesses: undefined })),
+      recentWithdrawals:  wds || [],
+    });
+  } catch (err) {
+    console.error('superadmin/users/:id/card', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── User ban ──────────────────────────────────────────────────────────────────
+
+router.post('/api/superadmin/users/:id/ban', ...SA, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    if (!userId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    const { data: userRow } = await supabase.from('users').select('telegram_id').eq('id', userId).single();
+
+    const { error } = await supabase.from('users').update({ banned_at: new Date().toISOString() }).eq('id', userId);
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+
+    if (userRow?.telegram_id) {
+      sendMessage(userRow.telegram_id, `⛔ *Ваш аккаунт заблокирован*${reason ? `\n\nПричина: ${reason}` : ''}`).catch(() => {});
+    }
+
+    await supabase.from('sa_audit_log').insert({ action: 'user_ban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }).catch(() => {});
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/users/:id/ban', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── User unban ────────────────────────────────────────────────────────────────
+
+router.post('/api/superadmin/users/:id/unban', ...SA, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (!userId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    const { error } = await supabase.from('users').update({ banned_at: null }).eq('id', userId);
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+
+    await supabase.from('sa_audit_log').insert({ action: 'user_unban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID) }).catch(() => {});
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/users/:id/unban', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Manual GEO adjustment ─────────────────────────────────────────────────────
+
+router.post('/api/superadmin/users/:id/adjust', ...SA, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { amount, note } = req.body;
+    if (!userId || typeof amount !== 'number') return res.status(400).json({ error: 'INVALID_PARAMS' });
+    if (!note?.trim()) return res.status(400).json({ error: 'NOTE_REQUIRED' });
+
+    const { data: userRow } = await supabase.from('users').select('balance').eq('id', userId).single();
+    if (!userRow) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    const newBalance = Math.max(0, userRow.balance + amount);
+    const { error } = await supabase.from('users').update({ balance: newBalance }).eq('id', userId);
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+
+    await supabase.from('sa_audit_log').insert({
+      action: amount >= 0 ? 'geo_credit' : 'geo_debit',
+      target_id: userId, admin_id: Number(SUPER_ADMIN_ID),
+      note: `${amount >= 0 ? '+' : ''}${amount} GEO: ${note}`,
+    }).catch(() => {});
+
+    return res.json({ ok: true, newBalance });
+  } catch (err) {
+    console.error('superadmin/users/:id/adjust', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Business suspend / unsuspend ──────────────────────────────────────────────
+
+router.post('/api/superadmin/businesses/:id/suspend', ...SA, async (req, res) => {
+  try {
+    const bizId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    if (!bizId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    await supabase.from('campaigns').update({ active: false }).eq('business_id', bizId);
+
+    const { error } = await supabase.from('businesses').update({ suspended_at: new Date().toISOString() }).eq('id', bizId);
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+
+    await supabase.from('sa_audit_log').insert({ action: 'business_suspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }).catch(() => {});
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/businesses/:id/suspend', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/businesses/:id/unsuspend', ...SA, async (req, res) => {
+  try {
+    const bizId = parseInt(req.params.id, 10);
+    if (!bizId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    const { error } = await supabase.from('businesses').update({ suspended_at: null }).eq('id', bizId);
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+
+    await supabase.from('sa_audit_log').insert({ action: 'business_unsuspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID) }).catch(() => {});
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/businesses/:id/unsuspend', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Platform config & GEO rate ────────────────────────────────────────────────
+
+router.get('/api/superadmin/platform-config', ...SA, async (req, res) => {
+  try {
+    const { data: rateHistory } = await supabase
+      .from('geo_rate_history')
+      .select('rate, admin_id, note, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .catch(() => ({ data: null }));
+
+    return res.json({
+      geoRate:     getGeoRate(),
+      rateHistory: rateHistory || [],
+      topupCard:   process.env.TOPUP_CARD_NUMBER || null,
+      topupBank:   process.env.TOPUP_BANK || null,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/config/rate', ...SA, async (req, res) => {
+  try {
+    const { rate, note } = req.body;
+    if (!Number.isFinite(rate) || rate <= 0) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+    const { error } = await supabase.from('geo_rate_history').insert({
+      rate, admin_id: Number(SUPER_ADMIN_ID), note: note || null,
+    });
+
+    await supabase.from('sa_audit_log').insert({
+      action: 'rate_change', admin_id: Number(SUPER_ADMIN_ID),
+      note: `Курс → ${rate} UZS/GEO${note ? ': ' + note : ''}`,
+    }).catch(() => {});
+
+    if (error) {
+      return res.json({ ok: true, warning: 'geo_rate_history table missing — update GEO_RATE in Railway env vars', currentEnvRate: getGeoRate() });
+    }
+
+    return res.json({ ok: true, rate });
+  } catch (err) {
+    console.error('superadmin/config/rate', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Unit economics ────────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/economics', ...SA, async (req, res) => {
+  try {
+    const [{ data: topups }, { data: withdrawals }, { data: platform }, { data: visits }] = await Promise.all([
+      supabase.from('topup_requests').select('amount, created_at').eq('status', 'confirmed'),
+      supabase.from('withdrawals').select('amount, status, created_at'),
+      supabase.from('platform_wallet').select('balance').single(),
+      supabase.from('visits').select('rewarded, created_at'),
+    ]);
+
+    const geoRate      = getGeoRate();
+    const totalRevenue = (topups       || []).reduce((s, t) => s + (t.amount || 0), 0);
+    const totalIssued  = (visits       || []).reduce((s, v) => s + (v.rewarded || 0), 0);
+    const approvedGeo  = (withdrawals  || []).filter(w => w.status === 'approved').reduce((s, w) => s + (w.amount || 0), 0);
+    const pendingGeo   = (withdrawals  || []).filter(w => w.status === 'pending').reduce((s, w) => s + (w.amount || 0), 0);
+    const totalPayout  = Math.round(approvedGeo * geoRate);
+    const margin       = totalRevenue - totalPayout;
+
+    const now = new Date();
+    const daily = [];
+    for (let i = 6; i >= 0; i--) {
+      const ds = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      const de = new Date(ds.getTime() + 86400_000);
+      const rev = (topups || []).filter(t => new Date(t.created_at) >= ds && new Date(t.created_at) < de).reduce((s, t) => s + t.amount, 0);
+      const pay = (withdrawals || []).filter(w => w.status === 'approved' && new Date(w.created_at) >= ds && new Date(w.created_at) < de).reduce((s, w) => s + w.amount, 0);
+      daily.push({ date: ds.toISOString().slice(0, 10), revenue: rev, payout: Math.round(pay * geoRate) });
+    }
+
+    return res.json({ totalRevenue, totalPayout, totalIssued, approvedGeo, pendingGeo, platformBalance: platform?.balance || 0, margin, geoRate, daily });
+  } catch (err) {
+    console.error('superadmin/economics', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Audit log ─────────────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/audit-log', ...SA, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('sa_audit_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) return res.json({ log: [], warning: 'sa_audit_log table not yet created' });
+    return res.json({ log: data || [] });
+  } catch (err) {
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
