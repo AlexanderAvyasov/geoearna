@@ -456,7 +456,7 @@ router.post('/api/superadmin/users/:id/ban', ...SA, async (req, res) => {
       sendMessage(userRow.telegram_id, `⛔ *Ваш аккаунт заблокирован*${reason ? `\n\nПричина: ${reason}` : ''}`).catch(() => {});
     }
 
-    await supabase.from('sa_audit_log').insert({ action: 'user_ban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }).catch(() => {});
+    try { await supabase.from('sa_audit_log').insert({ action: 'user_ban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }); } catch (_) {}
 
     return res.json({ ok: true });
   } catch (err) {
@@ -475,7 +475,7 @@ router.post('/api/superadmin/users/:id/unban', ...SA, async (req, res) => {
     const { error } = await supabase.from('users').update({ banned_at: null }).eq('id', userId);
     if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
 
-    await supabase.from('sa_audit_log').insert({ action: 'user_unban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID) }).catch(() => {});
+    try { await supabase.from('sa_audit_log').insert({ action: 'user_unban', target_id: userId, admin_id: Number(SUPER_ADMIN_ID) }); } catch (_) {}
 
     return res.json({ ok: true });
   } catch (err) {
@@ -500,11 +500,13 @@ router.post('/api/superadmin/users/:id/adjust', ...SA, async (req, res) => {
     const { error } = await supabase.from('users').update({ balance: newBalance }).eq('id', userId);
     if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
 
-    await supabase.from('sa_audit_log').insert({
-      action: amount >= 0 ? 'geo_credit' : 'geo_debit',
-      target_id: userId, admin_id: Number(SUPER_ADMIN_ID),
-      note: `${amount >= 0 ? '+' : ''}${amount} GEO: ${note}`,
-    }).catch(() => {});
+    try {
+      await supabase.from('sa_audit_log').insert({
+        action: amount >= 0 ? 'geo_credit' : 'geo_debit',
+        target_id: userId, admin_id: Number(SUPER_ADMIN_ID),
+        note: `${amount >= 0 ? '+' : ''}${amount} GEO: ${note}`,
+      });
+    } catch (_) {}
 
     return res.json({ ok: true, newBalance });
   } catch (err) {
@@ -526,7 +528,7 @@ router.post('/api/superadmin/businesses/:id/suspend', ...SA, async (req, res) =>
     const { error } = await supabase.from('businesses').update({ suspended_at: new Date().toISOString() }).eq('id', bizId);
     if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
 
-    await supabase.from('sa_audit_log').insert({ action: 'business_suspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }).catch(() => {});
+    try { await supabase.from('sa_audit_log').insert({ action: 'business_suspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }); } catch (_) {}
 
     return res.json({ ok: true });
   } catch (err) {
@@ -543,7 +545,7 @@ router.post('/api/superadmin/businesses/:id/unsuspend', ...SA, async (req, res) 
     const { error } = await supabase.from('businesses').update({ suspended_at: null }).eq('id', bizId);
     if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
 
-    await supabase.from('sa_audit_log').insert({ action: 'business_unsuspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID) }).catch(() => {});
+    try { await supabase.from('sa_audit_log').insert({ action: 'business_unsuspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID) }); } catch (_) {}
 
     return res.json({ ok: true });
   } catch (err) {
@@ -556,12 +558,15 @@ router.post('/api/superadmin/businesses/:id/unsuspend', ...SA, async (req, res) 
 
 router.get('/api/superadmin/platform-config', ...SA, async (req, res) => {
   try {
-    const { data: rateHistory } = await supabase
-      .from('geo_rate_history')
-      .select('rate, admin_id, note, created_at')
-      .order('created_at', { ascending: false })
-      .limit(10)
-      .catch(() => ({ data: null }));
+    let rateHistory = null;
+    try {
+      const { data } = await supabase
+        .from('geo_rate_history')
+        .select('rate, admin_id, note, created_at')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      rateHistory = data;
+    } catch (_) {}
 
     return res.json({
       geoRate:     getGeoRate(),
@@ -583,10 +588,12 @@ router.post('/api/superadmin/config/rate', ...SA, async (req, res) => {
       rate, admin_id: Number(SUPER_ADMIN_ID), note: note || null,
     });
 
-    await supabase.from('sa_audit_log').insert({
-      action: 'rate_change', admin_id: Number(SUPER_ADMIN_ID),
-      note: `Курс → ${rate} UZS/GEO${note ? ': ' + note : ''}`,
-    }).catch(() => {});
+    try {
+      await supabase.from('sa_audit_log').insert({
+        action: 'rate_change', admin_id: Number(SUPER_ADMIN_ID),
+        note: `Курс → ${rate} UZS/GEO${note ? ': ' + note : ''}`,
+      });
+    } catch (_) {}
 
     if (error) {
       return res.json({ ok: true, warning: 'geo_rate_history table missing — update GEO_RATE in Railway env vars', currentEnvRate: getGeoRate() });

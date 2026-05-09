@@ -13,8 +13,6 @@ import Onboarding from './pages/Onboarding';
 import Game       from './pages/Game';
 import MapPage    from './pages/Map';
 
-const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
-
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
 export const GLOBAL_CSS = `
@@ -341,9 +339,8 @@ function AppLayout() {
 
 export default function App() {
   useTelegram();
-  const [onboarded, setOnboarded] = useState(() =>
-    !!localStorage.getItem(ONBOARD_KEY) || !!localStorage.getItem('geo_onboarded')
-  );
+  const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
+  const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem(ONBOARD_KEY));
 
   function handleOnboardDone(mode) {
     localStorage.setItem(ONBOARD_KEY, '1');
