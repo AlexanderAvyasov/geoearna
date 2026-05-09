@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
@@ -125,103 +125,130 @@ export const GLOBAL_CSS = `
   }
 `;
 
+// ─── Splash CSS (self-contained, does not depend on GLOBAL_CSS timing) ───────
+const SPLASH_CSS = `
+  @keyframes _sLogoIn {
+    0%   { opacity: 0; transform: scale(0.72) translateY(12px); }
+    60%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
+    100% { opacity: 1; transform: scale(1)    translateY(0); }
+  }
+  @keyframes _sWordIn {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes _sDot {
+    0%, 80%, 100% { transform: scale(0.55); opacity: 0.25; }
+    40%            { transform: scale(1);    opacity: 1; }
+  }
+  @keyframes _sRing {
+    0%   { box-shadow: 0 0 0 0    rgba(198,241,53,0.45); }
+    70%  { box-shadow: 0 0 0 22px rgba(198,241,53,0); }
+    100% { box-shadow: 0 0 0 0    rgba(198,241,53,0); }
+  }
+  @keyframes _sFadeOut {
+    0%   { opacity: 1; }
+    100% { opacity: 0; }
+  }
+`;
+
 // ─── Splash / Loading screen ──────────────────────────────────────────────────
 
 function SplashScreen({ fading }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999,
-      background: C.bg,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center', gap: 0,
-      animation: fading ? 'splashFadeOut 0.45s ease forwards' : 'none',
-    }}>
-      {/* Ambient glow */}
+    <>
+      <style>{SPLASH_CSS}</style>
       <div style={{
-        position: 'absolute', top: '28%', left: '50%',
-        transform: 'translateX(-50%)',
-        width: 280, height: 280, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(198,241,53,0.07) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* Logo mark */}
-      <div style={{
-        position: 'relative',
-        width: 88, height: 88,
-        borderRadius: 28,
-        background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
-        border: '1.5px solid rgba(198,241,53,0.25)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        animation: 'splashLogoIn 0.65s cubic-bezier(0.32,0.72,0,1) both, splashRing 2.4s ease-in-out 0.7s infinite',
-        marginBottom: 24,
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: C.bg,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        animation: fading ? '_sFadeOut 0.45s ease forwards' : 'none',
       }}>
-        <MapPin size={40} color={C.geo} strokeWidth={1.75} />
-        {/* Accent dot */}
+        {/* Ambient glow */}
         <div style={{
-          position: 'absolute', top: 10, right: 10,
-          width: 9, height: 9, borderRadius: '50%',
-          background: C.geo,
-          boxShadow: `0 0 8px ${C.geo}`,
+          position: 'absolute', top: '28%', left: '50%',
+          transform: 'translateX(-50%)',
+          width: 280, height: 280, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(198,241,53,0.07) 0%, transparent 70%)',
+          pointerEvents: 'none',
         }} />
-      </div>
 
-      {/* Wordmark */}
-      <div style={{
-        animation: 'splashWordIn 0.5s ease 0.3s both',
-        textAlign: 'center',
-      }}>
+        {/* Logo mark */}
         <div style={{
-          fontSize: 28, fontWeight: 800, letterSpacing: -0.8,
-          color: C.t1, lineHeight: 1,
+          position: 'relative',
+          width: 88, height: 88,
+          borderRadius: 28,
+          background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
+          border: '1.5px solid rgba(198,241,53,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: '_sLogoIn 0.65s cubic-bezier(0.32,0.72,0,1) both, _sRing 2.4s ease-in-out 0.7s infinite',
+          marginBottom: 24,
         }}>
-          Geo<span style={{ color: C.geo }}>Earn</span>
-        </div>
-        <div style={{
-          fontSize: 13, color: C.t3, fontWeight: 500,
-          marginTop: 6, letterSpacing: 0.3,
-        }}>
-          Зарабатывай, исследуя город
-        </div>
-      </div>
-
-      {/* Loading dots */}
-      <div style={{
-        display: 'flex', gap: 7, marginTop: 48,
-        animation: 'splashWordIn 0.5s ease 0.5s both',
-      }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{
-            width: 7, height: 7, borderRadius: '50%',
+          <MapPin size={40} color={C.geo} strokeWidth={1.75} />
+          <div style={{
+            position: 'absolute', top: 10, right: 10,
+            width: 9, height: 9, borderRadius: '50%',
             background: C.geo,
-            animation: `splashDot 1.3s ease-in-out ${i * 0.18}s infinite`,
+            boxShadow: `0 0 8px ${C.geo}`,
           }} />
-        ))}
+        </div>
+
+        {/* Wordmark */}
+        <div style={{
+          animation: '_sWordIn 0.5s ease 0.3s both',
+          textAlign: 'center',
+        }}>
+          <div style={{
+            fontSize: 28, fontWeight: 800, letterSpacing: -0.8,
+            color: C.t1, lineHeight: 1,
+          }}>
+            Geo<span style={{ color: C.geo }}>Earn</span>
+          </div>
+          <div style={{
+            fontSize: 13, color: C.t3, fontWeight: 500,
+            marginTop: 6, letterSpacing: 0.3,
+          }}>
+            Зарабатывай, исследуя город
+          </div>
+        </div>
+
+        {/* Loading dots */}
+        <div style={{
+          display: 'flex', gap: 7, marginTop: 48,
+          animation: '_sWordIn 0.5s ease 0.5s both',
+        }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} style={{
+              width: 7, height: 7, borderRadius: '50%',
+              background: C.geo,
+              animation: `_sDot 1.3s ease-in-out ${i * 0.18}s infinite`,
+            }} />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
 function useAppReady() {
-  const [ready, setReady] = useState(false);
-  const [fading, setFading] = useState(false);
-  const calledRef = useRef(false);
+  const [phase, setPhase] = useState('loading'); // 'loading' | 'fading' | 'done'
 
   useEffect(() => {
-    if (calledRef.current) return;
-    calledRef.current = true;
+    let cancelled = false;
 
-    const minDelay = new Promise(r => setTimeout(r, 1500));
-    const initReady = waitForInitData(4000);
+    const minDelay = new Promise(r => setTimeout(r, 1400));
+    const initReady = waitForInitData(8000);
 
     Promise.all([minDelay, initReady]).then(() => {
-      setFading(true);
-      // Wait for fade-out animation before unmounting splash
-      setTimeout(() => setReady(true), 450);
+      if (cancelled) return;
+      setPhase('fading');
+      setTimeout(() => { if (!cancelled) setPhase('done'); }, 450);
     });
+
+    return () => { cancelled = true; };
   }, []);
 
-  return { ready, fading };
+  return { ready: phase === 'done', fading: phase === 'fading' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
