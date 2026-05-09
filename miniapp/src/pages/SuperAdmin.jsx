@@ -5,7 +5,7 @@ import {
   Loader2, Clock, User, Smartphone, FileText, MapPin, Lock, Shield,
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
-  ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X,
+  ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode,
 } from 'lucide-react';
 import { user } from '../hooks/useTelegram';
 import { API_BASE, waitForInitData } from '../lib/api';
@@ -529,23 +529,299 @@ function BusinessesTab() {
   );
 }
 
+// ─── PlatformCampaignSheet ────────────────────────────────────────────────────
+
+function PlatformCampaignSheet({ onClose, onCreated }) {
+  const [businesses,  setBusinesses]  = useState([]);
+  const [bizLoading,  setBizLoading]  = useState(true);
+  const [bizId,       setBizId]       = useState('');
+  const [reward,      setReward]      = useState('');
+  const [visits,      setVisits]      = useState('');
+  const [endsAt,      setEndsAt]      = useState('');
+  const [loading,     setLoading]     = useState(false);
+  const [error,       setError]       = useState('');
+  const [result,      setResult]      = useState(null);
+  const [walletBal,   setWalletBal]   = useState(null);
+
+  useEffect(() => {
+    Promise.all([
+      saFetch('/api/superadmin/businesses').then(d => setBusinesses(d.businesses || [])).catch(() => {}),
+      saFetch('/api/superadmin/overview').then(d => setWalletBal(d.platformBalance)).catch(() => {}),
+    ]).finally(() => setBizLoading(false));
+  }, []);
+
+  const rewardNum  = parseInt(reward, 10)  || 0;
+  const visitsNum  = parseInt(visits, 10)  || 0;
+  const totalCost  = rewardNum * visitsNum;
+  const canAfford  = walletBal !== null && totalCost <= walletBal && totalCost > 0;
+  const canSubmit  = bizId && rewardNum >= 1 && visitsNum >= 1 && canAfford;
+  const today      = new Date().toISOString().split('T')[0];
+
+  async function handleCreate() {
+    if (!canSubmit) return;
+    setLoading(true); setError('');
+    try {
+      const d = await saFetch('/api/superadmin/platform-campaign', {
+        method: 'POST',
+        body: JSON.stringify({
+          business_id:  parseInt(bizId, 10),
+          reward_amount: rewardNum,
+          max_visits:    visitsNum,
+          ends_at:       endsAt ? new Date(endsAt + 'T23:59:59').toISOString() : null,
+        }),
+      });
+      setResult(d);
+      onCreated && onCreated();
+    } catch (e) {
+      setError(e.message === 'INSUFFICIENT_PLATFORM_BALANCE' ? 'Недостаточно на кошельке платформы.' : `Ошибка: ${e.message}`);
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto', maxHeight: '90vh', overflowY: 'auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)', padding: '0 0 44px',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4, color: C.t1 }}>Акция платформы</div>
+          <div style={{ fontSize: 13, color: C.t3, marginBottom: 20 }}>
+            Кошелёк: <strong style={{ color: SA_COLOR }}>{walletBal !== null ? formatGeo(walletBal) : '...'} GEO</strong>
+          </div>
+
+          {result ? (
+            <div>
+              <div style={{ background: `#10B98115`, border: `1px solid #10B98140`, borderRadius: 16, padding: '20px', marginBottom: 20, textAlign: 'center' }}>
+                <CheckCircle size={32} color="#10B981" style={{ marginBottom: 12 }} />
+                <div style={{ fontWeight: 800, fontSize: 16, color: C.t1, marginBottom: 8 }}>Акция создана!</div>
+                <div style={{ fontSize: 13, color: C.t3, marginBottom: 16 }}>{result.business?.name}</div>
+                <div style={{ background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: C.t3, marginBottom: 6 }}>QR-ссылка для чекина</div>
+                  <div style={{ fontSize: 12, color: SA_COLOR, wordBreak: 'break-all', fontFamily: 'monospace' }}>{result.qrUrl}</div>
+                </div>
+                {result.qrUrl && (
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=1&bgcolor=ffffff&color=000000&data=${encodeURIComponent(result.qrUrl)}`}
+                    alt="QR" style={{ width: 140, height: 140, borderRadius: 8, border: `1px solid ${C.b1}` }}
+                  />
+                )}
+              </div>
+              <Btn variant="ghost" size="lg" onClick={onClose}>Закрыть</Btn>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Заведение</div>
+                {bizLoading
+                  ? <Skel h={44} r={12} />
+                  : <select
+                      value={bizId}
+                      onChange={e => setBizId(e.target.value)}
+                      style={{
+                        width: '100%', background: C.card, border: `1px solid ${C.b1}`,
+                        borderRadius: 12, padding: '12px 14px', fontSize: 14,
+                        color: bizId ? C.t1 : C.t3, outline: 'none', boxSizing: 'border-box',
+                      }}>
+                      <option value="">Выберите заведение...</option>
+                      {businesses.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                }
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Награда (GEO)</div>
+                  <input value={reward} onChange={e => setReward(e.target.value.replace(/\D/g, ''))}
+                    placeholder="100" inputMode="numeric"
+                    style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Активаций</div>
+                  <input value={visits} onChange={e => setVisits(e.target.value.replace(/\D/g, ''))}
+                    placeholder="50" inputMode="numeric"
+                    style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              {rewardNum > 0 && visitsNum > 0 && (
+                <div style={{
+                  background: canAfford ? `${SA_COLOR}10` : C.redFt,
+                  border: `1px solid ${canAfford ? `${SA_COLOR}40` : 'rgba(255,59,92,0.25)'}`,
+                  borderRadius: 12, padding: '12px 14px', marginBottom: 14,
+                  fontSize: 13, fontWeight: 700, color: canAfford ? SA_COLOR : C.red,
+                }}>
+                  Итого: {formatGeo(totalCost)} GEO
+                  {!canAfford && walletBal !== null && ` (доступно: ${formatGeo(walletBal)})`}
+                </div>
+              )}
+
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Дата окончания (необязательно)</div>
+                <input type="date" value={endsAt} min={today}
+                  onChange={e => setEndsAt(e.target.value)}
+                  style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', colorScheme: 'dark', boxSizing: 'border-box' }} />
+              </div>
+
+              {error && (
+                <div style={{ background: C.redFt, border: `1px solid rgba(255,59,92,0.2)`, borderRadius: 12, padding: '10px 14px', fontSize: 13, color: C.red, fontWeight: 700, marginBottom: 16 }}>
+                  {error}
+                </div>
+              )}
+
+              <Btn variant="purple" size="lg" onClick={handleCreate} loading={loading} disabled={!canSubmit}>
+                <Zap size={15} />
+                {canSubmit ? `Создать акцию · ${formatGeo(totalCost)} GEO` : 'Заполните форму'}
+              </Btn>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── CampaignSAEditSheet ──────────────────────────────────────────────────────
+
+function CampaignSAEditSheet({ campaign, onClose, onSaved }) {
+  const [reward,   setReward]   = useState(String(campaign.reward_amount));
+  const [visits,   setVisits]   = useState(String(campaign.max_visits));
+  const [endsAt,   setEndsAt]   = useState(campaign.ends_at ? new Date(campaign.ends_at).toISOString().split('T')[0] : '');
+  const [noEnd,    setNoEnd]    = useState(!campaign.ends_at);
+  const [active,   setActive]   = useState(campaign.active);
+  const [loading,  setLoading]  = useState(false);
+  const [error,    setError]    = useState('');
+  const today = new Date().toISOString().split('T')[0];
+
+  async function handleSave() {
+    setLoading(true); setError('');
+    try {
+      const body = {
+        reward_amount: parseInt(reward, 10) || campaign.reward_amount,
+        max_visits:    parseInt(visits, 10) || campaign.max_visits,
+        active,
+        ends_at: noEnd ? null : (endsAt ? new Date(endsAt + 'T23:59:59').toISOString() : campaign.ends_at),
+      };
+      await saFetch(`/api/superadmin/campaigns/${campaign.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+      onSaved();
+    } catch (e) {
+      setError(`Ошибка: ${e.message}`);
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto', maxHeight: '85vh', overflowY: 'auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)', padding: '0 0 44px',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4, color: C.t1 }}>Редактировать кампанию</div>
+          <div style={{ fontSize: 13, color: C.t3, marginBottom: 20 }}>{campaign.business_name} · ID {campaign.id}</div>
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Награда (GEO)</div>
+              <input value={reward} onChange={e => setReward(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+                style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Активаций</div>
+              <input value={visits} onChange={e => setVisits(e.target.value.replace(/\D/g, ''))} inputMode="numeric"
+                style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 7 }}>Дата окончания</div>
+            <div onClick={() => setNoEnd(v => !v)} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: C.card, border: `1px solid ${C.b0}`, borderRadius: 12, padding: '10px 14px', marginBottom: 8, cursor: 'pointer',
+            }}>
+              <span style={{ fontSize: 14, color: C.t2 }}>Без ограничения</span>
+              <div style={{
+                width: 40, height: 22, borderRadius: 11,
+                background: noEnd ? SA_COLOR : C.b2, transition: 'background 0.2s',
+                position: 'relative', flexShrink: 0,
+              }}>
+                <div style={{ position: 'absolute', top: 3, left: noEnd ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+              </div>
+            </div>
+            {!noEnd && (
+              <input type="date" value={endsAt} min={today}
+                onChange={e => setEndsAt(e.target.value)}
+                style={{ width: '100%', background: C.card, border: `1px solid ${C.b1}`, borderRadius: 12, padding: '12px 14px', fontSize: 14, color: C.t1, outline: 'none', colorScheme: 'dark', boxSizing: 'border-box' }} />
+            )}
+          </div>
+
+          <div onClick={() => setActive(v => !v)} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: active ? `#10B98110` : C.card,
+            border: `1px solid ${active ? '#10B98140' : C.b0}`,
+            borderRadius: 12, padding: '12px 14px', marginBottom: 20, cursor: 'pointer',
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: active ? '#10B981' : C.t2 }}>
+              {active ? 'Активна' : 'Остановлена'}
+            </span>
+            <div style={{
+              width: 40, height: 22, borderRadius: 11,
+              background: active ? '#10B981' : C.b2, transition: 'background 0.2s',
+              position: 'relative', flexShrink: 0,
+            }}>
+              <div style={{ position: 'absolute', top: 3, left: active ? 19 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }} />
+            </div>
+          </div>
+
+          {error && (
+            <div style={{ background: C.redFt, border: `1px solid rgba(255,59,92,0.2)`, borderRadius: 12, padding: '10px 14px', fontSize: 13, color: C.red, fontWeight: 700, marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn variant="ghost" size="md" onClick={onClose} style={{ flex: 1 }}>Отмена</Btn>
+            <Btn variant="purple" size="md" onClick={handleSave} loading={loading} style={{ flex: 2 }}>
+              <Check size={14} /> Сохранить
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── Tab: Campaigns ───────────────────────────────────────────────────────────
 
 function CampaignsTab() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [filter,    setFilter]    = useState('all');
-  const [busy,      setBusy]      = useState({});
-  const [fetchErr,  setFetchErr]  = useState(null);
+  const [campaigns,    setCampaigns]    = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [filter,       setFilter]       = useState('all');
+  const [busy,         setBusy]         = useState({});
+  const [fetchErr,     setFetchErr]     = useState(null);
+  const [showCreate,   setShowCreate]   = useState(false);
+  const [editCampaign, setEditCampaign] = useState(null);
 
-  useEffect(() => {
+  function load() {
     setLoading(true);
     setFetchErr(null);
     saFetch('/api/superadmin/campaigns')
       .then(d => setCampaigns(d.campaigns || []))
       .catch(e => setFetchErr(e.message || 'Ошибка загрузки'))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(load, []);
 
   async function toggle(id, active) {
     setBusy(b => ({ ...b, [id]: true }));
@@ -566,6 +842,11 @@ function CampaignsTab() {
 
   return (
     <div>
+      {/* Create promo button */}
+      <Btn variant="purple" size="md" onClick={() => setShowCreate(true)} style={{ width: '100%', marginBottom: 14 }}>
+        <Plus size={15} /> Создать акцию платформы
+      </Btn>
+
       {/* Anomaly alert */}
       {!loading && anomalies.length > 0 && (
         <div style={{ background: `${C.red}10`, border: `1.5px solid ${C.red}30`, borderRadius: 14, padding: '12px 14px', marginBottom: 14, display: 'flex', gap: 10 }}>
@@ -627,6 +908,7 @@ function CampaignsTab() {
               </div>
               <div style={{ fontSize: 11, color: C.t3 }}>
                 {c.task_type} · {c.visits_count}/{c.max_visits} визитов ({c.fillRate}%)
+                {c.ends_at && ` · до ${fmtDay(c.ends_at)}`}
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -639,9 +921,12 @@ function CampaignsTab() {
             <div style={{ height: 4, borderRadius: 4, width: `${c.fillRate}%`, background: c.active ? '#10B981' : C.t3, transition: 'width 0.5s' }} />
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="ghost" size="sm" onClick={() => setEditCampaign(c)} style={{ flex: 1 }}>
+              <Pencil size={12} /> Изменить
+            </Btn>
             {c.active
               ? <Btn variant="danger" size="sm" onClick={() => toggle(c.id, true)} loading={busy[c.id]} style={{ flex: 1 }}>
-                  <PauseCircle size={13} /> Force Stop
+                  <PauseCircle size={13} /> Стоп
                 </Btn>
               : <Btn variant="success" size="sm" onClick={() => toggle(c.id, false)} loading={busy[c.id]} style={{ flex: 1 }}>
                   <PlayCircle size={13} /> Запустить
@@ -650,6 +935,20 @@ function CampaignsTab() {
           </div>
         </div>
       ))}
+
+      {showCreate && (
+        <PlatformCampaignSheet
+          onClose={() => setShowCreate(false)}
+          onCreated={load}
+        />
+      )}
+      {editCampaign && (
+        <CampaignSAEditSheet
+          campaign={editCampaign}
+          onClose={() => setEditCampaign(null)}
+          onSaved={() => { setEditCampaign(null); load(); }}
+        />
+      )}
     </div>
   );
 }
@@ -1603,6 +1902,585 @@ function GamificationTab() {
   );
 }
 
+// ─── Promo QR Hunt ────────────────────────────────────────────────────────────
+
+const RARITY_CFG = {
+  common:    { label: 'Common',    color: '#9CA3AF', bg: 'rgba(156,163,175,0.10)', geo: 5   },
+  rare:      { label: 'Rare',      color: '#60A5FA', bg: 'rgba(96,165,250,0.10)',  geo: 10  },
+  epic:      { label: 'Epic',      color: '#C084FC', bg: 'rgba(192,132,252,0.10)', geo: 25  },
+  legendary: { label: 'Legendary', color: '#FBBF24', bg: 'rgba(251,191,36,0.10)', geo: 100 },
+};
+
+function RarityBadge({ rarity }) {
+  const r = RARITY_CFG[rarity] || RARITY_CFG.common;
+  return <Badge label={r.label} color={r.color} bg={r.bg} />;
+}
+
+function PromoStatusBadge({ p }) {
+  if (p.isExhausted) return <Badge label="ЗАВЕРШЕНА" color={C.t3} />;
+  if (p.isExpired)   return <Badge label="ИСТЕКЛА"   color={C.orange} />;
+  if (!p.active)     return <Badge label="ПАУЗА"     color={C.gold} />;
+  return <Badge label="АКТИВНА" color="#10B981" />;
+}
+
+function PromoCreateSheet({ onClose, onCreated }) {
+  const [form, setForm] = useState({
+    title: '', description: '', rarity: 'common', reward_amount: '',
+    max_claims: '', lat: '', lng: '', radius_m: '200',
+    expires_at: '', cooldown_hours: '0', image_url: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+  const today = new Date().toISOString().split('T')[0];
+
+  function upd(k, v) { setForm(p => ({ ...p, [k]: v })); }
+
+  const rarityReward = RARITY_CFG[form.rarity]?.geo || 5;
+  const rewardVal    = parseInt(form.reward_amount, 10) || rarityReward;
+
+  // Auto-fill reward from rarity
+  useEffect(() => { upd('reward_amount', String(RARITY_CFG[form.rarity]?.geo || 5)); }, [form.rarity]);
+
+  async function handleCreate() {
+    setLoading(true); setError('');
+    try {
+      const body = {
+        title:          form.title.trim(),
+        description:    form.description.trim() || null,
+        rarity:         form.rarity,
+        reward_amount:  parseInt(form.reward_amount, 10),
+        max_claims:     parseInt(form.max_claims, 10),
+        lat:            parseFloat(form.lat),
+        lng:            parseFloat(form.lng),
+        radius_m:       parseInt(form.radius_m, 10) || 200,
+        expires_at:     form.expires_at ? new Date(form.expires_at + 'T23:59:59').toISOString() : null,
+        cooldown_hours: parseInt(form.cooldown_hours, 10) || 0,
+        image_url:      form.image_url.trim() || null,
+      };
+      const d = await saFetch('/api/superadmin/promo-campaigns', { method: 'POST', body: JSON.stringify(body) });
+      onCreated(d);
+    } catch (e) {
+      setError(e.message || 'Ошибка создания');
+    } finally { setLoading(false); }
+  }
+
+  const canSubmit = form.title.trim() && form.max_claims && form.lat && form.lng &&
+    !isNaN(parseFloat(form.lat)) && !isNaN(parseFloat(form.lng)) && !loading;
+
+  const inStyle = {
+    width: '100%', boxSizing: 'border-box',
+    background: C.card, border: `1.5px solid ${C.b1}`, borderRadius: 12,
+    padding: '11px 14px', fontSize: 14, color: C.t1, outline: 'none',
+  };
+  const labelSt = { fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 6, display: 'block' };
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto', maxHeight: '92vh', overflowY: 'auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)', padding: '0 0 44px',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4, color: C.t1 }}>Новый Promo QR</div>
+          <div style={{ fontSize: 13, color: C.t3, marginBottom: 22 }}>Городская QR-акция от платформы GeoEarn</div>
+
+          {/* Rarity selector */}
+          <div style={{ marginBottom: 16 }}>
+            <span style={labelSt}>Редкость</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {Object.entries(RARITY_CFG).map(([key, r]) => (
+                <button key={key} onClick={() => upd('rarity', key)} style={{
+                  flex: 1, padding: '10px 4px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  border: `2px solid ${form.rarity === key ? r.color : C.b1}`,
+                  background: form.rarity === key ? r.bg : 'transparent',
+                  color: form.rarity === key ? r.color : C.t3, transition: 'all 0.15s',
+                }}>
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Title */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={labelSt}>Название*</span>
+            <input value={form.title} onChange={e => upd('title', e.target.value)} placeholder="Например: Летний квест на Бродвей" style={inStyle} />
+          </div>
+
+          {/* Description */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={labelSt}>Описание</span>
+            <textarea value={form.description} onChange={e => upd('description', e.target.value)}
+              rows={2} placeholder="Краткое описание акции..." style={{ ...inStyle, resize: 'none', fontFamily: 'inherit' }} />
+          </div>
+
+          {/* Reward + Claims */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Награда (GEO)*</span>
+              <input value={form.reward_amount} onChange={e => upd('reward_amount', e.target.value.replace(/\D/g, ''))} inputMode="numeric" style={inStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Макс. клеймов*</span>
+              <input value={form.max_claims} onChange={e => upd('max_claims', e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="100" style={inStyle} />
+            </div>
+          </div>
+
+          {/* Cost preview */}
+          {form.reward_amount && form.max_claims && (
+            <div style={{
+              background: `${SA_COLOR}10`, border: `1px solid ${SA_COLOR}30`,
+              borderRadius: 10, padding: '10px 14px', marginBottom: 14,
+              fontSize: 13, fontWeight: 700, color: SA_COLOR,
+            }}>
+              Суммарный выброс: {formatGeo(parseInt(form.reward_amount, 10) * parseInt(form.max_claims, 10))} GEO
+            </div>
+          )}
+
+          {/* Coordinates */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Широта (lat)*</span>
+              <input value={form.lat} onChange={e => upd('lat', e.target.value)} inputMode="decimal" placeholder="41.2995" style={inStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Долгота (lng)*</span>
+              <input value={form.lng} onChange={e => upd('lng', e.target.value)} inputMode="decimal" placeholder="69.2401" style={inStyle} />
+            </div>
+          </div>
+
+          {/* Radius + Cooldown */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Радиус (м)</span>
+              <input value={form.radius_m} onChange={e => upd('radius_m', e.target.value.replace(/\D/g, ''))} inputMode="numeric" style={inStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={labelSt}>Кулдаун (ч)</span>
+              <input value={form.cooldown_hours} onChange={e => upd('cooldown_hours', e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="0 = раз навсегда" style={inStyle} />
+            </div>
+          </div>
+
+          {/* Expires at */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={labelSt}>Дата окончания</span>
+            <input type="date" value={form.expires_at} min={today} onChange={e => upd('expires_at', e.target.value)}
+              style={{ ...inStyle, colorScheme: 'dark', cursor: 'pointer' }} />
+          </div>
+
+          {/* Image URL */}
+          <div style={{ marginBottom: 20 }}>
+            <span style={labelSt}>URL баннера/изображения</span>
+            <input value={form.image_url} onChange={e => upd('image_url', e.target.value)} placeholder="https://..." style={inStyle} />
+          </div>
+
+          {error && (
+            <div style={{ background: C.redFt, border: `1px solid rgba(255,59,92,0.2)`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: C.red, fontWeight: 700, marginBottom: 14 }}>
+              {error}
+            </div>
+          )}
+
+          <Btn variant="purple" size="lg" onClick={handleCreate} loading={loading} disabled={!canSubmit}>
+            <Plus size={15} /> Создать Promo QR
+          </Btn>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PromoResultSheet({ result, onClose }) {
+  const [copied, setCopied] = useState(false);
+  const [dlLoading, setDlLoading] = useState(false);
+
+  function copy() {
+    navigator.clipboard?.writeText(result.qrUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function downloadQR() {
+    setDlLoading(true);
+    const src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(result.qrUrl)}`;
+    try {
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `promo-qr-${result.campaign.id}.png`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch { window.open(src, '_blank'); }
+    finally { setDlLoading(false); }
+  }
+
+  const r = RARITY_CFG[result.campaign.rarity] || RARITY_CFG.common;
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto', maxHeight: '90vh', overflowY: 'auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)', padding: '0 0 44px',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px', textAlign: 'center' }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 14px', borderRadius: 20,
+            background: r.bg, border: `1px solid ${r.color}40`, marginBottom: 12,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: r.color, textTransform: 'uppercase', letterSpacing: 0.8 }}>{r.label}</span>
+          </div>
+          <div style={{ fontWeight: 800, fontSize: 20, color: C.t1, marginBottom: 4 }}>Promo QR создан!</div>
+          <div style={{ fontSize: 14, color: C.t3, marginBottom: 20 }}>{result.campaign.title}</div>
+
+          {/* QR code image */}
+          <div style={{ display: 'inline-block', padding: 12, borderRadius: 16, background: '#fff', marginBottom: 16 }}>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=1&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(result.qrUrl)}`}
+              alt="QR" style={{ width: 180, height: 180, display: 'block', borderRadius: 6 }}
+            />
+          </div>
+
+          {/* QR URL */}
+          <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '10px 14px', marginBottom: 14, textAlign: 'left' }}>
+            <div style={{ fontSize: 11, color: C.t3, marginBottom: 4 }}>QR URL</div>
+            <div style={{ fontSize: 11, color: r.color, wordBreak: 'break-all', fontFamily: 'monospace' }}>{result.qrUrl}</div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn variant="ghost" size="md" onClick={copy} style={{ flex: 1 }}>
+              {copied ? <CheckCircle size={14} /> : <Plus size={14} />}
+              {copied ? 'Скопировано' : 'Копировать URL'}
+            </Btn>
+            <Btn variant="purple" size="md" onClick={downloadQR} loading={dlLoading} style={{ flex: 1 }}>
+              <ArrowDownToLine size={14} /> Скачать QR
+            </Btn>
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <Btn variant="ghost" size="lg" onClick={onClose}>Закрыть</Btn>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PromoAnalyticsSheet({ campaign, onClose }) {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [busy,    setBusy]    = useState(false);
+  const [dlLoad,  setDlLoad]  = useState(false);
+  const r = RARITY_CFG[campaign.rarity] || RARITY_CFG.common;
+
+  useEffect(() => {
+    saFetch(`/api/superadmin/promo-campaigns/${campaign.id}/analytics`)
+      .then(d => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [campaign.id]);
+
+  async function toggleActive() {
+    setBusy(true);
+    try {
+      await saFetch(`/api/superadmin/promo-campaigns/${campaign.id}`, { method: 'PATCH', body: JSON.stringify({ active: !campaign.active }) });
+      onClose('reload');
+    } catch (e) { alert(e.message); }
+    setBusy(false);
+  }
+
+  async function downloadQR() {
+    setDlLoad(true);
+    const src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(campaign.qrUrl)}`;
+    try {
+      const resp = await fetch(src);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `promo-${campaign.id}.png`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch { window.open(src, '_blank'); }
+    finally { setDlLoad(false); }
+  }
+
+  return (
+    <>
+      <div onClick={() => onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto', maxHeight: '90vh', overflowY: 'auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)', padding: '0 0 44px',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <RarityBadge rarity={campaign.rarity} />
+                <PromoStatusBadge p={campaign} />
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 18, color: C.t1 }}>{campaign.title}</div>
+              {campaign.description && <div style={{ fontSize: 13, color: C.t3, marginTop: 3 }}>{campaign.description}</div>}
+            </div>
+          </div>
+
+          {/* QR mini */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+            <div style={{ padding: 8, borderRadius: 10, background: '#fff', flexShrink: 0 }}>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&margin=0&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(campaign.qrUrl)}`}
+                alt="QR" style={{ width: 64, height: 64, display: 'block' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: C.t3, marginBottom: 3 }}>QR URL</div>
+              <div style={{ fontSize: 10, color: r.color, wordBreak: 'break-all', fontFamily: 'monospace', lineHeight: 1.4 }}>{campaign.qrUrl}</div>
+            </div>
+          </div>
+
+          {/* Stats grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+            {[
+              { label: 'Клеймов',   value: campaign.claims_count,  color: '#10B981' },
+              { label: 'Осталось',  value: campaign.remaining,      color: r.color   },
+              { label: 'GEO выдано',value: formatGeo(campaign.totalGeo), color: C.gold },
+            ].map(s => (
+              <div key={s.label} style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '12px 10px', borderRadius: 12, textAlign: 'center' }}>
+                <div style={{ fontWeight: 900, fontSize: 20, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: C.t3, marginTop: 3, fontWeight: 600 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Fill bar */}
+          <div style={{ background: C.b0, borderRadius: 4, height: 6, marginBottom: 16, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 4,
+              width: `${Math.min(100, Math.round(campaign.claims_count / campaign.max_claims * 100))}%`,
+              background: r.color, transition: 'width 0.5s',
+              boxShadow: `0 0 8px ${r.color}60`,
+            }} />
+          </div>
+
+          {/* Details */}
+          <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px', marginBottom: 14, borderRadius: 14 }}>
+            {[
+              { label: 'Награда',      value: `+${formatGeo(campaign.reward_amount)} GEO` },
+              { label: 'Радиус',       value: `${campaign.radius_m} м` },
+              { label: 'Кулдаун',      value: campaign.cooldown_hours > 0 ? `${campaign.cooldown_hours} ч` : 'Одноразово' },
+              { label: 'Истекает',     value: campaign.expires_at ? fmtDay(campaign.expires_at) : 'Без ограничения' },
+              { label: 'Координаты',   value: `${campaign.lat?.toFixed(4)}, ${campaign.lng?.toFixed(4)}` },
+            ].map((row, i, arr) => (
+              <div key={row.label} style={{
+                display: 'flex', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 8,
+                borderBottom: i < arr.length - 1 ? `1px solid ${C.b0}` : 'none',
+              }}>
+                <span style={{ fontSize: 12, color: C.t3 }}>{row.label}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.t1 }}>{row.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Recent claims */}
+          {loading && <div style={{ marginBottom: 14 }}><Skel h={40} r={10} /></div>}
+          {!loading && data && data.claims.length > 0 && (
+            <>
+              <SectionTitle icon={Users} color={C.t3}>Последние клеймы ({data.uniqueUsers} уникальных)</SectionTitle>
+              <div style={{ maxHeight: 180, overflowY: 'auto', marginBottom: 14 }}>
+                {data.claims.slice(0, 20).map((c, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 0', borderBottom: `1px solid ${C.b0}`,
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.t1 }}>
+                        {c.username ? `@${c.username}` : `ID ${c.telegram_id}`}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.t3 }}>{fmtDate(c.claimed_at)}</div>
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: r.color }}>+{c.geo_awarded}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <Btn variant={campaign.active ? 'gold' : 'success'} size="md" onClick={toggleActive} loading={busy} style={{ flex: 1 }}>
+              {campaign.active ? <><PauseCircle size={13} /> Пауза</> : <><PlayCircle size={13} /> Запустить</>}
+            </Btn>
+            <Btn variant="ghost" size="md" onClick={downloadQR} loading={dlLoad} style={{ flex: 1 }}>
+              <ArrowDownToLine size={13} /> QR PNG
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PromoQRTab() {
+  const [campaigns,   setCampaigns]   = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [showCreate,  setShowCreate]  = useState(false);
+  const [createResult, setCreateResult] = useState(null);
+  const [detail,      setDetail]      = useState(null);
+  const [filter,      setFilter]      = useState('all');
+
+  function load() {
+    setLoading(true);
+    saFetch('/api/superadmin/promo-campaigns')
+      .then(d => setCampaigns(d.campaigns || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+  useEffect(load, []);
+
+  async function handleDelete(id, title) {
+    if (!confirm(`Удалить "${title}"? Это действие необратимо.`)) return;
+    try {
+      await saFetch(`/api/superadmin/promo-campaigns/${id}`, { method: 'DELETE' });
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+    } catch (e) { alert(e.message); }
+  }
+
+  const filtered = campaigns.filter(c => {
+    if (filter === 'active')  return c.active && !c.isExpired && !c.isExhausted;
+    if (filter === 'paused')  return !c.active && !c.isExpired && !c.isExhausted;
+    if (filter === 'done')    return c.isExpired || c.isExhausted;
+    return true;
+  });
+
+  const totalGeo   = campaigns.reduce((s, c) => s + c.totalGeo, 0);
+  const totalClaims = campaigns.reduce((s, c) => s + c.claims_count, 0);
+  const activeCount = campaigns.filter(c => c.active && !c.isExpired && !c.isExhausted).length;
+
+  return (
+    <div>
+      {/* Summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 10px', borderRadius: 14, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: 22, color: '#10B981' }}>{activeCount}</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Активных</div>
+        </div>
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 10px', borderRadius: 14, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: 22, color: C.gold }}>{totalClaims}</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Клеймов</div>
+        </div>
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 10px', borderRadius: 14, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: 22, color: SA_COLOR }}>{formatGeo(totalGeo)}</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>GEO выдано</div>
+        </div>
+      </div>
+
+      <Btn variant="purple" size="md" onClick={() => setShowCreate(true)} style={{ width: '100%', marginBottom: 14 }}>
+        <Plus size={15} /> Создать Promo QR
+      </Btn>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+        {[['all','Все'],['active','Активные'],['paused','На паузе'],['done','Завершённые']].map(([k, lbl]) => (
+          <button key={k} onClick={() => setFilter(k)} style={{
+            flexShrink: 0, padding: '7px 11px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            border: `1.5px solid ${filter === k ? SA_COLOR : C.b1}`,
+            background: filter === k ? `${SA_COLOR}18` : 'transparent',
+            color: filter === k ? SA_COLOR : C.t3,
+          }}>
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {loading && [1,2,3].map(i => (
+        <div key={i} style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '16px', marginBottom: 10, borderRadius: 16 }}>
+          <Skel h={14} w="55%" r={6} /><div style={{ marginTop: 8 }}><Skel h={10} w="35%" r={5} /></div>
+        </div>
+      ))}
+
+      {!loading && filtered.length === 0 && (
+        <Empty icon={Megaphone} text="Нет промо-кампаний" />
+      )}
+
+      {!loading && filtered.map((c, i) => {
+        const r = RARITY_CFG[c.rarity] || RARITY_CFG.common;
+        const fillPct = c.max_claims > 0 ? Math.round(c.claims_count / c.max_claims * 100) : 0;
+        return (
+          <div key={c.id} style={{
+            ...cardBase,
+            border: `1px solid ${c.active && !c.isExpired && !c.isExhausted ? `${r.color}40` : C.b1}`,
+            padding: '14px 16px', marginBottom: 10, borderRadius: 16,
+            animation: `fadeUp 0.3s ${i * 0.04}s ease both`,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                  <RarityBadge rarity={c.rarity} />
+                  <PromoStatusBadge p={c} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: C.t1, marginBottom: 2 }}>{c.title}</div>
+                <div style={{ fontSize: 11, color: C.t3 }}>
+                  {c.claims_count}/{c.max_claims} · {c.remaining} осталось · {c.radius_m}м
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: 18, color: r.color }}>+{formatGeo(c.reward_amount)}</div>
+                <div style={{ fontSize: 10, color: C.t3 }}>GEO</div>
+              </div>
+            </div>
+
+            {/* Fill bar */}
+            <div style={{ background: C.b0, borderRadius: 3, height: 4, marginBottom: 10, overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 3, width: `${fillPct}%`, background: r.color, transition: 'width 0.5s' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn variant="ghost" size="sm" onClick={() => setDetail(c)} style={{ flex: 2 }}>
+                <BarChart3 size={12} /> Аналитика
+              </Btn>
+              <Btn variant="danger" size="sm" onClick={() => handleDelete(c.id, c.title)} style={{ flex: 1 }}>
+                <Trash2 size={12} />
+              </Btn>
+            </div>
+          </div>
+        );
+      })}
+
+      {showCreate && (
+        <PromoCreateSheet
+          onClose={() => setShowCreate(false)}
+          onCreated={result => { setShowCreate(false); setCreateResult(result); load(); }}
+        />
+      )}
+      {createResult && (
+        <PromoResultSheet result={createResult} onClose={() => setCreateResult(null)} />
+      )}
+      {detail && (
+        <PromoAnalyticsSheet
+          campaign={detail}
+          onClose={action => { setDetail(null); if (action === 'reload') load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── useGeoRate ───────────────────────────────────────────────────────────────
 
 function useGeoRate() {
@@ -1626,6 +2504,7 @@ const TABS = [
   { key: 'finance',       label: 'Финансы',    Icon: Wallet          },
   { key: 'users',         label: 'Юзеры',      Icon: Users           },
   { key: 'gamification',  label: 'Геймиф.',    Icon: Trophy          },
+  { key: 'promo',         label: 'Promo QR',   Icon: QrCode          },
   { key: 'system',        label: 'Система',    Icon: Settings        },
 ];
 
@@ -1690,6 +2569,7 @@ export default function SuperAdmin() {
         {tab === 'finance'      && <FinanceTab geoRate={geoRate} />}
         {tab === 'users'        && <UsersTab />}
         {tab === 'gamification' && <GamificationTab />}
+        {tab === 'promo'        && <PromoQRTab />}
         {tab === 'system'       && <SystemTab />}
       </div>
     </div>

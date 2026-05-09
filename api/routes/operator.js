@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
@@ -7,8 +8,12 @@ const router = express.Router();
 function operatorAuth(req, res, next) {
   const secret = process.env.OPERATOR_SECRET;
   if (!secret) return res.status(503).json({ error: 'OPERATOR_NOT_CONFIGURED' });
-  const provided = req.headers['x-operator-secret'];
-  if (!provided || provided !== secret) return res.status(403).json({ error: 'FORBIDDEN' });
+  const provided = req.headers['x-operator-secret'] || '';
+  // Constant-time comparison to prevent timing attacks
+  const a = Buffer.from(provided);
+  const b = Buffer.from(secret);
+  const match = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!match) return res.status(403).json({ error: 'FORBIDDEN' });
   return next();
 }
 

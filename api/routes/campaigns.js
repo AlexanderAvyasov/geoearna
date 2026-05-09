@@ -23,7 +23,8 @@ router.get('/api/campaigns', validateTma, async (req, res) => {
           lng
         )
       `)
-      .eq('active', true);
+      .eq('active', true)
+      .limit(500);
 
     if (error) {
       console.error('GET /api/campaigns error', error);

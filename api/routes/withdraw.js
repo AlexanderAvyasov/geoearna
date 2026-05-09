@@ -18,7 +18,7 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
   try {
     const { amount, phone } = req.body;
 
-    if (typeof amount !== 'number' || amount <= 0) {
+    if (!Number.isInteger(amount) || amount <= 0) {
       return res.status(400).json({ error: 'INVALID_PARAMS' });
     }
 

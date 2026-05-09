@@ -35,7 +35,11 @@ async function validateTma(req, res, next) {
       return res.status(401).json({ error: 'INVALID_INITDATA' });
     }
 
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(process.env.BOT_TOKEN || '').digest();
+    if (!process.env.BOT_TOKEN) {
+      console.error('[FATAL] BOT_TOKEN env var is not set — cannot validate initData');
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(process.env.BOT_TOKEN).digest();
     const dataCheckString = buildDataCheckString(payload);
     const expectedHash = crypto
       .createHmac('sha256', secretKey)

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
@@ -173,9 +174,16 @@ router.get('/api/superadmin/users', ...SA, async (req, res) => {
 
     if (error) throw error;
 
-    const { data: visitRows } = await supabase.from('visits').select('user_id');
+    // Fetch visit counts only for the users we already have (avoids full-table scan)
+    const userIds = (users || []).map(u => u.id);
     const visitMap = {};
-    visitRows?.forEach(v => { visitMap[v.user_id] = (visitMap[v.user_id] || 0) + 1; });
+    if (userIds.length > 0) {
+      const { data: visitRows } = await supabase
+        .from('visits')
+        .select('user_id')
+        .in('user_id', userIds);
+      visitRows?.forEach(v => { visitMap[v.user_id] = (visitMap[v.user_id] || 0) + 1; });
+    }
 
     return res.json({
       users: (users || []).map(u => ({ ...u, visit_count: visitMap[u.id] || 0 })),
@@ -239,6 +247,101 @@ router.post('/api/superadmin/topups/:id/confirm', ...SA, async (req, res) => {
 });
 
 // ── Campaign management ───────────────────────────────────────────────────────
+
+// Edit any campaign field (superadmin)
+router.patch('/api/superadmin/campaigns/:id', ...SA, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { reward_amount, max_visits, ends_at, active } = req.body;
+
+    const updates = {};
+    if (reward_amount !== undefined && Number.isInteger(reward_amount) && reward_amount >= 1) updates.reward_amount = reward_amount;
+    if (max_visits !== undefined && Number.isInteger(max_visits) && max_visits >= 1) updates.max_visits = max_visits;
+    if (ends_at !== undefined) updates.ends_at = ends_at || null;
+    if (active !== undefined) updates.active = !!active;
+
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+
+    const { error } = await supabase.from('campaigns').update(updates).eq('id', id);
+    if (error) throw error;
+
+    try { await supabase.from('sa_audit_log').insert({ action: 'campaign_edit', target_id: id, admin_id: Number(SUPER_ADMIN_ID), note: JSON.stringify(updates) }); } catch (_) {}
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/campaigns PATCH', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// Create platform promo campaign — platform wallet funds it, business hosts it
+router.post('/api/superadmin/platform-campaign', ...SA, async (req, res) => {
+  try {
+    const { business_id, reward_amount, max_visits, ends_at, task_type, task_description } = req.body;
+
+    if (!Number.isInteger(business_id) || business_id < 1) {
+      return res.status(400).json({ error: 'INVALID_PARAMS', message: 'business_id required' });
+    }
+    if (!Number.isInteger(reward_amount) || reward_amount < 1) {
+      return res.status(400).json({ error: 'INVALID_PARAMS', message: 'reward_amount must be >= 1' });
+    }
+    if (!Number.isInteger(max_visits) || max_visits < 1 || max_visits > 100000) {
+      return res.status(400).json({ error: 'INVALID_PARAMS', message: 'max_visits must be 1–100000' });
+    }
+
+    const totalCost = reward_amount * max_visits;
+
+    const { data: wallet } = await supabase.from('platform_wallet').select('balance').single();
+    if (!wallet || wallet.balance < totalCost) {
+      return res.status(400).json({ error: 'INSUFFICIENT_PLATFORM_BALANCE', available: wallet?.balance || 0 });
+    }
+
+    const { data: business } = await supabase
+      .from('businesses').select('id, name, qr_token, balance').eq('id', business_id).single();
+    if (!business) return res.status(404).json({ error: 'BUSINESS_NOT_FOUND' });
+
+    // Deduct from platform wallet (optimistic: only if balance still sufficient)
+    const { count: walletUpdated } = await supabase
+      .from('platform_wallet')
+      .update({ balance: wallet.balance - totalCost }, { count: 'exact' })
+      .gte('balance', totalCost);
+    if (!walletUpdated) return res.status(400).json({ error: 'INSUFFICIENT_PLATFORM_BALANCE' });
+
+    // Credit business so checkin flow can deduct normally
+    await supabase
+      .from('businesses')
+      .update({ balance: business.balance + totalCost })
+      .eq('id', business_id);
+
+    const { data: campaign, error: campErr } = await supabase
+      .from('campaigns')
+      .insert({
+        business_id,
+        budget:           totalCost,
+        reward_amount,
+        max_visits,
+        task_type:        task_type || 'visit',
+        task_description: task_description || null,
+        active:           true,
+        requires_pin:     false,
+        ends_at:          ends_at || null,
+      })
+      .select()
+      .single();
+
+    if (campErr) throw campErr;
+
+    const webappUrl = process.env.WEBAPP_URL || '';
+    const qrUrl = `${webappUrl}/checkin?token=${business.qr_token}&cid=${campaign.id}`;
+
+    try { await supabase.from('sa_audit_log').insert({ action: 'platform_campaign_create', target_id: campaign.id, admin_id: Number(SUPER_ADMIN_ID), note: `${reward_amount} GEO x ${max_visits} = ${totalCost} for biz ${business_id}` }); } catch (_) {}
+
+    return res.json({ campaign, qrUrl, business: { id: business.id, name: business.name, qr_token: business.qr_token } });
+  } catch (err) {
+    console.error('superadmin/platform-campaign', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
 
 router.post('/api/superadmin/campaigns/:id/toggle', ...SA, async (req, res) => {
   try {
@@ -619,7 +722,8 @@ router.get('/api/superadmin/economics', ...SA, async (req, res) => {
     ]);
 
     const geoRate      = getGeoRate();
-    const totalRevenue = (topups       || []).reduce((s, t) => s + (t.amount || 0), 0);
+    // amount stores netGeo — multiply by geoRate to get UZS revenue
+    const totalRevenue = Math.round((topups || []).reduce((s, t) => s + (t.amount || 0), 0) * geoRate);
     const totalIssued  = (visits       || []).reduce((s, v) => s + (v.rewarded || 0), 0);
     const approvedGeo  = (withdrawals  || []).filter(w => w.status === 'approved').reduce((s, w) => s + (w.amount || 0), 0);
     const pendingGeo   = (withdrawals  || []).filter(w => w.status === 'pending').reduce((s, w) => s + (w.amount || 0), 0);
@@ -631,7 +735,7 @@ router.get('/api/superadmin/economics', ...SA, async (req, res) => {
     for (let i = 6; i >= 0; i--) {
       const ds = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
       const de = new Date(ds.getTime() + 86400_000);
-      const rev = (topups || []).filter(t => new Date(t.created_at) >= ds && new Date(t.created_at) < de).reduce((s, t) => s + t.amount, 0);
+      const rev = Math.round((topups || []).filter(t => new Date(t.created_at) >= ds && new Date(t.created_at) < de).reduce((s, t) => s + t.amount, 0) * geoRate);
       const pay = (withdrawals || []).filter(w => w.status === 'approved' && new Date(w.created_at) >= ds && new Date(w.created_at) < de).reduce((s, w) => s + w.amount, 0);
       daily.push({ date: ds.toISOString().slice(0, 10), revenue: rev, payout: Math.round(pay * geoRate) });
     }
@@ -639,6 +743,162 @@ router.get('/api/superadmin/economics', ...SA, async (req, res) => {
     return res.json({ totalRevenue, totalPayout, totalIssued, approvedGeo, pendingGeo, platformBalance: platform?.balance || 0, margin, geoRate, daily });
   } catch (err) {
     console.error('superadmin/economics', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// ── Promo QR Campaigns ────────────────────────────────────────────────────────
+
+const VALID_RARITIES = ['common', 'rare', 'epic', 'legendary'];
+
+router.get('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('promo_campaigns')
+      .select('id, token, title, description, reward_amount, max_claims, claims_count, rarity, lat, lng, radius_m, expires_at, cooldown_hours, image_url, active, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (error) throw error;
+
+    const webappUrl = process.env.WEBAPP_URL || '';
+    const now = new Date();
+    const campaigns = (data || []).map(c => ({
+      ...c,
+      qrUrl:       `${webappUrl}/checkin?token=${c.token}&promo=1`,
+      remaining:   c.max_claims - c.claims_count,
+      isExpired:   c.expires_at ? new Date(c.expires_at) <= now : false,
+      isExhausted: c.claims_count >= c.max_claims,
+      totalGeo:    c.claims_count * c.reward_amount,
+    }));
+
+    return res.json({ campaigns });
+  } catch (err) {
+    console.error('superadmin/promo-campaigns GET', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
+  try {
+    const { title, description, reward_amount, max_claims, rarity, lat, lng, radius_m, expires_at, cooldown_hours, image_url } = req.body;
+
+    if (!title?.trim())                                             return res.status(400).json({ error: 'INVALID_PARAMS', message: 'title required' });
+    if (!Number.isFinite(lat) || !Number.isFinite(lng))            return res.status(400).json({ error: 'INVALID_PARAMS', message: 'lat/lng required' });
+    if (!Number.isInteger(reward_amount) || reward_amount < 1)     return res.status(400).json({ error: 'INVALID_PARAMS', message: 'reward_amount >= 1' });
+    if (!Number.isInteger(max_claims)    || max_claims    < 1)     return res.status(400).json({ error: 'INVALID_PARAMS', message: 'max_claims >= 1' });
+    if (!VALID_RARITIES.includes(rarity))                          return res.status(400).json({ error: 'INVALID_PARAMS', message: 'invalid rarity' });
+
+    const token = 'promo_' + crypto.randomBytes(24).toString('hex');
+
+    const { data: campaign, error } = await supabase
+      .from('promo_campaigns')
+      .insert({
+        token,
+        title:          title.trim(),
+        description:    description?.trim() || null,
+        reward_amount,
+        max_claims,
+        rarity,
+        lat,
+        lng,
+        radius_m:       Number.isInteger(radius_m) && radius_m > 0 ? radius_m : 200,
+        expires_at:     expires_at || null,
+        cooldown_hours: Number.isInteger(cooldown_hours) && cooldown_hours >= 0 ? cooldown_hours : 0,
+        image_url:      image_url?.trim() || null,
+        created_by:     Number(SUPER_ADMIN_ID),
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const webappUrl = process.env.WEBAPP_URL || '';
+    const qrUrl = `${webappUrl}/checkin?token=${token}&promo=1`;
+
+    try {
+      await supabase.from('sa_audit_log').insert({
+        action: 'promo_campaign_create', target_id: campaign.id, admin_id: Number(SUPER_ADMIN_ID),
+        note: `${rarity} · ${reward_amount} GEO · ${max_claims} claims · "${title}"`,
+      });
+    } catch (_) {}
+
+    return res.json({ campaign, qrUrl });
+  } catch (err) {
+    console.error('superadmin/promo-campaigns POST', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR', detail: err.message });
+  }
+});
+
+router.patch('/api/superadmin/promo-campaigns/:id', ...SA, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { active, expires_at, max_claims, title, description } = req.body;
+
+    const updates = {};
+    if (active      !== undefined)                                      updates.active      = !!active;
+    if (expires_at  !== undefined)                                      updates.expires_at  = expires_at || null;
+    if (title       !== undefined && title?.trim())                     updates.title       = title.trim();
+    if (description !== undefined)                                      updates.description = description?.trim() || null;
+    if (max_claims  !== undefined && Number.isInteger(max_claims) && max_claims >= 1) updates.max_claims = max_claims;
+
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+
+    const { error } = await supabase.from('promo_campaigns').update(updates).eq('id', id);
+    if (error) throw error;
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/promo-campaigns PATCH', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.delete('/api/superadmin/promo-campaigns/:id', ...SA, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { error } = await supabase.from('promo_campaigns').delete().eq('id', id);
+    if (error) throw error;
+    try { await supabase.from('sa_audit_log').insert({ action: 'promo_campaign_delete', target_id: id, admin_id: Number(SUPER_ADMIN_ID) }); } catch (_) {}
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('superadmin/promo-campaigns DELETE', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.get('/api/superadmin/promo-campaigns/:id/analytics', ...SA, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const [{ data: promo }, { data: claims }] = await Promise.all([
+      supabase.from('promo_campaigns').select('*').eq('id', id).single(),
+      supabase.from('promo_claims')
+        .select('claimed_at, geo_awarded, user_id, users(telegram_id, username)')
+        .eq('promo_id', id)
+        .order('claimed_at', { ascending: false })
+        .limit(100),
+    ]);
+
+    if (!promo) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    const totalGeo    = (claims || []).reduce((s, c) => s + c.geo_awarded, 0);
+    const uniqueUsers = new Set((claims || []).map(c => c.user_id)).size;
+
+    const webappUrl = process.env.WEBAPP_URL || '';
+    return res.json({
+      promo: { ...promo, qrUrl: `${webappUrl}/checkin?token=${promo.token}&promo=1` },
+      claims: (claims || []).map(c => ({
+        claimed_at: c.claimed_at,
+        geo_awarded: c.geo_awarded,
+        username: c.users?.username || null,
+        telegram_id: c.users?.telegram_id || null,
+      })),
+      totalGeo,
+      uniqueUsers,
+    });
+  } catch (err) {
+    console.error('superadmin/promo-campaigns analytics', err);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });

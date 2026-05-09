@@ -22,14 +22,23 @@ router.get('/api/checkin/info', async (req, res) => {
   }
 
   const now = new Date();
-  const campaign = (business.campaigns || []).find(c => {
-    if (!c.active) return false;
-    if (c.ends_at && new Date(c.ends_at) <= now) return false;
-    if (c.visits_count >= c.max_visits) return false;
-    return true;
-  });
+  const cidParam = req.query.cid ? parseInt(req.query.cid, 10) : null;
 
-  if (!campaign) return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
+  let campaign;
+  if (cidParam) {
+    campaign = (business.campaigns || []).find(c => c.id === cidParam);
+    if (!campaign || !campaign.active || (campaign.ends_at && new Date(campaign.ends_at) <= now) || campaign.visits_count >= campaign.max_visits) {
+      return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
+    }
+  } else {
+    campaign = (business.campaigns || []).find(c => {
+      if (!c.active) return false;
+      if (c.ends_at && new Date(c.ends_at) <= now) return false;
+      if (c.visits_count >= c.max_visits) return false;
+      return true;
+    });
+    if (!campaign) return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
+  }
 
   return res.json({
     businessName: business.name,
@@ -38,6 +47,7 @@ router.get('/api/checkin/info', async (req, res) => {
     taskType: campaign.task_type || 'visit',
     taskDescription: campaign.task_description || null,
     requiresPin: campaign.requires_pin || false,
+    campaignId: campaign.id,
   });
 });
 

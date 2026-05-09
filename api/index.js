@@ -13,6 +13,7 @@ const operatorRoutes = require('./routes/operator');
 const configRoutes = require('./routes/config');
 const superadminRoutes   = require('./routes/superadmin');
 const gamificationRoutes = require('./routes/gamification');
+const promoRoutes        = require('./routes/promo');
 
 dotenv.config();
 
@@ -82,6 +83,24 @@ app.use('/api/checkin', rateLimit({
   message: { error: 'TOO_MANY_REQUESTS' },
 }));
 
+// Promo claim: 10 per minute per IP (same as checkin)
+app.use('/api/promo/claim', rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS' },
+}));
+
+// Promo info: 30 per minute per IP
+app.use('/api/promo/info', rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS' },
+}));
+
 // Public QR info endpoint: 30 per minute per IP (stricter — no auth)
 app.use('/api/checkin/info', rateLimit({
   windowMs: 60 * 1000,
@@ -126,6 +145,7 @@ app.use(operatorRoutes);
 app.use(configRoutes);
 app.use(superadminRoutes);
 app.use(gamificationRoutes);
+app.use(promoRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });
@@ -137,6 +157,12 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 3000;
+
+// Startup safety checks
+if (!process.env.BOT_TOKEN)           console.error('[FATAL] BOT_TOKEN is not set — Telegram auth will fail for all users');
+if (!process.env.SUPER_ADMIN_TG_ID)   console.error('[SECURITY] SUPER_ADMIN_TG_ID is not set — using hardcoded fallback ID 930826522');
+if (!process.env.WEBHOOK_SECRET)      console.warn('[WARN] WEBHOOK_SECRET not set — webhook path derived from BOT_TOKEN; set WEBHOOK_SECRET to rotate safely');
+if (!process.env.OPERATOR_SECRET)     console.warn('[WARN] OPERATOR_SECRET not set — operator topup endpoints are disabled');
 
 app.listen(port, () => {
   console.log(`GeoEarn server started on port ${port}`);

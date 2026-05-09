@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
   try {
-    const { qrToken, lat, lng, pin } = req.body;
+    const { qrToken, lat, lng, pin, campaignId } = req.body;
 
     if (!qrToken || typeof lat !== 'number' || typeof lng !== 'number') {
       return res.status(400).json({ error: 'INVALID_PARAMS' });
@@ -24,6 +24,7 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
       lat,
       lng,
       pin: pin || null,
+      campaignId: campaignId ? parseInt(campaignId, 10) : null,
     });
 
     // Fire-and-forget Telegram notification

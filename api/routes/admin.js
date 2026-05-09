@@ -1,6 +1,7 @@
 const express = require('express');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
+const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
@@ -69,11 +70,11 @@ router.get('/api/admin/stats', validateTma, async (req, res) => {
     { count: visitsPrev7d },
     { data: lastTopup },
   ] = await Promise.all([
-    supabase.from('checkins').select('*', { count: 'exact', head: true })
+    supabase.from('visits').select('*', { count: 'exact', head: true })
       .eq('business_id', business.id).gte('created_at', startOfToday.toISOString()),
-    supabase.from('checkins').select('*', { count: 'exact', head: true })
+    supabase.from('visits').select('*', { count: 'exact', head: true })
       .eq('business_id', business.id).gte('created_at', sevenDaysAgo.toISOString()),
-    supabase.from('checkins').select('*', { count: 'exact', head: true })
+    supabase.from('visits').select('*', { count: 'exact', head: true })
       .eq('business_id', business.id)
       .gte('created_at', fourteenDaysAgo.toISOString())
       .lt('created_at', sevenDaysAgo.toISOString()),
@@ -128,13 +129,13 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
   if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
   if (business.balance < budget) return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
 
-  // (budget - 10%) / activations = reward per activation
-  const rewardAmount = Math.floor((budget * 0.9) / max_visits);
+  // Commission is taken at top-up — 100% of budget goes to rewards
+  const rewardAmount = Math.floor(budget / max_visits);
   if (rewardAmount < 1) {
     return res.status(400).json({ error: 'REWARD_TOO_LOW', message: 'Increase budget or reduce activations' });
   }
 
-  const commission = budget - rewardAmount * max_visits;
+  const commission = budget - rewardAmount * max_visits; // rounding residual only
 
   // Atomically: deduct commission from business balance, credit platform_wallet, insert campaign
   const { data: campaignId, error: rpcError } = await supabase.rpc('create_campaign_with_commission', {
@@ -174,6 +175,79 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
   });
 });
 
+// Extend activations or update ends_at for a campaign
+router.patch('/api/admin/campaign/:id', validateTma, async (req, res) => {
+  const telegramId = req.user.telegram_id;
+  const campaignId = parseInt(req.params.id, 10);
+  const { additional_visits, ends_at } = req.body;
+
+  const { data: business, error: bizErr } = await supabase
+    .from('businesses')
+    .select('id, balance')
+    .eq('owner_telegram_id', telegramId)
+    .maybeSingle();
+
+  if (bizErr) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
+
+  const { data: campaign, error: campErr } = await supabase
+    .from('campaigns')
+    .select('id, reward_amount, max_visits, budget')
+    .eq('id', campaignId)
+    .eq('business_id', business.id)
+    .maybeSingle();
+
+  if (campErr) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (!campaign) return res.status(404).json({ error: 'NOT_FOUND' });
+
+  const updates = {};
+  let extraCost = 0;
+
+  if (Number.isInteger(additional_visits) && additional_visits > 0) {
+    extraCost = additional_visits * campaign.reward_amount;
+    if (business.balance < extraCost) {
+      return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
+    }
+    updates.max_visits = campaign.max_visits + additional_visits;
+    updates.budget = (campaign.budget || 0) + extraCost;
+  }
+
+  if (ends_at !== undefined) {
+    if (ends_at === null) {
+      updates.ends_at = null;
+    } else {
+      const endsDate = new Date(ends_at);
+      if (isNaN(endsDate.getTime()) || endsDate <= new Date()) {
+        return res.status(400).json({ error: 'INVALID_PARAMS', message: 'ends_at must be a future date' });
+      }
+      updates.ends_at = endsDate.toISOString();
+    }
+  }
+
+  if (!Object.keys(updates).length) {
+    return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
+  }
+
+  if (extraCost > 0) {
+    // Atomic: only deduct if balance is still sufficient (prevents race condition)
+    const { error: deductErr, count: affected } = await supabase
+      .from('businesses')
+      .update({ balance: business.balance - extraCost }, { count: 'exact' })
+      .eq('id', business.id)
+      .gte('balance', extraCost);
+    if (deductErr) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    if (!affected) return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
+  }
+
+  const { error: updateErr } = await supabase
+    .from('campaigns')
+    .update(updates)
+    .eq('id', campaignId);
+
+  if (updateErr) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  return res.json({ ok: true, extraCost });
+});
+
 // Deactivate a campaign
 router.post('/api/admin/campaign/:id/stop', validateTma, async (req, res) => {
   const telegramId = req.user.telegram_id;
@@ -197,13 +271,16 @@ router.post('/api/admin/campaign/:id/stop', validateTma, async (req, res) => {
   return res.json({ ok: true });
 });
 
-// Create top-up request
+const TOPUP_COMMISSION = 0.10;
+const TOPUP_MIN_UZS    = 10_000;
+
+// Create top-up request — business pays in UZS, gets GEO minus 10% commission
 router.post('/api/admin/topup', validateTma, async (req, res) => {
   const telegramId = req.user.telegram_id;
-  const { amount } = req.body;
+  const { uzsAmount } = req.body;
 
-  if (typeof amount !== 'number' || amount < 10000) {
-    return res.status(400).json({ error: 'INVALID_PARAMS' });
+  if (typeof uzsAmount !== 'number' || !Number.isFinite(uzsAmount) || uzsAmount < TOPUP_MIN_UZS) {
+    return res.status(400).json({ error: 'INVALID_PARAMS', message: `Minimum top-up is ${TOPUP_MIN_UZS} UZS` });
   }
 
   const { data: business, error: businessError } = await supabase
@@ -215,21 +292,58 @@ router.post('/api/admin/topup', validateTma, async (req, res) => {
   if (businessError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
 
+  const geoRate  = getGeoRate();
+  const grossGeo = Math.floor(uzsAmount / geoRate);
+  const commission = Math.floor(grossGeo * TOPUP_COMMISSION);
+  const netGeo   = grossGeo - commission;
+
+  if (netGeo < 1) {
+    return res.status(400).json({ error: 'INVALID_PARAMS', message: 'Amount too small to convert to GEO' });
+  }
+
+  // amount = netGeo (what business receives after commission is taken at topup)
+  const insertPayload = { business_id: business.id, amount: netGeo };
+  // note is optional — ignore error if column missing
   const { data: request, error: insertError } = await supabase
     .from('topup_requests')
-    .insert({ business_id: business.id, amount })
+    .insert({ ...insertPayload, note: `${uzsAmount} UZS → ${grossGeo} GEO gross, −${commission} GEO commission` })
     .select('id, amount, created_at')
     .single();
 
-  if (insertError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (insertError) {
+    // Retry without note in case the column has constraints
+    const { data: r2, error: e2 } = await supabase
+      .from('topup_requests')
+      .insert(insertPayload)
+      .select('id, amount, created_at')
+      .single();
+    if (e2) {
+      console.error('topup insert error', e2);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+    Object.assign(insertPayload, r2);
+    return res.json({
+      request: r2,
+      breakdown: { uzsAmount, grossGeo, commission, netGeo, geoRate },
+      paymentDetails: {
+        cardNumber: process.env.TOPUP_CARD_NUMBER || '0000 0000 0000 0000',
+        cardHolder: process.env.TOPUP_CARD_HOLDER || 'GeoEarn',
+        bank: process.env.TOPUP_BANK || 'Payme',
+        uzsAmount, netGeo,
+        comment: `GeoEarn #${r2.id}`,
+      },
+    });
+  }
 
   return res.json({
     request,
+    breakdown: { uzsAmount, grossGeo, commission, netGeo, geoRate },
     paymentDetails: {
       cardNumber: process.env.TOPUP_CARD_NUMBER || '0000 0000 0000 0000',
       cardHolder: process.env.TOPUP_CARD_HOLDER || 'GeoEarn',
       bank: process.env.TOPUP_BANK || 'Payme',
-      amount,
+      uzsAmount,
+      netGeo,
       comment: `GeoEarn #${request.id}`,
     },
   });

@@ -14,7 +14,56 @@ const {
   checkAchievements,
 } = require('./gamification');
 
-async function performCheckin({ userId, qrToken, lat, lng, pin }) {
+const REFERRAL_BONUS_REFERRER = 25;
+const REFERRAL_BONUS_NEW_USER = 10;
+
+async function activateReferral(userId, telegramId) {
+  try {
+    const { data: referral } = await supabase
+      .from('referrals')
+      .select('id, referrer_id')
+      .eq('referred_id', userId)
+      .eq('activated', false)
+      .maybeSingle();
+
+    if (!referral) return;
+
+    await Promise.all([
+      supabase.from('referrals')
+        .update({ activated: true, activated_at: new Date().toISOString() })
+        .eq('id', referral.id),
+      supabase.rpc('apply_checkin_bonus', { p_user_id: userId,             p_amount: REFERRAL_BONUS_NEW_USER }),
+      supabase.rpc('apply_checkin_bonus', { p_user_id: referral.referrer_id, p_amount: REFERRAL_BONUS_REFERRER }),
+      supabase.from('referral_earnings').insert({
+        referrer_id: referral.referrer_id,
+        referred_id: userId,
+        amount: REFERRAL_BONUS_REFERRER,
+      }),
+    ]);
+
+    const { data: referrerRow } = await supabase
+      .from('users').select('telegram_id').eq('id', referral.referrer_id).single();
+
+    if (referrerRow?.telegram_id) {
+      sendMessage(referrerRow.telegram_id,
+        `👥 *Реферал активирован!*\n\n` +
+        `Ваш друг сделал первый чекин.\n` +
+        `💰 *+${REFERRAL_BONUS_REFERRER} GEO* зачислено на ваш счёт!`
+      ).catch(() => {});
+    }
+
+    if (telegramId) {
+      sendMessage(telegramId,
+        `🎁 *Приветственный бонус!*\n\n` +
+        `*+${REFERRAL_BONUS_NEW_USER} GEO* начислено за приход по реферальной ссылке!`
+      ).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[referral] activateReferral error', e?.message);
+  }
+}
+
+async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   const { data: business, error: businessError } = await supabase
     .from('businesses')
     .select('*')
@@ -46,10 +95,21 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   }
 
   const now = new Date();
-  const campaign = (campaigns || []).find(item => {
-    const endsAt = item.ends_at ? new Date(item.ends_at) : null;
-    return (!endsAt || endsAt > now) && item.visits_count < item.max_visits;
-  });
+  let campaign;
+  if (campaignId) {
+    campaign = (campaigns || []).find(item => item.id === campaignId);
+    if (campaign) {
+      const endsAt = campaign.ends_at ? new Date(campaign.ends_at) : null;
+      if (!campaign.active || (endsAt && endsAt <= now) || campaign.visits_count >= campaign.max_visits) {
+        campaign = null;
+      }
+    }
+  } else {
+    campaign = (campaigns || []).find(item => {
+      const endsAt = item.ends_at ? new Date(item.ends_at) : null;
+      return (!endsAt || endsAt > now) && item.visits_count < item.max_visits;
+    });
+  }
 
   if (!campaign) {
     throw Object.assign(new Error('NO_ACTIVE_CAMPAIGN'), { code: 'NO_ACTIVE_CAMPAIGN' });
@@ -78,11 +138,13 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   }
 
   // ── Gamification pre-computation ─────────────────────────────────────────
-  const [{ streak, user }, boosts, { count: prevVisitCount }] = await Promise.all([
+  const [{ streak, user }, boosts, { count: prevVisitCount }, { count: totalVisitCount }] = await Promise.all([
     getStreakAndLevel(userId),
     getActiveBoosts(business.id),
     supabase.from('visits').select('id', { count: 'exact', head: true })
       .eq('user_id', userId).eq('business_id', business.id),
+    supabase.from('visits').select('id', { count: 'exact', head: true })
+      .eq('user_id', userId),
   ]);
 
   const levelInfo = getLevelInfo(user?.xp || 0);
@@ -94,7 +156,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   const platformBonus = effectiveReward - baseReward + newPlaceBonus;
 
   // ── Atomic checkin (business pays base reward) ────────────────────────────
-  const { data: visitId, error: rpcError } = await supabase.rpc('process_checkin', {
+  const { error: rpcError } = await supabase.rpc('process_checkin', {
     p_user_id:     userId,
     p_business_id: business.id,
     p_campaign_id: campaign.id,
@@ -124,6 +186,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
   const today     = getTashkentDay();
   const weekStart = getWeekStart(today);
   const isFirstVisitToThisBusiness = (prevVisitCount || 0) === 0;
+  const isFirstCheckinEver         = (totalVisitCount || 0) === 0;
   const prevLevel = levelInfo.level;
   const prevXp    = user?.xp || 0;
 
@@ -146,10 +209,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin }) {
 
       const [newlyUnlocked] = await Promise.all([
         checkAchievements(userId, business.id, newStreak),
-        supabase.rpc('activate_referral', { p_referred_id: userId }),
-        visitId
-          ? supabase.rpc('process_referral_income', { p_referred_id: userId, p_visit_id: visitId, p_reward: baseReward })
-          : Promise.resolve(),
+        isFirstCheckinEver ? activateReferral(userId, telegramId) : Promise.resolve(),
         checkAndUpdateTasks(userId, business.id, today, weekStart, newStreak, isBeforeNoon),
       ]);
 

@@ -12,19 +12,12 @@ import { C, G, E, cardBase, inputStyle } from '../lib/design';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const COMMISSION = 0.10;
-
 const TASK_META = {
   visit:    { label: 'Визит',   Icon: MapPin      },
   purchase: { label: 'Покупка', Icon: ShoppingBag },
   review:   { label: 'Отзыв',  Icon: Star        },
 };
 
-const PACKAGES = [
-  { geo: 10_000,  label: 'Старт' },
-  { geo: 50_000,  label: 'Рост',    popular: true },
-  { geo: 100_000, label: 'Бизнес' },
-];
 
 const TOPUP_STATUS = {
   pending:   { label: 'Ожидает',  color: C.orange },
@@ -42,7 +35,7 @@ const TABS = [
 
 function calcReward(budget, visits) {
   if (!budget || !visits) return 0;
-  return Math.floor((budget * (1 - COMMISSION)) / visits);
+  return Math.floor(budget / visits);
 }
 
 function formatUZS(amount) {
@@ -140,7 +133,7 @@ function StatCard({ label, value, sub, subUp, Icon, color, loading }) {
 
 // ─── CampaignCard ─────────────────────────────────────────────────────────────
 
-function CampaignCard({ campaign, business, webappUrl, onStop, stopping }) {
+function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onEdit }) {
   const [dlLoading, setDlLoading] = useState(false);
   const isActive   = campaign.active;
   const remaining  = campaign.max_visits - campaign.visits_count;
@@ -157,7 +150,7 @@ function CampaignCard({ campaign, business, webappUrl, onStop, stopping }) {
 
   async function downloadQR() {
     setDlLoading(true);
-    const checkinUrl = `${webappUrl}/checkin?token=${business.qr_token}`;
+    const checkinUrl = `${webappUrl}/checkin?token=${business.qr_token}&cid=${campaign.id}`;
     const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`;
     try {
       const resp = await fetch(qrSrc);
@@ -260,25 +253,180 @@ function CampaignCard({ campaign, business, webappUrl, onStop, stopping }) {
             </div>
           )}
         </div>
-        <button
-          onClick={downloadQR}
-          disabled={dlLoading}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            background: C.card, border: `1px solid ${C.b1}`,
-            borderRadius: 8, padding: '5px 10px',
-            fontSize: 11, fontWeight: 700, color: C.t2,
-            cursor: dlLoading ? 'not-allowed' : 'pointer',
-            opacity: dlLoading ? 0.5 : 1,
-          }}>
-          {dlLoading
-            ? <Loader2 size={11} color={C.t2} style={{ animation: 'spin 1s linear infinite' }} />
-            : <Download size={11} color={C.t2} strokeWidth={2} />
-          }
-          QR PNG
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            onClick={() => onEdit && onEdit(campaign)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: C.card, border: `1px solid ${C.b1}`,
+              borderRadius: 8, padding: '5px 10px',
+              fontSize: 11, fontWeight: 700, color: C.t2,
+              cursor: 'pointer',
+            }}>
+            <RefreshCw size={11} color={C.t2} strokeWidth={2} />
+            Изменить
+          </button>
+          <button
+            onClick={downloadQR}
+            disabled={dlLoading}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: C.card, border: `1px solid ${C.b1}`,
+              borderRadius: 8, padding: '5px 10px',
+              fontSize: 11, fontWeight: 700, color: C.t2,
+              cursor: dlLoading ? 'not-allowed' : 'pointer',
+              opacity: dlLoading ? 0.5 : 1,
+            }}>
+            {dlLoading
+              ? <Loader2 size={11} color={C.t2} style={{ animation: 'spin 1s linear infinite' }} />
+              : <Download size={11} color={C.t2} strokeWidth={2} />
+            }
+            QR
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+// ─── CampaignEditModal ────────────────────────────────────────────────────────
+
+function CampaignEditModal({ campaign, balance, onClose, onSaved }) {
+  const [addVisits, setAddVisits] = useState('');
+  const [endsAt,    setEndsAt]    = useState(
+    campaign.ends_at ? new Date(campaign.ends_at).toISOString().split('T')[0] : ''
+  );
+  const [noEnd,    setNoEnd]     = useState(!campaign.ends_at);
+  const [loading,  setLoading]   = useState(false);
+  const [error,    setError]     = useState('');
+  const [fAdd,     setFAdd]      = useState(false);
+
+  const addNum    = parseInt(addVisits, 10) || 0;
+  const extraCost = addNum * campaign.reward_amount;
+  const canAfford = extraCost <= balance;
+  const today     = new Date().toISOString().split('T')[0];
+
+  const hasChanges = addNum > 0 || (noEnd !== !campaign.ends_at) || (endsAt && endsAt !== (campaign.ends_at ? new Date(campaign.ends_at).toISOString().split('T')[0] : ''));
+
+  async function handleSave() {
+    if (!hasChanges) return;
+    setLoading(true); setError('');
+    try {
+      const body = {};
+      if (addNum > 0) body.additional_visits = addNum;
+      if (noEnd) body.ends_at = null;
+      else if (endsAt) body.ends_at = new Date(endsAt + 'T23:59:59').toISOString();
+      const r = await apiFetch(`/api/admin/campaign/${campaign.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        setError(d.error === 'INSUFFICIENT_BALANCE' ? 'Недостаточно GEO на балансе.' : 'Ошибка сохранения.');
+        return;
+      }
+      onSaved();
+    } finally { setLoading(false); }
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 200, animation: 'backdropIn 0.25s ease',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+        background: C.surf, borderRadius: '28px 28px 0 0',
+        border: `1px solid ${C.b1}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto',
+        maxHeight: '85vh', overflowY: 'auto',
+        animation: 'slideUp 0.35s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 60px rgba(0,0,0,0.7)',
+      }}>
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 0' }} />
+        <div style={{ padding: '20px 22px 48px' }}>
+          <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 4, color: C.t1 }}>Редактировать кампанию</div>
+          <div style={{ color: C.t3, fontSize: 14, marginBottom: 24 }}>
+            +{formatGeo(campaign.reward_amount)} GEO / задание · {campaign.visits_count}/{campaign.max_visits} активаций
+          </div>
+
+          {/* Extend activations */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={labelStyle}>Добавить активации</div>
+            <input
+              value={addVisits}
+              onChange={e => setAddVisits(e.target.value.replace(/\D/g, ''))}
+              placeholder="Например: 50"
+              inputMode="numeric"
+              onFocus={() => setFAdd(true)} onBlur={() => setFAdd(false)}
+              style={inputStyle(fAdd)}
+            />
+            {addNum > 0 && (
+              <div style={{
+                marginTop: 8, padding: '10px 14px', borderRadius: 12,
+                background: canAfford ? C.geoFt : C.redFt,
+                border: `1px solid ${canAfford ? C.geoGl : 'rgba(255,59,92,0.25)'}`,
+                fontSize: 13, color: canAfford ? C.geo : C.red, fontWeight: 700,
+              }}>
+                Стоимость: {formatGeo(extraCost)} GEO
+                {!canAfford && ' — недостаточно баланса'}
+              </div>
+            )}
+          </div>
+
+          {/* Ends at */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={labelStyle}>Дата окончания</div>
+            <div onClick={() => setNoEnd(v => !v)} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: C.card, border: `1px solid ${C.b0}`,
+              borderRadius: 12, padding: '12px 14px', marginBottom: 10, cursor: 'pointer',
+            }}>
+              <span style={{ fontSize: 14, color: C.t2 }}>Без ограничения</span>
+              <Toggle on={noEnd} onToggle={() => setNoEnd(v => !v)} />
+            </div>
+            {!noEnd && (
+              <input type="date" value={endsAt} min={today}
+                onChange={e => setEndsAt(e.target.value)}
+                style={{ ...inputStyle(false), colorScheme: 'dark', cursor: 'pointer' }} />
+            )}
+          </div>
+
+          {error && (
+            <div style={{
+              background: C.redFt, color: C.red, borderRadius: 12,
+              padding: '10px 14px', fontSize: 14, fontWeight: 600,
+              marginBottom: 16, border: `1px solid rgba(255,59,92,0.2)`,
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <AlertTriangle size={15} color={C.red} style={{ flexShrink: 0 }} />
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={!hasChanges || loading || (addNum > 0 && !canAfford)}
+            style={{
+              width: '100%',
+              background: hasChanges && !(addNum > 0 && !canAfford) && !loading ? G.blue : C.b2,
+              color: hasChanges && !(addNum > 0 && !canAfford) && !loading ? '#fff' : C.t3,
+              border: 'none', borderRadius: 16, padding: '17px',
+              fontSize: 16, fontWeight: 700,
+              cursor: hasChanges && !loading ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}>
+            {loading
+              ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Сохраняем...</>
+              : 'Сохранить изменения'
+            }
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -300,7 +448,6 @@ function CampaignForm({ balance, onClose, onCreated }) {
   const budgetNum = parseInt(budget, 10) || 0;
   const visitsNum = parseInt(visits, 10) || 0;
   const reward    = calcReward(budgetNum, visitsNum);
-  const commission = budgetNum - reward * visitsNum;
   const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && budgetNum <= balance;
   const today = new Date().toISOString().split('T')[0];
 
@@ -379,7 +526,6 @@ function CampaignForm({ balance, onClose, onCreated }) {
               }}>
                 <div style={{ fontFamily: 'monospace', fontSize: 13, color: C.t2, lineHeight: 2 }}>
                   <div>Бюджет: <strong style={{ color: C.t1 }}>{formatGeo(budgetNum)} GEO</strong></div>
-                  <div style={{ color: C.red }}>− Комиссия 10%: <strong>{formatGeo(commission)} GEO</strong></div>
                   <div style={{ borderTop: `1px solid ${C.b1}`, paddingTop: 6, marginTop: 2 }}>
                     ÷ Активаций: <strong style={{ color: C.t1 }}>{visitsNum}</strong>
                   </div>
@@ -517,7 +663,8 @@ function PaymentModal({ payment, onClose }) {
         <div style={{ padding: '0 22px' }}>
           <div style={{ fontWeight: 800, fontSize: 20, marginBottom: 6, color: C.t1 }}>Оплата</div>
           <div style={{ fontSize: 15, color: C.t3, marginBottom: 24 }}>
-            Переведите <strong style={{ color: C.gold }}>{formatUZS(payment.amount)}</strong> по реквизитам:
+            Переведите <strong style={{ color: C.gold }}>{(payment.uzsAmount || 0).toLocaleString('ru-RU')} сум</strong> по реквизитам.
+            После подтверждения зачислим <strong style={{ color: C.geo }}>{formatGeo(payment.netGeo)} GEO</strong>.
           </div>
 
           <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: 16, marginBottom: 14 }}>
@@ -732,7 +879,9 @@ function OverviewTab({ business, stats, statsLoading, onShowForm }) {
 
 // ─── Tab: Кампании ────────────────────────────────────────────────────────────
 
-function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, pinExpires, pinLoading, pinCopied, onGeneratePin, onCopyPin }) {
+function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, pinExpires, pinLoading, pinCopied, onGeneratePin, onCopyPin, onReload }) {
+  const [editCampaign, setEditCampaign] = useState(null);
+
   const allCampaigns = [...(business?.campaigns || [])].sort((a, b) => {
     if (a.active !== b.active) return (b.active ? 1 : 0) - (a.active ? 1 : 0);
     return b.id - a.id;
@@ -771,6 +920,7 @@ function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, 
             webappUrl={webappUrl}
             onStop={onStop}
             stopping={stopping}
+            onEdit={setEditCampaign}
           />
         ))
       )}
@@ -829,25 +979,15 @@ function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, 
         )}
       </div>
 
-      {/* Business QR */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
-        QR-код заведения
-      </div>
-      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '20px', marginBottom: 24, textAlign: 'center' }}>
-        <div style={{
-          display: 'inline-block', padding: 12, borderRadius: 16,
-          background: C.cardHi, border: `1px solid ${C.b1}`, marginBottom: 12,
-        }}>
-          <img
-            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=1&bgcolor=ffffff&color=000000&data=${encodeURIComponent(`${typeof window !== 'undefined' ? window.location.origin : ''}/checkin?token=${business.qr_token}`)}`}
-            alt="QR Code"
-            style={{ width: 160, height: 160, borderRadius: 8, display: 'block' }}
-          />
-        </div>
-        <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5 }}>
-          Распечатайте и разместите в заведении
-        </div>
-      </div>
+      {editCampaign && createPortal(
+        <CampaignEditModal
+          campaign={editCampaign}
+          balance={business?.balance || 0}
+          onClose={() => setEditCampaign(null)}
+          onSaved={() => { setEditCampaign(null); onReload && onReload(); }}
+        />,
+        document.body
+      )}
     </div>
   );
 }
@@ -855,36 +995,42 @@ function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, 
 // ─── Tab: Пополнение ──────────────────────────────────────────────────────────
 
 function TopupTab({ business, stats }) {
-  const [geoRate,      setGeoRate]      = useState(1);
-  const [selected,     setSelected]     = useState(1);
+  const [geoRate,      setGeoRate]      = useState(1000);
+  const [uzsInput,     setUzsInput]     = useState('');
   const [payLoading,   setPayLoading]   = useState(false);
   const [payment,      setPayment]      = useState(null);
   const [topups,       setTopups]       = useState([]);
   const [topupsLoaded, setTopupsLoaded] = useState(false);
 
   useEffect(() => {
-    apiFetch('/api/config').then(r => r.json()).then(d => setGeoRate(d.geoRate || 1)).catch(() => {});
+    apiFetch('/api/config').then(r => r.json()).then(d => setGeoRate(d.geoRate || 1000)).catch(() => {});
     apiFetch('/api/admin/topups')
       .then(r => r.json())
       .then(d => { setTopups(d.requests || []); setTopupsLoaded(true); })
       .catch(() => setTopupsLoaded(true));
   }, []);
 
-  const allCampaigns   = business?.campaigns || [];
-  const totalVisits    = allCampaigns.reduce((s, c) => s + c.visits_count, 0);
-  const geoSpentTotal  = allCampaigns.reduce((s, c) => s + c.visits_count * c.reward_amount, 0);
+  const allCampaigns      = business?.campaigns || [];
+  const totalVisits       = allCampaigns.reduce((s, c) => s + c.visits_count, 0);
+  const geoSpentTotal     = allCampaigns.reduce((s, c) => s + c.visits_count * c.reward_amount, 0);
   const avgRewardPerVisit = totalVisits > 0 ? geoSpentTotal / totalVisits : 0;
-  const dailyRate = stats?.visits7d > 0 ? (stats.visits7d * avgRewardPerVisit / 7) : 0;
-  const forecastDays = dailyRate > 0 ? Math.floor((business?.balance || 0) / dailyRate) : null;
+  const dailyRate         = stats?.visits7d > 0 ? (stats.visits7d * avgRewardPerVisit / 7) : 0;
+  const forecastDays      = dailyRate > 0 ? Math.floor((business?.balance || 0) / dailyRate) : null;
+
+  const uzsAmount  = parseInt(uzsInput.replace(/\D/g, '') || '0', 10);
+  const grossGeo   = Math.floor(uzsAmount / geoRate);
+  const commission = Math.floor(grossGeo * 0.10);
+  const netGeo     = grossGeo - commission;
+  const canSubmit  = uzsAmount >= 10_000 && netGeo >= 1;
 
   async function handleTopup() {
+    if (!canSubmit) return;
     setPayLoading(true);
     try {
-      const geo = PACKAGES[selected].geo;
       const r = await apiFetch('/api/admin/topup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: geo }),
+        body: JSON.stringify({ uzsAmount }),
       });
       const d = await r.json();
       if (r.ok) setPayment(d.paymentDetails);
@@ -893,7 +1039,7 @@ function TopupTab({ business, stats }) {
 
   return (
     <div>
-      {/* Forecast */}
+      {/* Balance + Forecast */}
       <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px 18px', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -914,83 +1060,79 @@ function TopupTab({ business, stats }) {
         </div>
       </div>
 
-      {/* Package selection */}
-      <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
-        Выберите пакет
+      {/* UZS Input */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 10 }}>
+        Сумма пополнения
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-        {PACKAGES.map((pkg, i) => {
-          const uzsPrice = pkg.geo * geoRate;
-          const isSelected = selected === i;
-          return (
-            <div key={i} onClick={() => setSelected(i)} style={{
-              ...cardBase,
-              border: `2px solid ${isSelected ? C.blue : C.b0}`,
-              padding: '16px',
-              cursor: 'pointer',
-              background: isSelected ? C.blueFt : C.card,
-              transition: 'all 0.15s',
-              position: 'relative',
-            }}>
-              {pkg.popular && (
-                <div style={{
-                  position: 'absolute', top: -1, right: 14,
-                  background: G.blue, color: '#fff',
-                  fontSize: 10, fontWeight: 800, padding: '3px 10px',
-                  borderRadius: '0 0 8px 8px', letterSpacing: 0.5,
-                }}>
-                  ПОПУЛЯРНЫЙ
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%',
-                    border: `2px solid ${isSelected ? C.blue : C.b2}`,
-                    background: isSelected ? C.blue : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                    {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: C.t1 }}>{pkg.label}</div>
-                    <div style={{ fontSize: 13, color: C.t3, marginTop: 2 }}>
-                      {formatGeo(pkg.geo)} GEO
-                    </div>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: isSelected ? C.blue : C.t1 }}>
-                    {formatUZS(uzsPrice)}
-                  </div>
-                  {avgRewardPerVisit > 0 && (
-                    <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
-                      ≈ {Math.round(pkg.geo / avgRewardPerVisit)} визитов
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ position: 'relative', marginBottom: 12 }}>
+        <input
+          value={uzsInput}
+          onChange={e => setUzsInput(e.target.value.replace(/\D/g, ''))}
+          inputMode="numeric"
+          placeholder="Например: 100 000"
+          style={{
+            width: '100%', boxSizing: 'border-box',
+            background: C.card, border: `1px solid ${uzsAmount >= 10_000 ? C.geoGl : C.b1}`,
+            borderRadius: 14, padding: '15px 64px 15px 16px',
+            fontSize: 18, fontWeight: 700, color: C.t1, outline: 'none',
+            transition: 'border-color 0.15s',
+          }}
+        />
+        <span style={{
+          position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+          fontSize: 14, fontWeight: 700, color: C.t3,
+        }}>сум</span>
       </div>
 
-      <button onClick={handleTopup} disabled={payLoading} style={{
+      {/* Conversion preview */}
+      {uzsAmount > 0 && (
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', marginBottom: 14 }}>
+          {[
+            { label: 'Сумма перевода',    value: `${uzsAmount.toLocaleString('ru-RU')} сум`,     color: C.t1 },
+            { label: 'GEO (до комиссии)', value: `${formatGeo(grossGeo)} GEO`,                   color: C.t2 },
+            { label: 'Комиссия 10%',      value: `− ${formatGeo(commission)} GEO`,               color: C.red },
+            { label: 'Вы получите',       value: `${formatGeo(netGeo)} GEO`,                      color: C.geo, bold: true },
+          ].map(({ label, value, color, bold }) => (
+            <div key={label} style={{
+              display: 'flex', justifyContent: 'space-between',
+              paddingBottom: 8, marginBottom: 8,
+              borderBottom: label === 'Комиссия 10%' ? `1px solid ${C.b0}` : 'none',
+            }}>
+              <span style={{ fontSize: 13, color: C.t3 }}>{label}</span>
+              <span style={{ fontSize: 13, fontWeight: bold ? 800 : 600, color }}>{value}</span>
+            </div>
+          ))}
+          {avgRewardPerVisit > 0 && netGeo > 0 && (
+            <div style={{ fontSize: 12, color: C.t3, marginTop: 2, textAlign: 'right' }}>
+              ≈ {Math.round(netGeo / avgRewardPerVisit)} активаций кампании
+            </div>
+          )}
+        </div>
+      )}
+
+      {uzsAmount > 0 && uzsAmount < 10_000 && (
+        <div style={{ fontSize: 13, color: C.red, marginBottom: 12, fontWeight: 600 }}>
+          Минимальная сумма пополнения: 10 000 сум
+        </div>
+      )}
+
+      <button onClick={handleTopup} disabled={payLoading || !canSubmit} style={{
         width: '100%',
-        background: payLoading ? C.b2 : G.blue,
-        color: payLoading ? C.t3 : '#fff',
+        background: !canSubmit || payLoading ? C.b2 : G.blue,
+        color: !canSubmit || payLoading ? C.t3 : '#fff',
         border: 'none', borderRadius: 16, padding: '16px',
         fontSize: 16, fontWeight: 700,
-        cursor: payLoading ? 'not-allowed' : 'pointer',
-        boxShadow: payLoading ? 'none' : `0 6px 24px ${C.blueGl}`,
+        cursor: !canSubmit || payLoading ? 'not-allowed' : 'pointer',
+        boxShadow: !canSubmit || payLoading ? 'none' : `0 6px 24px ${C.blueGl}`,
         transition: 'all 0.2s',
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         marginBottom: 24,
       }}>
         {payLoading
           ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Создаём заявку...</>
-          : `Пополнить — ${formatUZS(PACKAGES[selected].geo * geoRate)}`
+          : canSubmit
+            ? `Пополнить — ${uzsAmount.toLocaleString('ru-RU')} сум`
+            : 'Введите сумму'
         }
       </button>
 
@@ -1203,6 +1345,7 @@ export default function Admin() {
               pinCopied={pinCopied}
               onGeneratePin={generatePin}
               onCopyPin={copyPin}
+              onReload={() => { loadBusiness(); loadStats(); }}
             />
           )}
           {activeTab === 'topup' && (
