@@ -353,7 +353,7 @@ function ReferralTab({ referral }) {
         {[
           [Gift,       'Поделитесь ссылкой с другом'],
           [Users,      'Друг делает первый чекин в течение 7 дней'],
-          [Zap,        'Вы +1 000 GEO, друг +500 GEO приветственный бонус'],
+          [Zap,        'Вы +25 GEO, друг +10 GEO приветственный бонус'],
           [TrendingUp, '+5% от каждого чекина друга в течение 30 дней'],
         ].map(([Icon, text]) => (
           <div key={text} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
