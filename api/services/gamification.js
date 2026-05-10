@@ -443,6 +443,7 @@ module.exports = {
   getTashkentDay,
   getWeekStart,
   getLevelInfo,
+  getNextLevelXp,
   getStreakAndLevel,
   getActiveBoosts,
   computeMultipliers,
