@@ -15,7 +15,7 @@ function maskCard(card) {
 }
 
 async function historyAction(ctx) {
-  await ctx.answerCallbackQuery();
+  ctx.answerCallbackQuery().catch(() => {});
   const telegramId = String(ctx.from?.id);
 
   const { data: user } = await supabase

@@ -15,7 +15,7 @@ function xpBar(xp, level) {
 }
 
 async function balanceAction(ctx) {
-  await ctx.answerCallbackQuery();
+  ctx.answerCallbackQuery().catch(() => {});
   const telegramId = String(ctx.from?.id);
 
   const { data: user } = await supabase

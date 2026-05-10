@@ -38,7 +38,7 @@ bot.callbackQuery('action:myqr',     myqrAction);
 bot.callbackQuery('action:mypin',    mypinAction);
 
 bot.callbackQuery('action:menu', async (ctx) => {
-  await ctx.answerCallbackQuery();
+  ctx.answerCallbackQuery().catch(() => {});
   const telegramId = String(ctx.from?.id);
   const { data: user } = await supabase
     .from('users')
@@ -69,6 +69,11 @@ bot.on('message:text', async (ctx) => {
 
   if (user) return sendMainMenu(ctx, user);
   return ctx.reply('Отправьте /start для начала работы.');
+});
+
+// ── Global error handler (prevents unhandled rejections from crashing the process) ──
+bot.catch((err) => {
+  console.error('[bot] Unhandled error:', err.message || err);
 });
 
 // ── Scheduled tasks ────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ const QRCode = require('qrcode');
 const { supabase } = require('../../db/index');
 
 async function myqrAction(ctx) {
-  await ctx.answerCallbackQuery();
+  ctx.answerCallbackQuery().catch(() => {});
   const telegramId = String(ctx.from?.id);
 
   const { data: business, error } = await supabase

@@ -2,7 +2,7 @@ const { InlineKeyboard } = require('grammy');
 const { supabase } = require('../../db/index');
 
 async function mypinAction(ctx) {
-  await ctx.answerCallbackQuery();
+  ctx.answerCallbackQuery().catch(() => {});
   const telegramId = String(ctx.from?.id);
 
   const { data: business, error } = await supabase

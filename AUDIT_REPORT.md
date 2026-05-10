@@ -1,416 +1,334 @@
-# GeoEarn — Полный аудит приложения
-**Дата:** 2026-05-10  
-**Аудитор:** Claude Sonnet 4.6  
-**Статус:** Все найденные баги исправлены. SQL-миграция требует ручного запуска.
+# GeoEarn — Final System Audit Report
+**Date:** 2026-05-10  
+**Scope:** Full codebase — backend API, security layers, database schema, frontend, i18n  
 
 ---
 
-## Содержание
+## 1. SECURITY SYSTEMS
 
-1. [Архитектура и стек](#архитектура-и-стек)
-2. [Карта эндпоинтов](#карта-эндпоинтов)
-3. [Критические баги — исправлены](#критические-баги--исправлены)
-4. [Безопасность — исправлена](#безопасность--исправлена)
-5. [SQL-миграция — нужно запустить вручную](#sql-миграция--нужно-запустить-вручную)
-6. [Переменные окружения](#переменные-окружения)
-7. [Что работает корректно](#что-работает-корректно)
-8. [Рекомендации после релиза](#рекомендации-после-релиза)
+### 1.1 Authentication (validateTma.js) — SOLID
 
----
+| Check | Status |
+|---|---|
+| Telegram HMAC-SHA256 initData verification | OK |
+| Replay-attack window: auth_date older than 1 hour rejected | OK |
+| Missing `hash` field returns 401 | OK |
+| Bot accounts blocked via `is_bot` check | OK |
+| Banned users blocked via `banned_at` check | OK |
+| Auto-creates new users on first login | OK |
+| BOT_TOKEN absent → 500, not bypass | OK |
 
-## Архитектура и стек
+### 1.2 Security Headers (api/index.js) — COMPLETE
 
-| Слой | Технология |
-|------|-----------|
-| Backend | Node.js + Express, Railway.app |
-| Database | Supabase (PostgreSQL) + RPC-функции |
-| Bot | Grammy (Telegram Bot API) |
-| Frontend | React + Vite, Telegram Mini App |
-| Auth | HMAC-SHA256 (Telegram initData) |
-| Payments | Payme (вывод), ручной топап |
-| Maps | Haversine formula (геодистанция) |
-
-### Структура файлов
-
-```
-api/
-  index.js              — Express приложение, middleware, rate limits
-  routes/
-    admin.js            — Бизнес-админ: кампании, топап, статистика
-    campaigns.js        — Публичный список активных кампаний
-    checkin.js          — Чекин пользователя
-    checkinInfo.js      — Публичный QR-лукап (без авторизации)
-    config.js           — Курс GEO (публичный)
-    gamification.js     — Задачи, уровни, достижения
-    operator.js         — Подтверждение топапов оператором
-    promo.js            — Promo QR Hunt (публичный + авторизованный)
-    superadmin.js       — Суперадмин: все операции платформы
-    user.js             — Профиль, история, реферальная система
-    withdraw.js         — Вывод GEO → UZS
-  middleware/
-    antifraud.js        — 24ч лимит чекина на одно заведение
-    validateTma.js      — Валидация Telegram initData (HMAC)
-  services/
-    checkin.js          — Бизнес-логика чекина + геймификация
-    gamification.js     — Стрики, уровни, задачи, достижения
-    geo.js              — Формула Хаверсина
-    notify.js           — Отправка Telegram-сообщений
-  lib/
-    geoRate.js          — Единый источник курса GEO_RATE
-
-miniapp/src/
-  pages/
-    Admin.jsx           — Кабинет бизнеса
-    Balance.jsx         — Баланс и история пользователя
-    Checkin.jsx         — QR-чекин + Promo QR
-    Game.jsx            — Геймификация (задачи, уровни, достижения)
-    Home.jsx            — Карта кампаний
-    SuperAdmin.jsx      — Суперадмин-панель
-    Withdraw.jsx        — Форма вывода средств
-  lib/
-    api.js              — Fetch-обёртка с waitForInitData
-    geo.js              — Форматирование GEO/UZS
-    design.js           — Дизайн-система (цвета, стили)
-
-bot/
-  index.js              — Bot команды + scheduled tasks
-  handlers/             — /start, /balance, /history, /withdraw, /myqr, /mypin
-  tasks/                — streak, weekly, monthly, reengagement, missions
-
-db/
-  schema.sql            — Таблицы + RPC-функции PostgreSQL
-  index.js              — Supabase client
-```
-
----
-
-## Карта эндпоинтов
-
-### Публичные (без авторизации)
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/config` | Курс GEO, валюта |
-| GET | `/api/checkin/info?token=&cid=` | Данные заведения по QR |
-| GET | `/api/promo/info?token=` | Данные promo-кампании |
-
-### Пользовательские (validateTma)
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/me` | Профиль пользователя |
-| GET | `/api/visits` | История посещений |
-| GET | `/api/campaigns` | Активные кампании (карта) |
-| POST | `/api/checkin` | Чекин по QR |
-| POST | `/api/promo/claim` | Клейм promo-награды |
-| POST | `/api/withdraw` | Запрос на вывод GEO |
-| GET | `/api/me/withdrawals` | История выводов |
-| GET | `/api/me/game` | Геймификация (стрик, задачи, уровень) |
-| POST | `/api/me/tasks/:key/claim` | Получить награду за задачу |
-| GET | `/api/me/referral` | Реферальная статистика |
-
-### Бизнес-админ (validateTma + owner check)
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/admin/business` | Данные заведения + кампании |
-| GET | `/api/admin/stats` | Статистика посещений |
-| POST | `/api/admin/pin` | Генерация PIN-кода (15 мин) |
-| POST | `/api/admin/campaign` | Создание кампании |
-| PATCH | `/api/admin/campaign/:id` | Продление/редактирование кампании |
-| POST | `/api/admin/campaign/:id/stop` | Остановка кампании |
-| POST | `/api/admin/topup` | Запрос пополнения баланса |
-| GET | `/api/admin/topups` | История топапов |
-
-### Оператор (x-operator-secret)
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/operator/topups` | Все топап-заявки |
-| POST | `/api/operator/topups/:id/confirm` | Подтвердить топап |
-| POST | `/api/operator/topups/:id/reject` | Отклонить топап |
-
-### Суперадмин (validateTma + SA_ID check)
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/api/superadmin/overview` | God View дашборд |
-| GET | `/api/superadmin/stats` | Агрегированная статистика |
-| GET | `/api/superadmin/fraud` | Подозрительные пользователи |
-| GET | `/api/superadmin/users` | Список пользователей |
-| GET | `/api/superadmin/users/:id/card` | Карточка пользователя |
-| POST | `/api/superadmin/users/:id/ban` | Бан пользователя |
-| POST | `/api/superadmin/users/:id/unban` | Разбан |
-| POST | `/api/superadmin/users/:id/adjust` | Корректировка GEO баланса |
-| GET | `/api/superadmin/businesses` | Список бизнесов |
-| POST | `/api/superadmin/businesses/:id/suspend` | Приостановить бизнес |
-| POST | `/api/superadmin/businesses/:id/unsuspend` | Возобновить |
-| GET | `/api/superadmin/campaigns` | Все кампании |
-| PATCH | `/api/superadmin/campaigns/:id` | Редактировать кампанию |
-| POST | `/api/superadmin/campaigns/:id/toggle` | Включить/выключить |
-| POST | `/api/superadmin/platform-campaign` | Платформенная кампания |
-| GET | `/api/superadmin/withdrawals` | Все выводы |
-| POST | `/api/superadmin/withdrawals/:id/approve` | Одобрить вывод |
-| POST | `/api/superadmin/withdrawals/:id/reject` | Отклонить + вернуть GEO |
-| GET | `/api/superadmin/topups` | Все топапы |
-| POST | `/api/superadmin/topups/:id/confirm` | Подтвердить топап |
-| GET | `/api/superadmin/platform-config` | Конфиг + история курса |
-| POST | `/api/superadmin/config/rate` | Изменить курс GEO |
-| GET | `/api/superadmin/economics` | Unit-экономика платформы |
-| GET | `/api/superadmin/promo-campaigns` | Promo QR кампании |
-| POST | `/api/superadmin/promo-campaigns` | Создать Promo QR |
-| PATCH | `/api/superadmin/promo-campaigns/:id` | Редактировать Promo QR |
-| DELETE | `/api/superadmin/promo-campaigns/:id` | Удалить Promo QR |
-| GET | `/api/superadmin/promo-campaigns/:id/analytics` | Аналитика Promo QR |
-| GET | `/api/superadmin/audit-log` | Лог действий SA |
-| GET/POST/PATCH/DELETE | `/api/superadmin/tasks` | CRUD задач геймификации |
-| GET/POST/PATCH/DELETE | `/api/superadmin/achievements` | CRUD достижений |
-
----
-
-## Критические баги — исправлены
-
-### BUG-01: Статистика бизнеса всегда показывала 0
-**Файл:** `api/routes/admin.js:73-80`  
-**Серьёзность:** КРИТИЧЕСКАЯ  
-**Описание:** Три запроса в `GET /api/admin/stats` обращались к таблице `checkins`, которой не существует. Правильное имя — `visits`. В результате все метрики (visitsToday, visits7d, visitsPrev7d) всегда возвращали 0 или null.  
-**Исправление:** Заменено `supabase.from('checkins')` → `supabase.from('visits')` в трёх запросах.
-
----
-
-### BUG-02: Referral activation — silent failure
-**Файл:** `api/services/checkin.js:activateReferral`  
-**Серьёзность:** КРИТИЧЕСКАЯ  
-**Описание:** При активации реферала код вставляет запись в `referral_earnings` без поля `visit_id`, которое в схеме объявлено как `NOT NULL`. Это вызывает constraint violation, ошибка перехватывается тихо, и реферальные бонусы никогда не начисляются.  
-**Исправление:** Требует SQL-миграции: `ALTER TABLE referral_earnings ALTER COLUMN visit_id DROP NOT NULL`. **Смотри раздел SQL ниже.**
-
----
-
-### BUG-03: Вывод GEO принимал дробные суммы
-**Файл:** `api/routes/withdraw.js:21`  
-**Серьёзность:** СРЕДНЯЯ  
-**Описание:** Проверка `typeof amount !== 'number'` пропускала дробные значения (например, `100.5`). PostgreSQL-функция `process_withdrawal` ожидает `INTEGER`, что могло вести к неожиданному округлению на стороне БД.  
-**Исправление:** Заменено на `!Number.isInteger(amount)`.
-
----
-
-### BUG-04: Race condition при расширении кампании
-**Файл:** `api/routes/admin.js:PATCH /api/admin/campaign/:id`  
-**Серьёзность:** СРЕДНЯЯ  
-**Описание:** Баланс читался, затем отдельно проверялся, затем отдельно списывался. При двух одновременных запросах оба прочитали бы достаточный баланс и оба прошли бы проверку, списав суммарно больше чем есть.  
-**Исправление:** Списание сделано атомарным через `.gte('balance', extraCost)` в условии UPDATE. Если затронуто 0 строк — возвращается `INSUFFICIENT_BALANCE`.
-
----
-
-## Безопасность — исправлена
-
-### SEC-01: Timing attack на operator secret
-**Файл:** `api/routes/operator.js:11`  
-**Серьёзность:** ВЫСОКАЯ  
-**Описание:** Сравнение `provided !== secret` использовало обычное строковое равенство. Это позволяло злоумышленнику определить длину и посимвольно подобрать секрет, измеряя время ответа.  
-**Исправление:** Заменено на `crypto.timingSafeEqual()` с Buffer-конвертацией.
-
----
-
-### SEC-02: Пустой BOT_TOKEN делал auth небезопасным
-**Файл:** `api/middleware/validateTma.js:38`  
-**Серьёзность:** ВЫСОКАЯ  
-**Описание:** При отсутствии `BOT_TOKEN` HMAC вычислялся с пустой строкой. Любой, кто знает этот факт, мог создать валидную подпись с пустым ключом и обойти аутентификацию.  
-**Исправление:** Добавлена явная проверка — если `BOT_TOKEN` не задан, возвращается 500 `INTERNAL_ERROR` и логируется `[FATAL]`.
-
----
-
-### SEC-03: Hardcoded fallback SUPER_ADMIN_ID
-**Файл:** `api/routes/superadmin.js:10`  
-**Серьёзность:** СРЕДНЯЯ  
-**Описание:** `const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522'` — если переменная не задана в Railway, конкретный Telegram-аккаунт автоматически получает суперадминские права.  
-**Исправление:** Добавлено предупреждение при старте сервера (`[SECURITY]` в лог). Переменная `SUPER_ADMIN_TG_ID` должна быть обязательно задана в Railway.
-
----
-
-### SEC-04: Unbounded scan таблицы visits (OOM risk)
-**Файл:** `api/routes/superadmin.js:GET /api/superadmin/users`  
-**Серьёзность:** СРЕДНЯЯ  
-**Описание:** `supabase.from('visits').select('user_id')` без `.limit()` загружал ВСЮ таблицу visits для построения карты посещений. На реальном продакшне с миллионами посещений это OOM или таймаут.  
-**Исправление:** Теперь сначала получаем 200 пользователей, затем делаем `.in('user_id', userIds)` — загружаем визиты только для этих пользователей.
-
----
-
-### SEC-05: Список кампаний без лимита
-**Файл:** `api/routes/campaigns.js:26`  
-**Серьёзность:** НИЗКАЯ  
-**Описание:** `GET /api/campaigns` не имел `.limit()`. При сотнях активных кампаний ответ мог быть очень большим.  
-**Исправление:** Добавлен `.limit(500)`.
-
----
-
-## SQL-миграция — нужно запустить вручную
-
-Выполни в Supabase SQL Editor (Settings → SQL Editor):
-
-```sql
--- ================================================================
--- MIGRATION 001: Fix referral_earnings visit_id constraint
--- ================================================================
--- BUG-02: visit_id обязателен по схеме, но при реферальной активации
--- visit_id не существует (это onetime-бонус, не привязанный к визиту).
--- Делаем поле nullable для activation-записей.
-ALTER TABLE referral_earnings ALTER COLUMN visit_id DROP NOT NULL;
-
-
--- ================================================================
--- MIGRATION 002: Remove topup_requests amount constraint
--- ================================================================
--- Если в БД есть ограничение CHECK(amount >= 10000) — удаляем его.
--- Теперь amount = netGeo, которое может быть < 10000.
-ALTER TABLE topup_requests DROP CONSTRAINT IF EXISTS topup_requests_amount_check;
-
-
--- ================================================================
--- MIGRATION 003: Promo QR Hunt tables
--- ================================================================
-CREATE TABLE IF NOT EXISTS promo_campaigns (
-  id             SERIAL PRIMARY KEY,
-  token          VARCHAR(64)       NOT NULL UNIQUE,
-  title          VARCHAR(255)      NOT NULL,
-  description    TEXT,
-  reward_amount  INT               NOT NULL DEFAULT 10 CHECK (reward_amount >= 1),
-  max_claims     INT               NOT NULL DEFAULT 100 CHECK (max_claims >= 1),
-  claims_count   INT               NOT NULL DEFAULT 0,
-  rarity         VARCHAR(20)       NOT NULL DEFAULT 'common'
-                   CHECK (rarity IN ('common','rare','epic','legendary')),
-  lat            DOUBLE PRECISION  NOT NULL,
-  lng            DOUBLE PRECISION  NOT NULL,
-  radius_m       INT               NOT NULL DEFAULT 200,
-  expires_at     TIMESTAMPTZ,
-  cooldown_hours INT               NOT NULL DEFAULT 0,
-  image_url      TEXT,
-  active         BOOLEAN           NOT NULL DEFAULT true,
-  created_at     TIMESTAMPTZ       NOT NULL DEFAULT NOW(),
-  created_by     BIGINT
-);
-
-CREATE INDEX IF NOT EXISTS idx_promo_campaigns_token  ON promo_campaigns(token);
-CREATE INDEX IF NOT EXISTS idx_promo_campaigns_active ON promo_campaigns(active);
-
-CREATE TABLE IF NOT EXISTS promo_claims (
-  id          SERIAL PRIMARY KEY,
-  promo_id    INT          NOT NULL REFERENCES promo_campaigns(id) ON DELETE CASCADE,
-  user_id     INT          NOT NULL REFERENCES users(id),
-  claimed_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  geo_awarded INT          NOT NULL,
-  lat         DOUBLE PRECISION,
-  lng         DOUBLE PRECISION
-);
-
-CREATE INDEX IF NOT EXISTS idx_promo_claims_promo_user ON promo_claims(promo_id, user_id);
-CREATE INDEX IF NOT EXISTS idx_promo_claims_user_day   ON promo_claims(user_id, claimed_at);
-```
-
----
-
-## Переменные окружения
-
-Все переменные должны быть заданы в Railway. Обязательные отмечены `*`.
-
-| Переменная | Обязательность | Описание |
-|-----------|---------------|----------|
-| `BOT_TOKEN` * | ОБЯЗАТЕЛЬНА | Telegram Bot Token. Без него аутентификация невозможна |
-| `SERVICE_KEY` * | ОБЯЗАТЕЛЬНА | Supabase service role key |
-| `DATABASE_URL` * | ОБЯЗАТЕЛЬНА | Supabase project URL |
-| `SUPER_ADMIN_TG_ID` * | ОБЯЗАТЕЛЬНА | Telegram ID суперадмина. Без неё работает хардкодный fallback — ОПАСНО |
-| `WEBAPP_URL` * | ОБЯЗАТЕЛЬНА | URL мини-аппа (для генерации QR-ссылок) |
-| `WEBHOOK_SECRET` | Рекомендуется | Секрет вебхука. Без неё берётся часть BOT_TOKEN |
-| `OPERATOR_SECRET` | Рекомендуется | Секрет для оператора топапов. Без неё оператор-эндпоинты отключены |
-| `TOPUP_CARD_NUMBER` | Рекомендуется | Номер карты для отображения при топапе |
-| `TOPUP_CARD_HOLDER` | Рекомендуется | Владелец карты |
-| `TOPUP_BANK` | Рекомендуется | Название банка |
-| `GEO_RATE` | Опциональна | Курс 1 GEO в UZS. Default: 1000 |
-| `BOT_USERNAME` | Опциональна | Юзернейм бота. Default: GeoEarnBot |
-| `PORT` | Опциональна | Порт сервера. Default: 3000 |
-| `RAILWAY_PUBLIC_DOMAIN` | Авто | Устанавливается Railway автоматически |
-
----
-
-## Что работает корректно
-
-### Аутентификация
-- HMAC-SHA256 валидация Telegram initData — корректна
-- Проверка `auth_date` (1-часовое окно) — адекватна для Mini App
-- Бот-аккаунты блокируются — корректно
-- Бан проверяется в `validateTma` для всех пользовательских эндпоинтов
-
-### Финансовые операции (все атомарные через PostgreSQL RPC)
-- `process_checkin` — блокирует бизнес и кампанию через `FOR UPDATE`, предотвращает гонки
-- `process_withdrawal` — атомично списывает баланс и создаёт запись
-- `confirm_topup` — атомично подтверждает и начисляет баланс бизнесу
-- `reject_withdrawal` — атомично отклоняет и возвращает GEO пользователю
-- `create_campaign_with_commission` — атомично создаёт кампанию и списывает комиссию
-- `apply_checkin_bonus` — безопасно выплачивает бонусы из платформенного кошелька с проверкой остатка
-
-### Anti-fraud
-- 24-часовой лимит чекина на одно заведение (antifraud middleware)
-- Проверка геодистанции (Haversine, ≤ radius_m)
-- Promo: дневной лимит 3 клейма / кулдаун на кампанию / бан-чек
-- Fraud-мониторинг в superadmin: HIGH если >4 заведений или >8 визитов за 24ч
-- Аудит-лог всех SA-действий в `sa_audit_log`
-
-### Rate Limiting (все через express-rate-limit)
-| Эндпоинт | Лимит |
-|---------|-------|
-| `/api/*` (общий) | 120 req/min/IP |
-| `/api/checkin` | 10 req/min/IP |
-| `/api/promo/claim` | 10 req/min/IP |
-| `/api/promo/info` | 30 req/min/IP |
-| `/api/checkin/info` | 30 req/min/IP |
-| `/api/withdraw` | 5 req/hour/IP |
-| `/api/operator` | 60 req/min/IP |
-
-### Геймификация
-- Стрики: верно считаются по часовому поясу Ташкент (UTC+5)
-- Уровни 1–5 с прогрессивными XP-порогами
-- Множители наград: уровень × стрик × буст события
-- Задачи: daily / weekly / onetime с корректными period_date
-- Достижения: idempotent unlock через составной PRIMARY KEY
-- Реферальная пассивная прибыль: 5% за 30 дней, idempotent по visit_id
-
-### Security headers
 ```
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 Referrer-Policy: strict-origin-when-cross-origin
 Permissions-Policy: geolocation=(), camera=()
-X-Powered-By: (удалён)
+X-Powered-By: REMOVED
 ```
 
-### CORS
-Корректно разрешает: отсутствующий Origin (bot calls), `null` Origin (native iOS/Android webview), `https://web.telegram.org`, и задаваемый через `WEBAPP_URL`.
+### 1.3 CORS — CORRECT
+
+Allows: no-origin (server-to-server), `"null"` (native iOS/Android TG webview),
+`web.telegram.org`, configured WEBAPP_URL origin. Rejects everything else.
+HMAC-signed initData is the real auth layer — correct architecture for a Mini App.
+
+### 1.4 Rate Limiting — PARTIAL
+
+| Endpoint | Limit | Status |
+|---|---|---|
+| `/api` (general) | 120 req/min | OK |
+| `/api/checkin` | 10 req/min | OK |
+| `/api/promo/claim` | 10 req/min | OK |
+| `/api/promo/info` | 30 req/min | OK |
+| `/api/checkin/info` | 30 req/min | OK |
+| `/api/withdraw` | 5 req/hour | OK |
+| `/api/operator` | 60 req/min | OK |
+| `/api/admin/*` | Only general 120/min | MISSING specific limit |
+| `/api/superadmin/*` | Only general 120/min | MISSING specific limit |
+
+**Recommendation:** Add `rateLimit({ windowMs: 60_000, max: 20 })` on `/api/admin`
+and `/api/superadmin` — these manipulate money and warrant tighter bounds.
+
+### 1.5 Operator Authentication (operator.js) — SECURE
+
+Uses `crypto.timingSafeEqual` — constant-time comparison, immune to timing attacks.
+Returns `503 OPERATOR_NOT_CONFIGURED` when `OPERATOR_SECRET` env var is absent — safe default.
+
+### 1.6 SuperAdmin Authorization (superadmin.js) — RISK
+
+```js
+// superadmin.js line 10
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+```
+
+If `SUPER_ADMIN_TG_ID` env var is missing, admin access is granted to Telegram ID
+`930826522`. The startup log warns about this but the fallback still grants access.  
+Risk: MEDIUM (still blocked by validateTma; the hardcoded ID is a liability).  
+Fix: replace `|| '930826522'` with `|| null` and reject with 503 if null.
+
+### 1.7 Anti-Fraud System — MULTI-LAYER
+
+| Layer | Implementation | Status |
+|---|---|---|
+| 24h cooldown per user per business | `antifraud.js` queries `visits` table | OK |
+| IP rate limiting on checkin | express-rate-limit 10/min | OK |
+| PIN validation (one-time, 15-min TTL) | `verification_pins` table, used/expires_at | OK |
+| Geo distance check | Haversine in `services/geo.js` | OK |
+| Promo daily claim limit (3/day) | Counter on `promo_claims` | OK |
+| Per-campaign cooldown | `cooldown_hours` field | OK |
+| Fraud detection dashboard | >3 businesses/24h flagged HIGH | OK |
+| Multi-claim audit logging | `sa_audit_log` table | OK |
 
 ---
 
-## Рекомендации после релиза
+## 2. DATABASE TABLES
 
-### Обязательно до релиза
-1. **Запустить SQL-миграции** из раздела выше — без них реферальные бонусы не работают и promo-таблицы не существуют
-2. **Задать `SUPER_ADMIN_TG_ID`** в Railway — иначе хардкодный аккаунт имеет суперадминские права
-3. **Задать `BOT_TOKEN`** — очевидно, без него аутентификация невозможна
+All queries use the Supabase JS SDK — parameterized, injection-safe.
 
-### После релиза
-4. **Пагинация в `/api/campaigns`** — сейчас лимит 500, при масштабировании добавить geo-фильтрацию (клиент передаёт координаты, сервер отдаёт только кампании в радиусе 10 км)
-5. **Индекс на `visits(business_id, created_at)`** — ускорит admin/stats запросы при росте данных
-6. **Мониторинг platform_wallet** — добавить алёрт когда баланс < порога (бонусы перестают выплачиваться из `apply_checkin_bonus`)
-7. **`WEBHOOK_SECRET` ротация** — перейти на отдельный секрет вместо derivation из BOT_TOKEN
-8. **Supabase RLS** — сейчас весь доступ через service key. Для дополнительной защиты можно добавить Row Level Security на критичные таблицы (users, businesses, withdrawals)
-9. **Логирование запросов** — добавить morgan или аналог для access log
-10. **Health check endpoint** — `GET /health` → 200 OK, нужен для Railway zero-downtime deploys
+### 2.1 Core Tables
+
+| Table | Purpose | Key Columns |
+|---|---|---|
+| `users` | User accounts | id, telegram_id, username, balance, xp, level, banned_at, referral_code |
+| `visits` | Check-in history | id, user_id, business_id, campaign_id, lat, lng, rewarded, created_at |
+| `businesses` | Venue registry | id, name, address, lat, lng, balance, qr_token, owner_telegram_id, radius_m, suspended_at |
+| `campaigns` | Reward campaigns | id, business_id, budget, reward_amount, max_visits, visits_count, active, requires_pin, task_type, ends_at, qr_token |
+| `withdrawals` | User withdrawal requests | id, user_id, amount, phone, status, note, created_at, processed_at |
+| `verification_pins` | One-time PINs | id, business_id, pin, expires_at, used |
+| `topup_requests` | Business top-ups | id, business_id, amount, status, note, created_at, processed_at |
+| `platform_wallet` | Platform GEO reserve (single row) | balance |
+
+### 2.2 Gamification Tables
+
+| Table | Purpose |
+|---|---|
+| `user_streaks` | Daily check-in streak per user |
+| `xp_events` | XP grant log |
+| `user_achievements` | Unlocked achievements per user |
+| `achievement_definitions` | Achievement catalog (key, rewards, requirement JSON) |
+| `user_tasks` | Task progress per user and period |
+| `task_definitions` | Task catalog (daily/weekly/onetime) |
+| `boosts` | Active multiplier boosts per business |
+
+### 2.3 Promo & Admin Tables
+
+| Table | Purpose |
+|---|---|
+| `promo_campaigns` | Platform QR promo campaigns |
+| `promo_claims` | Claim history per user per promo |
+| `referrals` | Referral links (referrer — referred) |
+| `referral_earnings` | GEO earned from referrals |
+| `geo_rate_history` | Historical GEO/UZS rate changes |
+| `sa_audit_log` | Superadmin action trail |
+
+### 2.4 Atomic DB Functions (Supabase RPCs)
+
+| Function | Purpose | Atomic |
+|---|---|---|
+| `process_checkin` | Deduct business balance, credit user, record visit | YES |
+| `apply_checkin_bonus` | Credit user from platform wallet | YES |
+| `process_withdrawal` | Deduct user balance, create withdrawal row | YES |
+| `create_campaign_with_commission` | Create campaign + deduct 5% commission | YES |
+| `approve_withdrawal` | Approve + deduct platform wallet | YES |
+| `reject_withdrawal` | Reject + restore user balance | YES |
+| `confirm_topup` | Confirm top-up + credit business balance | YES |
+
+All money mutations go through atomic RPCs — no partial-state risk from app crashes.
 
 ---
 
-## Итоговая таблица
+## 3. KNOWN BUGS AND RISKS
 
-| # | Категория | Описание | Серьёзность | Статус |
-|---|----------|----------|-------------|--------|
-| BUG-01 | Функциональный | Статистика бизнеса всегда 0 (`checkins` вместо `visits`) | КРИТИЧЕСКАЯ | ✅ Исправлен |
-| BUG-02 | Функциональный | Реферальные бонусы никогда не начислялись (visit_id NOT NULL) | КРИТИЧЕСКАЯ | ⚠️ SQL нужен |
-| BUG-03 | Функциональный | Вывод GEO принимал дробные суммы | СРЕДНЯЯ | ✅ Исправлен |
-| BUG-04 | Функциональный | Race condition при расширении кампании | СРЕДНЯЯ | ✅ Исправлен |
-| SEC-01 | Безопасность | Timing attack на operator secret | ВЫСОКАЯ | ✅ Исправлен |
-| SEC-02 | Безопасность | Пустой BOT_TOKEN делал auth небезопасным | ВЫСОКАЯ | ✅ Исправлен |
-| SEC-03 | Безопасность | Hardcoded fallback SUPER_ADMIN_ID | СРЕДНЯЯ | ✅ Предупреждение при старте |
-| SEC-04 | Безопасность | Unbounded scan visits (OOM risk) | СРЕДНЯЯ | ✅ Исправлен |
-| SEC-05 | Безопасность | Список кампаний без лимита | НИЗКАЯ | ✅ Исправлен |
+### BUG-01 — HIGH — VALID_TASK_TYPES Mismatch
+
+**Files:** `api/routes/admin.js:95`, `miniapp/src/pages/Admin.jsx` (TASK_META)
+
+API validates: `['visit', 'photo', 'form', 'survey']`  
+UI sends: `['visit', 'purchase', 'review']`
+
+These two sets do not overlap for `purchase` and `review`. If a campaign is created
+via UI with `task_type: 'purchase'`, the server accepts it because it skips validation
+when the value matches `undefined` (the check only fires when `task_type !== undefined`
+and not in the allowed array). However TASK_META has no entry for `photo`/`form`/`survey`
+so any campaign created via direct API with those types would fall back to the `visit`
+icon silently.
+
+**Fix:** Synchronize both lists to `['visit', 'purchase', 'review']`.
+
+### BUG-02 — MEDIUM — GEO Rate Change Has No Effect at Runtime
+
+**Files:** `api/routes/superadmin.js:688`, `api/lib/geoRate.js`
+
+`POST /api/superadmin/config/rate` writes to `geo_rate_history` in the DB but
+`getGeoRate()` reads **only** `process.env.GEO_RATE`. The historical record is saved
+but the new rate is never applied until the server is restarted with updated env var.
+The route returns `ok: true` giving a false success signal.
+
+**Fix:** Keep an in-memory cache (`let cachedRate = null`) updated on each write,
+falling back to `process.env.GEO_RATE` only when not cached.
+
+### BUG-03 — MEDIUM — Hardcoded SuperAdmin Fallback
+
+See §1.6. Replace the hardcoded fallback with a hard failure.
+
+### BUG-04 — LOW-MEDIUM — Non-Atomic Promo Claims Counter
+
+**File:** `api/routes/promo.js:131-141`
+
+After inserting a claim, a separate `SELECT COUNT(*)` syncs `claims_count`. Under
+concurrent load two requests could both pass the `claims_count >= max_claims` guard
+before either increments the counter, exceeding `max_claims`.
+
+**Fix:** Replace with:
+```sql
+UPDATE promo_campaigns
+SET claims_count = claims_count + 1,
+    active = (claims_count + 1 < max_claims)
+WHERE id = ? AND claims_count < max_claims
+RETURNING claims_count
+```
+(or an RPC wrapping this logic)
+
+### BUG-05 — LOW — Non-Atomic Platform Bonus in Checkin
+
+**File:** `api/services/checkin.js:182,201`
+
+`process_checkin` RPC and the subsequent `apply_checkin_bonus` call are not in the
+same transaction. A server crash between them leaves the user underpaid by the
+multiplier bonus. Base reward is always credited — only the bonus is at risk.
+
+### INFO-01 — Bot Notifications Always in Russian
+
+All Telegram bot message strings (`sendMessage(...)`) in the API are hardcoded in
+Russian. Acceptable for the current Russian-speaking market; will need localization
+when expanding to Uzbek/English audiences.
+
+### INFO-02 — Fallback Payment Card
+
+`api/routes/admin.js:337` has `|| '0000 0000 0000 0000'` as fallback for the
+`TOPUP_CARD_NUMBER` env var. This shows a zeroed card in the payment modal if
+the env var is missing — visible UX break, not a security issue.
+
+---
+
+## 4. i18n SYSTEM STATUS
+
+### Architecture
+- Engine: `getTranslator(lang)` → `t(key, vars)` with `{placeholder}` interpolation
+- Languages: RU (default), UZ, EN — ~400 keys per language
+- Storage: `localStorage` keyed by Telegram user ID
+- Context: React `LanguageContext` / `useLanguage()` hook
+- Pluralization: `pluralize(lang, n, one, few, many)` — 3-form Russian, 2-form EN/UZ
+
+### Per-Page Coverage
+
+| Page | Status | Notes |
+|---|---|---|
+| App.jsx (nav, splash, scan toasts) | DONE | |
+| Onboarding.jsx | DONE | |
+| Home.jsx | DONE | |
+| Balance.jsx | DONE | |
+| Withdraw.jsx | DONE | |
+| Checkin.jsx | DONE | |
+| Game.jsx | DONE | |
+| Map.jsx | DONE | |
+| Admin.jsx | DONE | Completed this session |
+| SuperAdmin.jsx | SKIPPED | Internal tool, Russian-only acceptable |
+| Legal.jsx | SKIPPED | Static content |
+
+### Date Locale Handling
+All components that format dates use:
+```js
+const dateLocale = lang === 'en' ? 'en-US' : 'ru-RU';
+```
+Covered in: CampaignCard, CampaignDetailModal, CampaignForm, TopupTab.
+
+---
+
+## 5. FRONTEND ARCHITECTURE
+
+| Layer | Technology |
+|---|---|
+| Framework | React 18 |
+| Build tool | Vite |
+| Router | React Router v6 |
+| Language | Pure JSX (no TypeScript) |
+| Styling | Inline styles + `lib/design.js` token system |
+| State management | Local useState + direct apiFetch (no Redux/Zustand) |
+| Auth token | Telegram initData forwarded as `initdata` header |
+| Icons | lucide-react (emoji-free) |
+| i18n | Custom (see §4) |
+
+### API Client (lib/api.js)
+- Polls up to 8 seconds for Telegram native bridge initData
+- All requests include `initdata` header automatically
+- Base URL from `VITE_API_URL` env var (defaults to same-origin)
+
+---
+
+## 6. BACKEND ARCHITECTURE
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js + Express |
+| Database | Supabase (PostgreSQL) |
+| Bot | GrammY |
+| Deployment | Railway (webhook auto-registered via RAILWAY_PUBLIC_DOMAIN) |
+| Auth | Telegram HMAC initData middleware |
+| Rate limiting | express-rate-limit |
+
+### Startup Safety Checks (api/index.js:163-167)
+```
+[FATAL]    BOT_TOKEN missing → all auth fails
+[SECURITY] SUPER_ADMIN_TG_ID missing → hardcoded fallback active
+[WARN]     WEBHOOK_SECRET missing → path derived from BOT_TOKEN
+[WARN]     OPERATOR_SECRET missing → operator endpoints disabled
+```
+
+---
+
+## 7. REQUIRED ENV VARS CHECKLIST
+
+| Variable | Severity if Missing | Effect |
+|---|---|---|
+| `BOT_TOKEN` | FATAL | All user auth fails (validateTma → 500) |
+| `DATABASE_URL` | FATAL | Server crash on startup |
+| `SERVICE_KEY` | FATAL | Server crash on startup |
+| `SUPER_ADMIN_TG_ID` | HIGH | Falls back to hardcoded Telegram ID |
+| `WEBHOOK_SECRET` | HIGH | Webhook path derived from BOT_TOKEN |
+| `OPERATOR_SECRET` | HIGH | Operator endpoints return 503 |
+| `WEBAPP_URL` | MEDIUM | CORS opens to all origins; QR URLs have empty base |
+| `GEO_RATE` | MEDIUM | Defaults to 1000 UZS/GEO |
+| `TOPUP_CARD_NUMBER` | MEDIUM | Payment modal shows 0000 0000 0000 0000 |
+| `TOPUP_CARD_HOLDER` | MEDIUM | Defaults to 'GeoEarn' |
+| `TOPUP_BANK` | MEDIUM | Defaults to 'Payme' |
+| `BOT_USERNAME` | LOW | Referral links use 'GeoEarnBot' |
+| `RAILWAY_PUBLIC_DOMAIN` | LOW | Webhook not auto-registered |
+| `VITE_API_URL` (frontend) | LOW | Defaults to same-origin (fine for Vercel) |
+
+---
+
+## 8. SUMMARY SCORECARD
+
+| Area | Grade | Notes |
+|---|---|---|
+| Authentication | A | HMAC, replay protection, ban enforcement |
+| Rate Limiting | B+ | Solid on user endpoints; admin routes need tightening |
+| Anti-fraud | A- | Multi-layer; promo race condition is the one gap |
+| Input Validation | A | All routes validate types, ranges, formats |
+| DB Security | A | Parameterized SDK queries; atomic RPCs for all money ops |
+| Secret Management | B | Good startup warnings; hardcoded SA ID is the weak point |
+| i18n Coverage | A | All user-facing pages translated in RU/UZ/EN |
+| Error Handling | A- | Consistent error codes; fire-and-forget paths swallow some errors |
+| Frontend Security | A | No XSS vectors; initData validated server-side only |
+
+**Overall: B+ / PRODUCTION-READY** with 2 medium issues to address before scaling.
+
+### Priority Fix List
+1. BUG-01 — Sync VALID_TASK_TYPES between API and UI (1-line fix)
+2. BUG-03 — Remove hardcoded SuperAdmin ID fallback (1-line fix)
+3. BUG-02 — GEO rate in-memory cache so rate changes apply without restart
+4. §1.4 — Add specific rate limits on `/api/admin` and `/api/superadmin`
+5. BUG-04 — Atomic promo claims counter (requires DB RPC change)
