@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft } from 'lucide-react';
+import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -37,7 +37,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         borderBottom: 'none',
         padding: '0 0 44px', zIndex: 501,
         maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.3s cubic-bezier(0.32,0.72,0,1)',
+        animation: 'slideUp 0.35s cubic-bezier(0.175,0.885,0.32,1.275)',
         boxShadow: '0 -12px 60px rgba(0,0,0,0.8)',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 22px' }} />
@@ -176,19 +176,22 @@ export default function MapPage() {
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
-    campaigns.forEach(c => {
+    campaigns.forEach((c, idx) => {
       if (!c.lat || !c.lng) return;
 
+      const delay = idx * 60;
       const icon = L.divIcon({
         html: `<div style="
           display:inline-block;
-          transform:translate(-50%,-100%);
+          transform:translate(-50%,-100%) scale(1);
           background:#C6F135;
           color:#090B10;padding:5px 11px;border-radius:20px;
-          font-size:12px;font-weight:800;white-space:nowrap;
+          font-size:13px;font-weight:800;white-space:nowrap;
           border:1.5px solid rgba(198,241,53,0.3);
-          font-family:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+          font-family:'Barlow Condensed',-apple-system,BlinkMacSystemFont,sans-serif;
+          letter-spacing:0.3px;
           pointer-events:none;
+          animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both,markerPulse 2.5s ease-in-out ${delay + 400}ms infinite;
         ">+${formatGeo(c.reward_amount)} GEO</div>`,
         className: '',
         iconSize: [0, 0],
@@ -320,19 +323,11 @@ export default function MapPage() {
         </div>
 
         <div style={{ padding: '0 16px' }}>
-          {loading && [1, 2, 3].map(i => (
-            <div key={i} style={{
-              ...cardBase, border: `1px solid ${C.b0}`,
-              padding: '14px 16px', marginBottom: 8,
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="sk" style={{ height: 14, width: 130, borderRadius: 6, marginBottom: 8 }} />
-                <div className="sk" style={{ height: 11, width: 70, borderRadius: 5 }} />
-              </div>
-              <div className="sk" style={{ height: 36, width: 100, borderRadius: 10 }} />
+          {loading && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+              <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
             </div>
-          ))}
+          )}
 
           {!loading && nearby.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 16px' }}>
@@ -361,7 +356,7 @@ export default function MapPage() {
                   padding: '14px 16px', marginBottom: 8,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   cursor: 'pointer',
-                  animation: `fadeUp 0.32s ${i * 0.04}s ease both`,
+                  animation: `fadeUp 0.36s ${i * 0.06}s cubic-bezier(0.32,0.72,0,1) both`,
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >

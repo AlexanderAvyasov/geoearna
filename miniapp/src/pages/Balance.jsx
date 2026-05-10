@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle } from 'lucide-react';
+import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, CheckCircle, XCircle, ArrowDownCircle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
 import { C, E, cardBase } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const SYNE = { fontFamily: "'Syne', sans-serif" };
+const BC = { fontFamily: "'Barlow Condensed', sans-serif" };
 
 function formatDate(str) {
   return new Date(str).toLocaleString('ru-RU', {
@@ -15,40 +15,51 @@ function formatDate(str) {
   });
 }
 
-function SkeletonRow() {
+// ── Slot machine counter ──────────────────────────────────────────────────────
+
+function SlotDigit({ char, delay }) {
+  if (!/\d/.test(char)) {
+    return (
+      <span style={{ display: 'inline-block', width: char === ' ' ? '0.28em' : undefined }}>
+        {char === ' ' ? ' ' : char}
+      </span>
+    );
+  }
   return (
-    <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="sk" style={{ height: 14, width: 140, borderRadius: 6, marginBottom: 8 }} />
-        <div className="sk" style={{ height: 10, width: 90, borderRadius: 5 }} />
-      </div>
-      <div className="sk" style={{ height: 22, width: 84, borderRadius: 8 }} />
+    <span style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'bottom' }}>
+      <span style={{
+        display: 'block',
+        animation: `slotDrop 0.46s cubic-bezier(0.22,1,0.36,1) ${delay}ms both`,
+      }}>
+        {char}
+      </span>
+    </span>
+  );
+}
+
+function SlotCounter({ value, style, loading }) {
+  const [animKey, setAnimKey] = useState(0);
+  const prevValue = useRef(null);
+
+  useEffect(() => {
+    if (!loading && value > 0 && value !== prevValue.current) {
+      prevValue.current = value;
+      setAnimKey(k => k + 1);
+    }
+  }, [value, loading]);
+
+  const formatted = formatGeo(value || 0);
+
+  return (
+    <div style={{ ...style, display: 'inline-flex', flexWrap: 'nowrap' }}>
+      {formatted.split('').map((ch, i) => (
+        <SlotDigit key={`${animKey}-${i}`} char={ch} delay={i * 38} />
+      ))}
     </div>
   );
 }
 
-function useCountUp(target, running) {
-  const [value, setValue] = useState(0);
-  const rafRef = useRef(null);
-
-  useEffect(() => {
-    if (!running || !target) return;
-    const duration = 700;
-    const start = performance.now();
-
-    function tick(now) {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - (1 - t) ** 3;
-      setValue(Math.round(eased * target));
-      if (t < 1) rafRef.current = requestAnimationFrame(tick);
-    }
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [target, running]);
-
-  return value;
-}
+// ─────────────────────────────────────────────────────────────────────────────
 
 const WD_STATUS_ICONS = {
   pending:  { Icon: Clock,       color: C.gold  },
@@ -85,8 +96,6 @@ export default function Balance() {
 
   const geoBalance     = user?.balance ?? 0;
   const totalEarnedGeo = visits.reduce((s, v) => s + (v.rewarded || 0), 0);
-  const displayBalance = useCountUp(geoBalance, !loading && geoBalance > 0);
-  const shownBalance   = loading ? 0 : (geoBalance > 0 ? displayBalance : 0);
 
   if (error) return (
     <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
@@ -105,20 +114,21 @@ export default function Balance() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <div className="sk" style={{ height: 50, width: 180, borderRadius: 10 }} />
-            <div className="sk" style={{ height: 16, width: 110, borderRadius: 6 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '20px 0' }}>
+            <Loader2 size={32} color={C.geo} style={{ animation: 'spin 1s linear infinite', opacity: 0.7 }} />
           </div>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 6 }}>
-              <div style={{ ...SYNE, fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1, color: C.t1 }}>
-                {formatGeo(shownBalance)}
-              </div>
+              <SlotCounter
+                value={geoBalance}
+                loading={loading}
+                style={{ ...BC, fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1, color: C.t1 }}
+              />
               <div style={{ fontSize: 20, fontWeight: 600, color: C.t3, marginBottom: 6 }}>GEO</div>
             </div>
             <div style={{ fontSize: 16, color: C.t3, fontWeight: 500 }}>
-              ≈ {formatUzs(geoToUzs(shownBalance, geoRate))} UZS
+              ≈ {formatUzs(geoToUzs(geoBalance, geoRate))} UZS
             </div>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -133,22 +143,24 @@ export default function Balance() {
         )}
 
         {/* Stats */}
-        <div style={{ display: 'flex', marginTop: 24, paddingTop: 20, borderTop: `0.5px solid ${C.b1}` }}>
-          {[
-            { label: t('balance.visits'), val: loading ? '—' : visits.length },
-            { label: t('balance.earned'), val: loading ? '—' : `${formatGeo(totalEarnedGeo)} GEO` },
-          ].map((item, i) => (
-            <div key={i} style={{
-              flex: 1,
-              paddingRight: i === 0 ? 18 : 0,
-              borderRight: i === 0 ? `0.5px solid ${C.b1}` : 'none',
-              paddingLeft: i === 1 ? 18 : 0,
-            }}>
-              <div style={{ fontSize: 10, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>{item.label}</div>
-              <div style={{ ...SYNE, fontSize: 20, fontWeight: 700, color: C.t1 }}>{item.val}</div>
-            </div>
-          ))}
-        </div>
+        {!loading && (
+          <div style={{ display: 'flex', marginTop: 24, paddingTop: 20, borderTop: `0.5px solid ${C.b1}` }}>
+            {[
+              { label: t('balance.visits'), val: visits.length },
+              { label: t('balance.earned'), val: `${formatGeo(totalEarnedGeo)} GEO` },
+            ].map((item, i) => (
+              <div key={i} style={{
+                flex: 1,
+                paddingRight: i === 0 ? 18 : 0,
+                borderRight: i === 0 ? `0.5px solid ${C.b1}` : 'none',
+                paddingLeft: i === 1 ? 18 : 0,
+              }}>
+                <div style={{ fontSize: 10, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>{item.label}</div>
+                <div style={{ ...BC, fontSize: 20, fontWeight: 700, color: C.t1 }}>{item.val}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Divider */}
@@ -162,9 +174,11 @@ export default function Balance() {
           background: C.geo,
           color: C.bg, textDecoration: 'none',
           borderRadius: 14, padding: '15px 20px',
-          fontWeight: 700, fontSize: 15,
+          fontWeight: 700, fontSize: 16,
           marginBottom: 16,
           animation: 'fadeUp 0.35s ease both',
+          position: 'relative', overflow: 'hidden',
+          letterSpacing: 0.5,
         }}>
           <CreditCard size={18} color={C.bg} strokeWidth={2} />
           {t('balance.withdraw_cta')}
@@ -184,10 +198,12 @@ export default function Balance() {
                 border: 'none',
                 background: activeTab === tab.key ? C.cardHi : 'transparent',
                 color: activeTab === tab.key ? C.t1 : C.t3,
-                fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                fontWeight: 700, fontSize: 13, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 transition: 'all 0.18s',
                 outline: 'none',
+                fontFamily: "'Barlow Condensed', sans-serif",
+                letterSpacing: 0.4,
               }}
             >
               {tab.label}
@@ -207,12 +223,16 @@ export default function Balance() {
         {/* Visits */}
         {activeTab === 'visits' && (
           <>
-            {loading && [1, 2, 3].map(i => <SkeletonRow key={i} />)}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+                <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+              </div>
+            )}
 
             {!loading && visits.length === 0 && (
               <div style={{ textAlign: 'center', padding: '56px 16px' }}>
                 <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.visits.title')}</div>
+                <div style={{ ...BC, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.visits.title')}</div>
                 <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
                   {t('balance.empty.visits.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
                 </div>
@@ -229,7 +249,7 @@ export default function Balance() {
                 animationDelay: `${i * 0.04}s`,
               }}>
                 <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
                     {v.business_name || t('balance.business')}
                   </div>
                   <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -239,9 +259,11 @@ export default function Balance() {
                 </div>
                 <div style={{ flexShrink: 0, textAlign: 'right' }}>
                   <div style={{
-                    color: C.geo, fontWeight: 700, fontSize: 14,
+                    color: C.geo, fontWeight: 800, fontSize: 14,
                     background: C.geoDim, borderRadius: 9, padding: '5px 10px',
                     border: `0.5px solid ${C.geoGl}`,
+                    fontFamily: "'Barlow Condensed', sans-serif",
+                    letterSpacing: 0.3,
                   }}>
                     +{formatGeo(v.rewarded)} GEO
                   </div>
@@ -257,12 +279,16 @@ export default function Balance() {
         {/* Withdrawals */}
         {activeTab === 'withdrawals' && (
           <>
-            {loading && [1, 2].map(i => <SkeletonRow key={i} />)}
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
+                <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+              </div>
+            )}
 
             {!loading && withdrawals.length === 0 && (
               <div style={{ textAlign: 'center', padding: '56px 16px' }}>
                 <ArrowDownCircle size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.wd.title')}</div>
+                <div style={{ ...BC, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.wd.title')}</div>
                 <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
                   {t('balance.empty.wd.text')}
                 </div>
@@ -304,6 +330,7 @@ export default function Balance() {
                       color: w.status === 'rejected' ? C.t3 : C.t1,
                       fontWeight: 700, fontSize: 15,
                       textDecoration: w.status === 'rejected' ? 'line-through' : 'none',
+                      fontFamily: "'Barlow Condensed', sans-serif",
                     }}>
                       -{formatGeo(w.amount)} GEO
                     </div>

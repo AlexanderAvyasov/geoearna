@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
@@ -24,7 +24,7 @@ export const GLOBAL_CSS = `
     margin: 0; padding: 0;
     background: ${C.bg};
     color: ${C.t1};
-    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
@@ -35,10 +35,6 @@ export const GLOBAL_CSS = `
   @keyframes pageEnter {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes shimmer {
-    0%   { background-position: -400px 0; }
-    100% { background-position:  400px 0; }
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -55,7 +51,7 @@ export const GLOBAL_CSS = `
   }
   @keyframes coinBurst {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0); }
+    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0.2); }
   }
   @keyframes pop {
     0%   { transform: scale(0.6); opacity: 0; }
@@ -64,6 +60,10 @@ export const GLOBAL_CSS = `
   }
   @keyframes ripple {
     to { transform: scale(3); opacity: 0; }
+  }
+  @keyframes rippleOut {
+    from { transform: scale(0); opacity: 0.28; }
+    to   { transform: scale(3.5); opacity: 0; }
   }
   @keyframes fadeUp {
     from { transform: translateY(14px); opacity: 0; }
@@ -89,11 +89,6 @@ export const GLOBAL_CSS = `
     from { transform: translate(-50%, 10px); opacity: 0; }
     to   { transform: translate(-50%, 0);    opacity: 1; }
   }
-  @keyframes navPop {
-    0%   { transform: scale(0) translateX(-50%); opacity: 0; }
-    70%  { transform: scale(1.2) translateX(-42%); opacity: 1; }
-    100% { transform: scale(1) translateX(-50%); opacity: 1; }
-  }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50%       { transform: translateY(-5px); }
@@ -103,31 +98,56 @@ export const GLOBAL_CSS = `
     to   { transform: rotate(360deg); }
   }
 
-  /* ── Skeleton sweep — replaces pulse/shimmer across all pages ── */
-  @keyframes skSweep {
-    0%   { transform: translateX(-180%) skewX(-10deg); }
-    100% { transform: translateX(280%)  skewX(-10deg); }
+  /* ── Slot machine digits ── */
+  @keyframes slotDrop {
+    0%   { transform: translateY(-90%); opacity: 0; }
+    60%  { transform: translateY(5%);   opacity: 1; }
+    100% { transform: translateY(0);    opacity: 1; }
   }
+
+  /* ── Nav icon bounce on activation ── */
+  @keyframes iconBounce {
+    0%   { transform: scale(1); }
+    28%  { transform: scale(0.8); }
+    68%  { transform: scale(1.14); }
+    100% { transform: scale(1); }
+  }
+
+  /* ── Checkin success wave ── */
+  @keyframes waveRise {
+    0%   { transform: scaleY(0); opacity: 0; transform-origin: bottom; }
+    35%  { opacity: 1; transform: scaleY(1); transform-origin: bottom; }
+    100% { opacity: 0; transform: scaleY(1); transform-origin: bottom; }
+  }
+
+  /* ── Streak milestone rays ── */
+  @keyframes rayBurst {
+    0%   { transform: scaleY(0); opacity: 0; }
+    40%  { transform: scaleY(1); opacity: 1; }
+    100% { transform: scaleY(1.4); opacity: 0; }
+  }
+  @keyframes streakPop {
+    0%   { transform: scale(0.3); opacity: 0; }
+    55%  { transform: scale(1.1); opacity: 1; }
+    80%  { transform: scale(0.95); }
+    100% { transform: scale(1);   opacity: 1; }
+  }
+
+  /* ── Map marker entrance ── */
+  @keyframes markerPop {
+    0%   { transform: translate(-50%,-100%) scale(0); opacity: 0; }
+    65%  { transform: translate(-50%,-100%) scale(1.18); opacity: 1; }
+    100% { transform: translate(-50%,-100%) scale(1); opacity: 1; }
+  }
+  @keyframes markerPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(198,241,53,0.55); }
+    50%       { box-shadow: 0 0 0 8px rgba(198,241,53,0); }
+  }
+
+  /* ── Skeleton — static dark block only, no sweep ── */
   .sk {
-    position: relative;
-    overflow: hidden;
     background: rgba(255,255,255,0.055);
     flex-shrink: 0;
-  }
-  .sk::after {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 55%; height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent            0%,
-      rgba(255,255,255,0.07) 40%,
-      rgba(198,241,53,0.05)  50%,
-      rgba(255,255,255,0.07) 60%,
-      transparent            100%
-    );
-    animation: skSweep 1.7s ease-in-out infinite;
   }
 
   @keyframes splashLogoIn {
@@ -382,6 +402,8 @@ function BottomNav() {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
   const { t } = useLanguage();
+  const navRef = useRef(null);
+  const [indicatorX, setIndicatorX] = useState(null);
 
   const NAV_ITEMS = [
     { to: '/',        Icon: HomeIcon,  label: t('nav.home')     },
@@ -396,6 +418,19 @@ function BottomNav() {
   if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map' || pathname === '/legal') return null;
   if (IS_SUPER_ADMIN && pathname === '/admin') return null;
 
+  const activeIdx = NAV_ITEMS.findIndex(item =>
+    item && (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to))
+  );
+
+  useLayoutEffect(() => {
+    if (!navRef.current || activeIdx < 0) return;
+    const tab = navRef.current.querySelector(`[data-tab="${activeIdx}"]`);
+    if (!tab) return;
+    const navRect = navRef.current.getBoundingClientRect();
+    const tabRect = tab.getBoundingClientRect();
+    setIndicatorX(tabRect.left - navRect.left + tabRect.width / 2 - 12);
+  }, [pathname]);
+
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 2800);
@@ -403,7 +438,7 @@ function BottomNav() {
 
   return (
     <>
-      <nav style={{
+      <nav ref={navRef} style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'rgba(9,11,16,0.97)',
         backdropFilter: 'blur(24px)',
@@ -414,7 +449,20 @@ function BottomNav() {
         zIndex: 100,
         height: 72,
       }}>
-        {NAV_ITEMS.map((item) => {
+        {/* Sliding indicator */}
+        {indicatorX !== null && (
+          <div style={{
+            position: 'absolute', top: 0,
+            left: indicatorX,
+            width: 24, height: 2.5, borderRadius: 2,
+            background: C.geo,
+            boxShadow: `0 0 8px ${C.geo}`,
+            transition: `left 0.3s cubic-bezier(0.32,0.72,0,1)`,
+            pointerEvents: 'none',
+          }} />
+        )}
+
+        {NAV_ITEMS.map((item, idx) => {
           if (!item) {
             return (
               <div key="scan" style={{
@@ -434,6 +482,7 @@ function BottomNav() {
             <NavLink
               key={item.to}
               to={item.to}
+              data-tab={idx}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
                 alignItems: 'center', gap: 4, padding: '10px 0 9px',
@@ -441,27 +490,19 @@ function BottomNav() {
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              {isActive && (
-                <div style={{
-                  position: 'absolute', top: 0, left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 24, height: 2, borderRadius: 2,
-                  background: C.geo,
-                  animation: 'navPop 0.28s ease both',
-                }} />
-              )}
               <item.Icon
+                key={isActive ? `${item.to}-on` : `${item.to}-off`}
                 size={22}
                 strokeWidth={isActive ? 2.25 : 1.75}
                 color={isActive ? C.geo : C.t3}
                 style={{
-                  transition: `color 0.18s, transform 0.18s ${E.spring}`,
-                  transform: isActive ? 'scale(1.08)' : 'scale(1)',
                   display: 'block',
+                  animation: isActive ? 'iconBounce 0.22s ease both' : 'none',
+                  transition: 'color 0.18s',
                 }}
               />
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: 0.4,
+                fontSize: 9, fontWeight: 700, letterSpacing: 0.6,
                 color: isActive ? C.geo : C.t3,
                 transition: 'color 0.18s',
                 textTransform: 'uppercase',
@@ -486,7 +527,7 @@ function AppLayout() {
     <div style={{
       minHeight: '100vh',
       background: C.bg,
-      fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontFamily: "'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       color: C.t1,
       WebkitTapHighlightColor: 'transparent',
     }}>

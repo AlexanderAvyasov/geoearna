@@ -111,7 +111,7 @@ export function inputStyle(focused = false, error = false) {
     color: '#F0F2F7', fontSize: 16, outline: 'none',
     transition: 'border-color 0.2s',
     WebkitAppearance: 'none',
-    fontFamily: "'DM Sans', -apple-system, sans-serif",
+    fontFamily: "'Barlow Condensed', -apple-system, sans-serif",
   };
 }
 

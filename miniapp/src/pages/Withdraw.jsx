@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import RippleButton from '../lib/RippleButton';
 import { geoToUzs, formatGeo, formatUzs, isValidCardNumber, normalizeCardNumber, formatCardNumber } from '../lib/geo';
 import { C, E, cardBase, inputStyle } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const SYNE = { fontFamily: "'Syne', sans-serif" };
+const BC = { fontFamily: "'Barlow Condensed', sans-serif" };
 
 function Field({ label, value, onChange, placeholder, inputMode, hint }) {
   const [focused, setFocused] = useState(false);
@@ -126,7 +127,7 @@ export default function Withdraw() {
         }}>
           <ArrowLeft size={22} color={C.t2} strokeWidth={1.75} />
         </button>
-        <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('withdraw.title')}</div>
+        <div style={{ ...BC, fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('withdraw.title')}</div>
       </div>
 
       <div style={{ padding: '16px 16px 32px' }}>
@@ -143,7 +144,7 @@ export default function Withdraw() {
               <Wallet size={11} color={C.geo} strokeWidth={2} />
               {t('withdraw.available')}
             </div>
-            <div style={{ ...SYNE, fontSize: 38, fontWeight: 700, letterSpacing: -1.5, color: C.t1, lineHeight: 1 }}>
+            <div style={{ ...BC, fontSize: 38, fontWeight: 700, letterSpacing: -1.5, color: C.t1, lineHeight: 1 }}>
               {formatGeo(balance)}
               <span style={{ fontSize: 16, fontWeight: 500, color: C.t3, marginLeft: 8 }}>GEO</span>
             </div>
@@ -167,11 +168,11 @@ export default function Withdraw() {
               <CheckCircle size={42} color={C.geo} strokeWidth={2} />
             </div>
 
-            <div style={{ ...SYNE, fontWeight: 700, fontSize: 22, marginBottom: 8, color: C.t1 }}>{t('withdraw.success.title')}</div>
+            <div style={{ ...BC, fontWeight: 700, fontSize: 22, marginBottom: 8, color: C.t1 }}>{t('withdraw.success.title')}</div>
 
             <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '18px 24px', marginBottom: 24 }}>
               <div style={{ fontSize: 13, color: C.t3, marginBottom: 4 }}>{t('withdraw.success.debit')}</div>
-              <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, color: C.t1, marginBottom: 2 }}>
+              <div style={{ ...BC, fontSize: 28, fontWeight: 700, color: C.t1, marginBottom: 2 }}>
                 {formatGeo(geoVal)} GEO
               </div>
               <div style={{ fontSize: 14, color: C.t3 }}>
@@ -306,7 +307,7 @@ export default function Withdraw() {
               </div>
             )}
 
-            <button type="submit" disabled={disabled} style={{
+            <RippleButton type="submit" disabled={disabled} style={{
               width: '100%',
               background: disabled ? C.cardHi : C.geo,
               color: disabled ? C.t3 : C.bg,
@@ -321,7 +322,7 @@ export default function Withdraw() {
                 ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> {t('withdraw.submitting')}</>
                 : <><CreditCard size={17} color={disabled ? C.t3 : C.bg} strokeWidth={2} /> {t('withdraw.submit')}</>
               }
-            </button>
+            </RippleButton>
 
             <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: C.t3 }}>
               {t('withdraw.no_commission', { rate: geoRate })}

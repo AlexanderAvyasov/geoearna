@@ -6,9 +6,11 @@ import {
   Shield, Zap, Star,
 } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
+import { tg } from '../hooks/useTelegram';
+import RippleButton from '../lib/RippleButton';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
-import { C, G, E } from '../lib/design';
+import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
 // ─── Rarity config ────────────────────────────────────────────────────────────
@@ -45,18 +47,27 @@ const PROMO_ERRORS = {
   USER_BANNED:         { Icon: Ban,          titleKey: 'promo.USER_BANNED.title',         textKey: 'promo.USER_BANNED.text' },
 };
 
-// ─── Particle burst ───────────────────────────────────────────────────────────
+// ─── Particle burst (25 particles, randomized) ───────────────────────────────
 
-const BURST_COLORS = [
-  { tx: '-72px', ty: '-80px', delay: '0s',    color: C.purple  },
-  { tx:   '0px', ty: '-96px', delay: '0.06s', color: C.purpleL },
-  { tx:  '72px', ty: '-80px', delay: '0.04s', color: C.indigo  },
-  { tx:  '96px', ty:   '0px', delay: '0.08s', color: C.gold    },
-  { tx:  '72px', ty:  '80px', delay: '0.06s', color: C.purple  },
-  { tx:   '0px', ty:  '96px', delay: '0.1s',  color: C.emerald },
-  { tx: '-72px', ty:  '80px', delay: '0.04s', color: C.purpleL },
-  { tx: '-96px', ty:   '0px', delay: '0.02s', color: C.indigo  },
-];
+const PARTICLE_COLORS = [C.geo, C.green, C.gold, '#fff', C.geo, C.geo];
+const MILESTONE_GEO = { 7: 500, 14: 1500, 30: 5000 };
+
+function genParticles() {
+  return Array.from({ length: 25 }, (_, i) => {
+    const angle = (i / 25) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    const dist  = 70 + Math.random() * 130;
+    return {
+      tx:    `${(Math.cos(angle) * dist).toFixed(1)}px`,
+      ty:    `${(Math.sin(angle) * dist).toFixed(1)}px`,
+      delay: `${(i * 0.022).toFixed(3)}s`,
+      color: PARTICLE_COLORS[i % PARTICLE_COLORS.length],
+      size:  5 + Math.random() * 9,
+      dur:   0.75 + Math.random() * 0.45,
+    };
+  });
+}
+
+const PARTICLES = genParticles();
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -75,7 +86,9 @@ export default function Checkin() {
   const [promoInfo,    setPromoInfo]    = useState(null);
   const [pin,          setPin]          = useState('');
   const [pinError,     setPinError]     = useState('');
-  const [showBurst,    setShowBurst]    = useState(false);
+  const [showBurst,          setShowBurst]          = useState(false);
+  const [showWave,           setShowWave]           = useState(false);
+  const [streakMilestone,    setStreakMilestone]    = useState(null);
   const pinRef = useRef(null);
   const sent   = useRef(false);
 
@@ -171,7 +184,16 @@ export default function Checkin() {
         setReward(data.reward);
         setStatus('success');
         setShowBurst(true);
-        setTimeout(() => setShowBurst(false), 1200);
+        setShowWave(true);
+        setTimeout(() => setShowBurst(false), 1400);
+        setTimeout(() => setShowWave(false), 900);
+        const ms = data.streakInfo?.projected;
+        if ([7, 14, 30].includes(ms)) {
+          setTimeout(() => {
+            setStreakMilestone(ms);
+            setTimeout(() => tg?.HapticFeedback?.notificationOccurred('success'), 100);
+          }, 500);
+        }
       }
     } catch {
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
@@ -201,7 +223,9 @@ export default function Checkin() {
         setPromoInfo(prev => ({ ...prev, rarity: data.rarity, title: data.title }));
         setStatus('success');
         setShowBurst(true);
+        setShowWave(true);
         setTimeout(() => setShowBurst(false), 1400);
+        setTimeout(() => setShowWave(false), 900);
       }
     } catch {
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
@@ -233,18 +257,103 @@ export default function Checkin() {
       textAlign: 'center',
       transition: 'background 0.6s ease',
     }}>
-      {/* PARTICLE BURST */}
+      {/* WAVE RISE */}
+      {showWave && (
+        <div style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 198,
+          background: `linear-gradient(0deg, rgba(198,241,53,0.18) 0%, rgba(198,241,53,0.06) 60%, transparent 100%)`,
+          animation: 'waveRise 0.85s ease-out both',
+        }} />
+      )}
+
+      {/* PARTICLE BURST — 25 particles */}
       {showBurst && (
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {BURST_COLORS.map((c, i) => (
+          {PARTICLES.map((p, i) => (
             <div key={i} style={{
-              position: 'absolute', width: 10, height: 10, borderRadius: '50%',
-              background: RC ? RC.color : c.color,
-              boxShadow: `0 0 8px ${RC ? RC.color : c.color}`,
-              '--tx': c.tx, '--ty': c.ty,
-              animation: `coinBurst 1.0s ${c.delay} cubic-bezier(0.25,0.46,0.45,0.94) forwards`,
+              position: 'absolute',
+              width: p.size, height: p.size, borderRadius: '50%',
+              background: RC ? RC.color : p.color,
+              boxShadow: `0 0 ${p.size * 1.2}px ${RC ? RC.color : p.color}`,
+              '--tx': p.tx, '--ty': p.ty,
+              animation: `coinBurst ${p.dur}s ${p.delay} cubic-bezier(0.22,0.61,0.36,1) forwards`,
             }} />
           ))}
+        </div>
+      )}
+
+      {/* STREAK MILESTONE OVERLAY */}
+      {streakMilestone && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: C.bg,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          padding: '32px 24px',
+          animation: 'pageEnter 0.3s ease both',
+        }}>
+          {/* Rays */}
+          {Array.from({ length: 8 }, (_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: `rotate(${i * 45}deg)`,
+              transformOrigin: '0 0',
+              width: 2,
+            }}>
+              <div style={{
+                width: 3, height: 90,
+                background: `linear-gradient(to top, ${C.geo}cc, transparent)`,
+                borderRadius: 2,
+                marginLeft: -1.5,
+                marginTop: -130,
+                transformOrigin: 'bottom center',
+                animation: `rayBurst 1s cubic-bezier(0.22,1,0.36,1) ${i * 0.05}s both`,
+              }} />
+            </div>
+          ))}
+
+          {/* Big streak number */}
+          <div style={{
+            fontFamily: "'Barlow Condensed', sans-serif",
+            fontSize: 110, fontWeight: 900, letterSpacing: -5,
+            color: C.geo, lineHeight: 1,
+            textShadow: `0 0 40px ${C.geoGl}, 0 0 80px ${C.geoDim}`,
+            animation: 'streakPop 0.65s cubic-bezier(0.175,0.885,0.32,1.275) both',
+          }}>
+            {streakMilestone}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4, animation: 'fadeUp 0.4s 0.3s ease both' }}>
+            DAYS STREAK 🔥
+          </div>
+
+          {/* Bonus card */}
+          <div style={{
+            marginTop: 28,
+            background: C.geoDim, border: `1px solid ${C.geoGl}`,
+            borderRadius: 18, padding: '18px 32px', textAlign: 'center',
+            animation: 'fadeUp 0.4s 0.45s ease both',
+          }}>
+            <div style={{ fontFamily: "'Barlow Condensed', sans-serif", color: C.geo, fontWeight: 900, fontSize: 32, letterSpacing: -1 }}>
+              +{MILESTONE_GEO[streakMilestone].toLocaleString('ru-RU')} GEO
+            </div>
+            <div style={{ color: C.t3, fontSize: 13, marginTop: 4 }}>Milestone bonus credited!</div>
+          </div>
+
+          <RippleButton
+            onClick={() => setStreakMilestone(null)}
+            style={{
+              marginTop: 32,
+              background: C.geo, color: C.bg,
+              border: 'none', padding: '14px 40px',
+              borderRadius: 14, fontWeight: 800, fontSize: 16,
+              cursor: 'pointer', letterSpacing: 0.5,
+              fontFamily: "'Barlow Condensed', sans-serif",
+              animation: 'fadeUp 0.4s 0.6s ease both',
+            }}
+          >
+            Continue
+          </RippleButton>
         </div>
       )}
 
@@ -321,7 +430,7 @@ export default function Checkin() {
                 background: C.surf, color: C.t1,
                 fontSize: 28, fontWeight: 700, textAlign: 'center', letterSpacing: 10,
                 outline: 'none', transition: 'border-color 0.15s', marginBottom: 12,
-                fontFamily: "'DM Sans', -apple-system, sans-serif",
+                fontFamily: "'Barlow Condensed', -apple-system, sans-serif",
               }}
             />
             {pinError && (
@@ -413,7 +522,7 @@ export default function Checkin() {
               <div style={{
                 fontSize: 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1,
                 color: isPromo && RC ? RC.color : '#C6F135',
-                fontFamily: "'Syne', sans-serif",
+                fontFamily: "'Barlow Condensed', sans-serif",
                 textShadow: isPromo && RC ? `0 0 20px ${RC.glow}` : undefined,
               }}>
                 +{formatGeo(reward)}
