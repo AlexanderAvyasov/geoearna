@@ -15,6 +15,7 @@ import Onboarding from './pages/Onboarding';
 import Game       from './pages/Game';
 import MapPage    from './pages/Map';
 import Legal      from './pages/Legal';
+import ChannelSub from './pages/ChannelSub';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
@@ -415,7 +416,7 @@ function BottomNav() {
       : { to: '/admin',      Icon: StoreIcon, label: t('nav.business')   },
   ];
 
-  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map' || pathname === '/legal') return null;
+  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map' || pathname === '/legal' || pathname === '/channel-reward') return null;
   if (IS_SUPER_ADMIN && pathname === '/admin') return null;
 
   const activeIdx = NAV_ITEMS.findIndex(item =>
@@ -520,7 +521,7 @@ function BottomNav() {
 
 function AppLayout() {
   const { pathname } = useLocation();
-  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/map' && pathname !== '/legal';
+  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/map' && pathname !== '/legal' && pathname !== '/channel-reward';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -544,8 +545,9 @@ function AppLayout() {
           <Route path="/game"       element={<Game />} />
           <Route path="/map"        element={<MapPage />} />
           <Route path="/admin"      element={<Admin />} />
-          <Route path="/superadmin" element={<SuperAdmin />} />
-          <Route path="/legal"      element={<Legal />} />
+          <Route path="/superadmin"      element={<SuperAdmin />} />
+          <Route path="/legal"           element={<Legal />} />
+          <Route path="/channel-reward"  element={<ChannelSub />} />
         </Routes>
       </div>
       <BottomNav />

@@ -74,8 +74,9 @@ const PARTICLES = genParticles();
 export default function Checkin() {
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
-  const token   = useMemo(() => searchParams.get('token') || '', [searchParams]);
-  const isPromo = useMemo(() => searchParams.get('promo') === '1', [searchParams]);
+  const token      = useMemo(() => searchParams.get('token') || '', [searchParams]);
+  const isPromo    = useMemo(() => searchParams.get('promo') === '1', [searchParams]);
+  const isGeohunt  = useMemo(() => searchParams.get('geohunt') === '1', [searchParams]);
 
   const { lat, lng, error: locError, loading: locLoading, retry: retryGeo } = useLocation();
 
@@ -84,6 +85,7 @@ export default function Checkin() {
   const [errInfo,      setErrInfo]      = useState(null);
   const [businessInfo, setBusinessInfo] = useState(null);
   const [promoInfo,    setPromoInfo]    = useState(null);
+  const [huntInfo,     setHuntInfo]     = useState(null);
   const [pin,          setPin]          = useState('');
   const [pinError,     setPinError]     = useState('');
   const [showBurst,          setShowBurst]          = useState(false);
@@ -101,6 +103,32 @@ export default function Checkin() {
     if (!token) {
       setErrInfo({ Icon: Link2, titleKey: 'err.NO_TOKEN.title', textKey: 'err.NO_TOKEN.text' });
       setStatus('error');
+      return;
+    }
+
+    if (isGeohunt) {
+      apiFetch(`/api/geohunt/info?token=${encodeURIComponent(token)}`)
+        .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+        .then(({ ok, data }) => {
+          if (!ok) {
+            const GEOHUNT_ERRORS = {
+              NOT_FOUND:        { Icon: Link2,        titleKey: 'err.INVALID_QR_TOKEN.title', textKey: 'err.INVALID_QR_TOKEN.text' },
+              HUNT_INACTIVE:    { Icon: PauseCircle,  titleKey: 'promo.PROMO_INACTIVE.title', textKey: 'promo.PROMO_INACTIVE.text' },
+              HUNT_EXPIRED:     { Icon: Clock,        titleKey: 'promo.PROMO_EXPIRED.title',  textKey: 'promo.PROMO_EXPIRED.text' },
+              HUNT_NOT_STARTED: { Icon: Timer,        titleKey: 'promo.PROMO_INACTIVE.title', textKey: 'promo.PROMO_INACTIVE.text' },
+              CODE_USED:        { Icon: XCircle,      titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
+            };
+            const code = data?.error || 'UNKNOWN';
+            setErrInfo(GEOHUNT_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
+            setStatus('error');
+          } else {
+            setHuntInfo(data);
+          }
+        })
+        .catch(() => {
+          setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
+          setStatus('error');
+        });
       return;
     }
 
@@ -125,12 +153,19 @@ export default function Checkin() {
         setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
         setStatus('error');
       });
-  }, [token, isPromo]);
+  }, [token, isPromo, isGeohunt]);
 
-  // ── Auto-submit when ready ──────────────────────────────────────────────────
+  // ── GeoHunt: auto-submit as soon as info loads (no location needed) ──────────
 
   useEffect(() => {
-    if (sent.current || status === 'error') return;
+    if (!isGeohunt || !huntInfo || sent.current || status === 'error') return;
+    doGeohunt();
+  }, [huntInfo, isGeohunt]);
+
+  // ── Auto-submit when ready (business + promo) ────────────────────────────────
+
+  useEffect(() => {
+    if (isGeohunt || sent.current || status === 'error') return;
     const info = isPromo ? promoInfo : businessInfo;
     if (!info) return;
 
@@ -226,6 +261,45 @@ export default function Checkin() {
         setShowWave(true);
         setTimeout(() => setShowBurst(false), 1400);
         setTimeout(() => setShowWave(false), 900);
+      }
+    } catch {
+      setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
+      setStatus('error');
+    }
+  }
+
+  // ── GeoHunt claim ───────────────────────────────────────────────────────────
+
+  async function doGeohunt() {
+    if (sent.current) return;
+    sent.current = true;
+    setStatus('submitting');
+    try {
+      const r = await apiFetch('/api/geohunt/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const GEOHUNT_CLAIM_ERRORS = {
+          CODE_USED:              { Icon: XCircle,     titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
+          ALREADY_CLAIMED_BY_YOU: { Icon: CheckCircle, titleKey: 'promo.ALREADY_CLAIMED.title', textKey: 'promo.ALREADY_CLAIMED.text' },
+          HUNT_INACTIVE:          { Icon: PauseCircle, titleKey: 'promo.PROMO_INACTIVE.title',  textKey: 'promo.PROMO_INACTIVE.text' },
+          HUNT_EXPIRED:           { Icon: Clock,       titleKey: 'promo.PROMO_EXPIRED.title',   textKey: 'promo.PROMO_EXPIRED.text' },
+        };
+        const code = data?.error || 'UNKNOWN';
+        setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
+        setStatus('error');
+      } else {
+        setReward(data.reward);
+        setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle }));
+        setStatus('success');
+        setShowBurst(true);
+        setShowWave(true);
+        setTimeout(() => setShowBurst(false), 1400);
+        setTimeout(() => setShowWave(false), 900);
+        tg?.HapticFeedback?.notificationOccurred('success');
       }
     } catch {
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
@@ -374,15 +448,17 @@ export default function Checkin() {
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
             {status === 'submitting'
-              ? (isPromo ? t('checkin.submitting_promo') : t('checkin.submitting_biz'))
+              ? (isGeohunt ? 'Активируем GeoHunt…' : isPromo ? t('checkin.submitting_promo') : t('checkin.submitting_biz'))
               : t('checkin.loading')}
           </div>
           <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.5 }}>
             {status === 'submitting'
               ? t('checkin.wait')
-              : locLoading
-                ? t('checkin.locating')
-                : t('checkin.verifying')}
+              : isGeohunt
+                ? 'Проверяем код…'
+                : locLoading
+                  ? t('checkin.locating')
+                  : t('checkin.verifying')}
           </div>
           {isPromo && promoInfo && status === 'loading' && (
             <div style={{
@@ -466,91 +542,122 @@ export default function Checkin() {
       )}
 
       {/* SUCCESS */}
-      {status === 'success' && (
-        <>
-          {/* Rarity badge for promo */}
-          {isPromo && RC && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 20,
-              background: RC.bg, border: `1px solid ${RC.color}40`,
-              marginBottom: 20, animation: 'fadeUp 0.3s ease both',
-            }}>
-              <RC.Icon size={13} color={RC.color} strokeWidth={2} />
-              <span style={{ fontSize: 12, fontWeight: 800, color: RC.color, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                {RC.label}
-              </span>
-            </div>
-          )}
+      {status === 'success' && (() => {
+        // Derive accent based on mode
+        const accentColor = isGeohunt ? C.gold : isPromo && RC ? RC.color : '#C6F135';
+        const accentBg    = isGeohunt ? C.goldFt : isPromo && RC ? RC.bg : 'rgba(198,241,53,0.08)';
+        const accentBorder= isGeohunt ? C.goldGl  : isPromo && RC ? RC.color + '30' : 'rgba(198,241,53,0.20)';
+        const accentGrad  = isGeohunt
+          ? 'linear-gradient(135deg,#B45309,#FBBF24)'
+          : isPromo && RC ? RC.grad : G.emerald;
+        const accentGlow  = isGeohunt ? C.goldGl : isPromo && RC ? RC.glow : undefined;
 
-          {/* Success icon */}
-          <div style={{
-            width: 116, height: 116, borderRadius: '50%',
-            background: isPromo && RC ? RC.grad : G.emerald,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 32,
-            boxShadow: isPromo && RC ? `0 0 40px ${RC.glow}, 0 0 80px ${RC.glow}` : undefined,
-            animation: 'pop 0.55s cubic-bezier(0.175,0.885,0.32,1.275), successGlow 2.5s 0.6s ease-in-out infinite',
-          }}>
-            <CheckCircle size={56} color="#fff" strokeWidth={2.5} />
-          </div>
-
-          <div style={{ fontWeight: 900, fontSize: 28, marginBottom: 6, color: C.t1, letterSpacing: -0.5, animation: 'fadeUp 0.4s 0.2s both' }}>
-            {isPromo ? t('checkin.success_promo') : t('checkin.success_biz')}
-          </div>
-          {isPromo && promoInfo?.title && (
-            <div style={{ color: isPromo && RC ? RC.color : C.t3, fontSize: 14, marginBottom: 4, fontWeight: 700, animation: 'fadeUp 0.4s 0.22s both' }}>
-              {promoInfo.title}
-            </div>
-          )}
-          <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, animation: 'fadeUp 0.4s 0.25s both' }}>
-            {t('checkin.credited')}
-          </div>
-
-          {/* Reward card */}
-          <div style={{
-            background: isPromo && RC ? RC.bg : 'rgba(198,241,53,0.08)',
-            border: `1px solid ${isPromo && RC ? RC.color + '30' : 'rgba(198,241,53,0.20)'}`,
-            borderRadius: 24, padding: '26px 44px', marginBottom: 36,
-            animation: 'fadeUp 0.4s 0.3s both',
-            boxShadow: isPromo && RC ? `0 0 32px ${RC.glow}` : undefined,
-          }}>
-            <div style={{ color: C.t3, fontSize: 11, marginBottom: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-              {t('checkin.received')}
-            </div>
-            <div style={{ animation: 'pop 0.5s 0.45s both' }}>
+        return (
+          <>
+            {/* GeoHunt badge */}
+            {isGeohunt && (
               <div style={{
-                fontSize: 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1,
-                color: isPromo && RC ? RC.color : '#C6F135',
-                fontFamily: "'Barlow Condensed', sans-serif",
-                textShadow: isPromo && RC ? `0 0 20px ${RC.glow}` : undefined,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 20,
+                background: C.goldFt, border: `1px solid ${C.goldGl}`,
+                marginBottom: 20, animation: 'fadeUp 0.3s ease both',
               }}>
-                +{formatGeo(reward)}
+                <Star size={13} color={C.gold} strokeWidth={2} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: C.gold, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                  GeoHunt
+                </span>
               </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: C.t2, marginTop: 6 }}>GEO</div>
-            </div>
-          </div>
+            )}
 
-          <Link to="/balance" style={{
-            display: 'block', width: '100%', maxWidth: 300,
-            background: isPromo && RC ? RC.grad : '#C6F135',
-            color: '#fff', textDecoration: 'none',
-            padding: '15px 32px', borderRadius: 13,
-            fontWeight: 700, fontSize: 15,
-            boxShadow: isPromo && RC ? `0 6px 24px ${RC.glow}` : undefined,
-            animation: 'fadeUp 0.4s 0.45s both',
-          }}>
-            {t('checkin.go_wallet')}
-          </Link>
-          <Link to="/" style={{
-            display: 'block', marginTop: 18,
-            color: C.t3, fontSize: 14,
-            textDecoration: 'none', animation: 'fadeUp 0.4s 0.55s both',
-          }}>
-            {t('checkin.go_home')}
-          </Link>
-        </>
-      )}
+            {/* Rarity badge for promo */}
+            {!isGeohunt && isPromo && RC && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 20,
+                background: RC.bg, border: `1px solid ${RC.color}40`,
+                marginBottom: 20, animation: 'fadeUp 0.3s ease both',
+              }}>
+                <RC.Icon size={13} color={RC.color} strokeWidth={2} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: RC.color, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                  {RC.label}
+                </span>
+              </div>
+            )}
+
+            {/* Success icon */}
+            <div style={{
+              width: 116, height: 116, borderRadius: '50%',
+              background: accentGrad,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 32,
+              boxShadow: accentGlow ? `0 0 40px ${accentGlow}, 0 0 80px ${accentGlow}` : undefined,
+              animation: 'pop 0.55s cubic-bezier(0.175,0.885,0.32,1.275), successGlow 2.5s 0.6s ease-in-out infinite',
+            }}>
+              <CheckCircle size={56} color="#fff" strokeWidth={2.5} />
+            </div>
+
+            <div style={{ fontWeight: 900, fontSize: 28, marginBottom: 6, color: C.t1, letterSpacing: -0.5, animation: 'fadeUp 0.4s 0.2s both' }}>
+              {isGeohunt ? 'GeoHunt найден!' : isPromo ? t('checkin.success_promo') : t('checkin.success_biz')}
+            </div>
+            {isGeohunt && huntInfo?.huntTitle && (
+              <div style={{ color: C.gold, fontSize: 14, marginBottom: 4, fontWeight: 700, animation: 'fadeUp 0.4s 0.22s both' }}>
+                {huntInfo.huntTitle}
+              </div>
+            )}
+            {!isGeohunt && isPromo && promoInfo?.title && (
+              <div style={{ color: accentColor, fontSize: 14, marginBottom: 4, fontWeight: 700, animation: 'fadeUp 0.4s 0.22s both' }}>
+                {promoInfo.title}
+              </div>
+            )}
+            <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, animation: 'fadeUp 0.4s 0.25s both' }}>
+              {t('checkin.credited')}
+            </div>
+
+            {/* Reward card */}
+            <div style={{
+              background: accentBg,
+              border: `1px solid ${accentBorder}`,
+              borderRadius: 24, padding: '26px 44px', marginBottom: 36,
+              animation: 'fadeUp 0.4s 0.3s both',
+              boxShadow: accentGlow ? `0 0 32px ${accentGlow}` : undefined,
+            }}>
+              <div style={{ color: C.t3, fontSize: 11, marginBottom: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                {t('checkin.received')}
+              </div>
+              <div style={{ animation: 'pop 0.5s 0.45s both' }}>
+                <div style={{
+                  fontSize: 56, fontWeight: 900, letterSpacing: -2, lineHeight: 1,
+                  color: accentColor,
+                  fontFamily: "'Barlow Condensed', sans-serif",
+                  textShadow: accentGlow ? `0 0 20px ${accentGlow}` : undefined,
+                }}>
+                  +{formatGeo(reward)}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: C.t2, marginTop: 6 }}>GEO</div>
+              </div>
+            </div>
+
+            <Link to="/balance" style={{
+              display: 'block', width: '100%', maxWidth: 300,
+              background: accentGrad,
+              color: '#fff', textDecoration: 'none',
+              padding: '15px 32px', borderRadius: 13,
+              fontWeight: 700, fontSize: 15,
+              boxShadow: accentGlow ? `0 6px 24px ${accentGlow}` : undefined,
+              animation: 'fadeUp 0.4s 0.45s both',
+            }}>
+              {t('checkin.go_wallet')}
+            </Link>
+            <Link to="/" style={{
+              display: 'block', marginTop: 18,
+              color: C.t3, fontSize: 14,
+              textDecoration: 'none', animation: 'fadeUp 0.4s 0.55s both',
+            }}>
+              {t('checkin.go_home')}
+            </Link>
+          </>
+        );
+      })()}
 
       {/* ERROR */}
       {status === 'error' && errInfo && (

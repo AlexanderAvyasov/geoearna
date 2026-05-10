@@ -14,6 +14,8 @@ const configRoutes = require('./routes/config');
 const superadminRoutes   = require('./routes/superadmin');
 const gamificationRoutes = require('./routes/gamification');
 const promoRoutes        = require('./routes/promo');
+const platformPromoRoutes = require('./routes/platformPromo');
+const geohuntRoutes      = require('./routes/geohunt');
 const sendQrRoutes       = require('./routes/sendQr');
 
 dotenv.config();
@@ -102,6 +104,24 @@ app.use('/api/promo/info', rateLimit({
   message: { error: 'TOO_MANY_REQUESTS' },
 }));
 
+// Platform promo claim: 10 per minute per IP
+app.use('/api/platform-promo/claim', rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS' },
+}));
+
+// GeoHunt claim: 10 per minute per IP
+app.use('/api/geohunt/claim', rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'TOO_MANY_REQUESTS' },
+}));
+
 // Public QR info endpoint: 30 per minute per IP (stricter — no auth)
 app.use('/api/checkin/info', rateLimit({
   windowMs: 60 * 1000,
@@ -147,6 +167,8 @@ app.use(configRoutes);
 app.use(superadminRoutes);
 app.use(gamificationRoutes);
 app.use(promoRoutes);
+app.use(platformPromoRoutes);
+app.use(geohuntRoutes);
 app.use(sendQrRoutes);
 
 app.use((req, res) => {

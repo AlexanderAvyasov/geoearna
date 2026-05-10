@@ -2495,6 +2495,338 @@ function useGeoRate() {
   return rate;
 }
 
+// ─── Tab: GeoHunt ────────────────────────────────────────────────────────────
+
+const GH_GOLD  = C.gold;
+const GH_BG    = C.goldFt;
+const GH_BORDER = C.goldGl;
+
+function GeoHuntCodesSheet({ hunt, onClose }) {
+  const [codes,   setCodes]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    saFetch(`/api/sa/geohunts/${hunt.id}/codes`)
+      .then(d => setCodes(d.codes || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [hunt.id]);
+
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+  function copyAll() {
+    const lines = codes.map(c =>
+      `${c.point_label || `Код ${c.id.slice(0, 6)}`}: ${baseUrl}/checkin?token=${c.token}&geohunt=1`
+    ).join('\n');
+    navigator.clipboard?.writeText(lines).catch(() => {});
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 300 }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        padding: '0 0 40px', zIndex: 301,
+        maxWidth: 480, margin: '0 auto',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 10px', flexShrink: 0 }} />
+        <div style={{ padding: '0 20px 10px', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 18, color: GH_GOLD }}>{hunt.title}</div>
+            <div style={{ fontSize: 12, color: C.t3, marginTop: 2 }}>
+              {hunt.claimed_codes}/{hunt.total_codes} кодов использовано · {hunt.reward_per_code} GEO/код
+            </div>
+          </div>
+          <Btn variant="ghost" size="sm" onClick={copyAll}><Send size={12} /> Скопировать все</Btn>
+        </div>
+        <div style={{ overflowY: 'auto', padding: '0 20px', flex: 1 }}>
+          {loading && [1,2,3].map(i => (
+            <div key={i} style={{ ...cardBase, padding: '10px 14px', marginBottom: 8, borderRadius: 12 }}>
+              <Skel h={12} w="70%" r={5} />
+            </div>
+          ))}
+          {!loading && codes.length === 0 && <Empty icon={QrCode} text="Нет кодов" />}
+          {!loading && codes.map((c, i) => (
+            <div key={c.id} style={{
+              ...cardBase,
+              border: `1px solid ${c.used_by ? `${C.red}30` : GH_BORDER}`,
+              padding: '10px 14px', marginBottom: 6, borderRadius: 12,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              animation: `fadeUp 0.25s ${i * 0.02}s ease both`,
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, marginBottom: 2 }}>
+                  {c.point_label || `Код ${i + 1}`}
+                </div>
+                <div style={{ fontSize: 10, color: C.t3, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {c.token}
+                </div>
+              </div>
+              <div style={{ flexShrink: 0, marginLeft: 10 }}>
+                {c.used_by
+                  ? <Badge label="ИСПОЛЬЗОВАН" color={C.red} />
+                  : <Badge label="СВОБОДЕН" color={GH_GOLD} />
+                }
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function GeoHuntTab() {
+  const [hunts,      setHunts]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [viewCodes,  setViewCodes]  = useState(null);
+  const [busy,       setBusy]       = useState({});
+  const [msg,        setMsg]        = useState('');
+
+  const [form, setForm] = useState({
+    title: '', description: '', reward_per_code: '200',
+    code_count: '50', starts_at: '', ends_at: '',
+  });
+  const [creating, setCreating] = useState(false);
+
+  function load() {
+    setLoading(true);
+    saFetch('/api/sa/geohunts')
+      .then(d => setHunts(d.hunts || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+  useEffect(load, []);
+
+  async function toggle(hunt) {
+    setBusy(b => ({ ...b, [hunt.id]: true }));
+    try {
+      const updated = await saFetch(`/api/sa/geohunts/${hunt.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ active: !hunt.active }),
+      });
+      setHunts(hs => hs.map(h => h.id === hunt.id ? { ...h, active: updated.active } : h));
+    } catch (e) { setMsg(e.message); }
+    setBusy(b => ({ ...b, [hunt.id]: false }));
+  }
+
+  async function createHunt() {
+    if (!form.title || !form.reward_per_code || !form.code_count) {
+      setMsg('Заполните обязательные поля');
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await saFetch('/api/sa/geohunts', {
+        method: 'POST',
+        body: JSON.stringify({
+          title:          form.title,
+          description:    form.description || null,
+          reward_per_code: parseInt(form.reward_per_code, 10),
+          code_count:     parseInt(form.code_count, 10),
+          starts_at:      form.starts_at || null,
+          ends_at:        form.ends_at   || null,
+        }),
+      });
+      setHunts(hs => [res.hunt, ...hs]);
+      setShowCreate(false);
+      setForm({ title: '', description: '', reward_per_code: '200', code_count: '50', starts_at: '', ends_at: '' });
+      setMsg(`✓ Охота создана: ${res.codes?.length} кодов`);
+    } catch (e) { setMsg(e.message); }
+    setCreating(false);
+  }
+
+  const inSt = {
+    width: '100%', boxSizing: 'border-box',
+    padding: '10px 12px', borderRadius: 10,
+    border: `1.5px solid ${C.b2}`, background: C.card,
+    color: C.t1, fontSize: 14, outline: 'none',
+    WebkitAppearance: 'none', marginTop: 4,
+  };
+  const lbSt = { fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6 };
+
+  return (
+    <div>
+      {msg && (
+        <div style={{
+          background: msg.startsWith('✓') ? '#10B98118' : C.redFt,
+          border: `1px solid ${msg.startsWith('✓') ? '#10B98140' : `${C.red}40`}`,
+          color: msg.startsWith('✓') ? '#10B981' : C.red,
+          borderRadius: 12, padding: '10px 14px', marginBottom: 14,
+          fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          {msg}
+          <button onClick={() => setMsg('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, lineHeight: 1 }}><X size={14} /></button>
+        </div>
+      )}
+
+      {/* Info banner */}
+      <div style={{
+        background: GH_BG, border: `1.5px solid ${GH_BORDER}`,
+        borderRadius: 14, padding: '12px 14px', marginBottom: 16,
+        display: 'flex', gap: 10, alignItems: 'flex-start',
+      }}>
+        <Target size={18} color={GH_GOLD} style={{ flexShrink: 0, marginTop: 1 }} />
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: GH_GOLD, marginBottom: 2 }}>GeoHunt — одноразовые QR-коды</div>
+          <div style={{ fontSize: 12, color: C.t3, lineHeight: 1.5 }}>
+            Создайте охоту — платформа сгенерирует уникальные QR-коды. Разместите их по городу. Первый нашедший получает награду.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <SectionTitle icon={Target} color={GH_GOLD}>GeoHunt охоты ({hunts.length})</SectionTitle>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Btn variant="ghost" size="sm" onClick={load} loading={loading}><RefreshCw size={13} /></Btn>
+          <Btn variant="gold" size="sm" onClick={() => setShowCreate(s => !s)}>
+            <Plus size={13} /> Создать
+          </Btn>
+        </div>
+      </div>
+
+      {/* Create form */}
+      {showCreate && (
+        <div style={{
+          ...cardBase, border: `1.5px solid ${GH_BORDER}`,
+          padding: '18px 16px', marginBottom: 16, borderRadius: 16,
+          background: `linear-gradient(160deg, ${GH_BG} 0%, ${C.card} 60%)`,
+          animation: 'fadeUp 0.25s ease both',
+        }}>
+          <div style={{ fontWeight: 800, fontSize: 16, color: GH_GOLD, marginBottom: 16 }}>Новая GeoHunt охота</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <span style={lbSt}>Название*</span>
+            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Весенняя охота в Ташкенте" style={inSt} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <span style={lbSt}>Описание</span>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              rows={2} placeholder="Найди QR-коды по всему городу и получи GEO!"
+              style={{ ...inSt, resize: 'none', fontFamily: 'inherit' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <span style={lbSt}>GEO за код*</span>
+              <input value={form.reward_per_code} onChange={e => setForm(f => ({ ...f, reward_per_code: e.target.value.replace(/\D/g, '') }))} inputMode="numeric" style={inSt} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={lbSt}>Кол-во кодов*</span>
+              <input value={form.code_count} onChange={e => setForm(f => ({ ...f, code_count: e.target.value.replace(/\D/g, '') }))} inputMode="numeric" placeholder="макс. 500" style={inSt} />
+            </div>
+          </div>
+
+          {form.reward_per_code && form.code_count && (
+            <div style={{
+              background: GH_BG, border: `1px solid ${GH_BORDER}`,
+              borderRadius: 10, padding: '9px 12px', marginBottom: 12,
+              fontSize: 13, fontWeight: 700, color: GH_GOLD,
+            }}>
+              Суммарный выброс: {formatGeo(parseInt(form.reward_per_code || 0, 10) * parseInt(form.code_count || 0, 10))} GEO
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <div style={{ flex: 1 }}>
+              <span style={lbSt}>Старт</span>
+              <input value={form.starts_at} onChange={e => setForm(f => ({ ...f, starts_at: e.target.value }))} type="datetime-local" style={inSt} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={lbSt}>Конец</span>
+              <input value={form.ends_at} onChange={e => setForm(f => ({ ...f, ends_at: e.target.value }))} type="datetime-local" style={inSt} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="gold" size="md" onClick={createHunt} loading={creating} style={{ flex: 1 }}>
+              <Target size={14} /> Создать охоту
+            </Btn>
+            <Btn variant="ghost" size="md" onClick={() => setShowCreate(false)} style={{ flex: 1 }}>
+              Отмена
+            </Btn>
+          </div>
+        </div>
+      )}
+
+      {loading && [1,2].map(i => (
+        <div key={i} style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: 16, marginBottom: 10, borderRadius: 16 }}>
+          <Skel h={16} w="50%" r={6} /><div style={{ marginTop: 8 }}><Skel h={10} w="30%" r={5} /></div>
+        </div>
+      ))}
+
+      {!loading && hunts.length === 0 && !showCreate && <Empty icon={Target} text="Охот нет — создайте первую!" />}
+
+      {!loading && hunts.map((h, i) => (
+        <div key={h.id} style={{
+          ...cardBase,
+          border: `1px solid ${h.active ? GH_BORDER : C.b1}`,
+          padding: '14px 16px', marginBottom: 10, borderRadius: 16,
+          background: h.active ? `linear-gradient(135deg, ${GH_BG} 0%, ${C.card} 60%)` : C.card,
+          animation: `fadeUp 0.3s ${i * 0.04}s ease both`,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                <span style={{ fontWeight: 800, fontSize: 15, color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {h.title}
+                </span>
+                {h.active
+                  ? <Badge label="АКТИВНА" color={GH_GOLD} />
+                  : <Badge label="СТОП"    color={C.t3}    />
+                }
+              </div>
+              <div style={{ fontSize: 12, color: C.t3 }}>
+                {h.reward_per_code} GEO/код ·{' '}
+                <span style={{ color: h.claimed_codes > 0 ? GH_GOLD : C.t3, fontWeight: 700 }}>
+                  {h.claimed_codes}/{h.total_codes}
+                </span>{' '}
+                найдено
+                {h.ends_at && ` · до ${fmtDay(h.ends_at)}`}
+              </div>
+            </div>
+            <div style={{ fontWeight: 900, fontSize: 20, color: GH_GOLD, flexShrink: 0 }}>
+              {Math.round((h.claimed_codes / Math.max(h.total_codes, 1)) * 100)}%
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div style={{ background: C.b0, borderRadius: 4, height: 4, marginBottom: 10, overflow: 'hidden' }}>
+            <div style={{
+              height: 4, borderRadius: 4,
+              width: `${Math.round((h.claimed_codes / Math.max(h.total_codes, 1)) * 100)}%`,
+              background: h.active ? GH_GOLD : C.t3,
+              transition: 'width 0.5s',
+            }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Btn variant="ghost" size="sm" onClick={() => setViewCodes(h)} style={{ flex: 1 }}>
+              <QrCode size={12} /> Коды ({h.total_codes})
+            </Btn>
+            {h.active
+              ? <Btn variant="danger" size="sm" onClick={() => toggle(h)} loading={busy[h.id]} style={{ flex: 1 }}>
+                  <PauseCircle size={13} /> Стоп
+                </Btn>
+              : <Btn variant="gold" size="sm" onClick={() => toggle(h)} loading={busy[h.id]} style={{ flex: 1 }}>
+                  <PlayCircle size={13} /> Запустить
+                </Btn>
+            }
+          </div>
+        </div>
+      ))}
+
+      {viewCodes && <GeoHuntCodesSheet hunt={viewCodes} onClose={() => setViewCodes(null)} />}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -2506,6 +2838,7 @@ const TABS = [
   { key: 'users',         label: 'Юзеры',      Icon: Users           },
   { key: 'gamification',  label: 'Геймиф.',    Icon: Trophy          },
   { key: 'promo',         label: 'Promo QR',   Icon: QrCode          },
+  { key: 'geohunt',       label: 'GeoHunt',    Icon: Target          },
   { key: 'system',        label: 'Система',    Icon: Settings        },
 ];
 
@@ -2571,6 +2904,7 @@ export default function SuperAdmin() {
         {tab === 'users'        && <UsersTab />}
         {tab === 'gamification' && <GamificationTab />}
         {tab === 'promo'        && <PromoQRTab />}
+        {tab === 'geohunt'      && <GeoHuntTab />}
         {tab === 'system'       && <SystemTab />}
       </div>
     </div>
