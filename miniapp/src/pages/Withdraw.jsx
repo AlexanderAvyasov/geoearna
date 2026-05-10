@@ -4,6 +4,7 @@ import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } fr
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs, isValidCardNumber, normalizeCardNumber, formatCardNumber } from '../lib/geo';
 import { C, E, cardBase, inputStyle } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
@@ -31,6 +32,7 @@ function Field({ label, value, onChange, placeholder, inputMode, hint }) {
 }
 
 export default function Withdraw() {
+  const { t } = useLanguage();
   const [cardNumber, setCardNumber] = useState('');
   const [amount,     setAmount]     = useState('');
   const [balance,    setBalance]    = useState(0);
@@ -51,7 +53,7 @@ export default function Withdraw() {
         setBalance(me.user?.balance || 0);
         setGeoRate(cfg.geoRate || 1000);
       })
-      .catch(() => setError('Не удалось загрузить баланс.'))
+      .catch(() => setError(t('withdraw.err.load')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -72,10 +74,10 @@ export default function Withdraw() {
     e.preventDefault();
     setError('');
 
-    if (!cardValid) return setError('Введите корректный номер карты (16 цифр).');
-    if (!Number.isFinite(geoVal) || geoVal <= 0) return setError('Введите корректную сумму.');
-    if (belowMin) return setError(`Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(minGeo)} GEO)`);
-    if (geoVal > balance) return setError(`Максимум: ${formatGeo(balance)} GEO`);
+    if (!cardValid) return setError(t('withdraw.err.invalid_card'));
+    if (!Number.isFinite(geoVal) || geoVal <= 0) return setError(t('withdraw.err.invalid_amount'));
+    if (belowMin) return setError(t('withdraw.err.below_min', { uzs: formatUzs(MIN_UZS), geo: formatGeo(minGeo) }));
+    if (geoVal > balance) return setError(t('withdraw.err.over_max', { geo: formatGeo(balance) }));
 
     setSubmitting(true);
     try {
@@ -87,18 +89,18 @@ export default function Withdraw() {
       const data = await r.json();
       if (!r.ok) {
         const msgs = {
-          INSUFFICIENT_FUNDS: 'Недостаточно GEO на балансе.',
-          INVALID_CARD:       'Неверный номер карты. Введите 16 цифр.',
-          BELOW_MINIMUM:      `Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(data.minGeo || minGeo)} GEO)`,
+          INSUFFICIENT_FUNDS: t('withdraw.err.no_funds'),
+          INVALID_CARD:       t('withdraw.err.invalid_card2'),
+          BELOW_MINIMUM:      t('withdraw.err.below_min', { uzs: formatUzs(MIN_UZS), geo: formatGeo(data.minGeo || minGeo) }),
         };
-        setError(msgs[data.error] || 'Не удалось создать заявку. Попробуйте позже.');
+        setError(msgs[data.error] || t('withdraw.err.general'));
         return;
       }
       setBalance(data.totalBalance);
       setSuccessData(data);
       setSuccess(true);
     } catch {
-      setError('Ошибка соединения. Попробуйте позже.');
+      setError(t('withdraw.err.connection'));
     } finally {
       setSubmitting(false);
     }
@@ -124,7 +126,7 @@ export default function Withdraw() {
         }}>
           <ArrowLeft size={22} color={C.t2} strokeWidth={1.75} />
         </button>
-        <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, color: C.t1 }}>Вывод GEO</div>
+        <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('withdraw.title')}</div>
       </div>
 
       <div style={{ padding: '16px 16px 32px' }}>
@@ -139,7 +141,7 @@ export default function Withdraw() {
           }}>
             <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1.2, display: 'flex', alignItems: 'center', gap: 5 }}>
               <Wallet size={11} color={C.geo} strokeWidth={2} />
-              Доступно
+              {t('withdraw.available')}
             </div>
             <div style={{ ...SYNE, fontSize: 38, fontWeight: 700, letterSpacing: -1.5, color: C.t1, lineHeight: 1 }}>
               {formatGeo(balance)}
@@ -165,21 +167,21 @@ export default function Withdraw() {
               <CheckCircle size={42} color={C.geo} strokeWidth={2} />
             </div>
 
-            <div style={{ ...SYNE, fontWeight: 700, fontSize: 22, marginBottom: 8, color: C.t1 }}>Заявка принята!</div>
+            <div style={{ ...SYNE, fontWeight: 700, fontSize: 22, marginBottom: 8, color: C.t1 }}>{t('withdraw.success.title')}</div>
 
             <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '18px 24px', marginBottom: 24 }}>
-              <div style={{ fontSize: 13, color: C.t3, marginBottom: 4 }}>Спишется</div>
+              <div style={{ fontSize: 13, color: C.t3, marginBottom: 4 }}>{t('withdraw.success.debit')}</div>
               <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, color: C.t1, marginBottom: 2 }}>
                 {formatGeo(geoVal)} GEO
               </div>
               <div style={{ fontSize: 14, color: C.t3 }}>
-                = {formatUzs(successData?.uzsAmount || uzsPreview)} UZS → на карту
+                {t('withdraw.success.card', { uzs: formatUzs(successData?.uzsAmount || uzsPreview) })}
               </div>
             </div>
 
             <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>
-              Перевод на карту в течение 24 часов.<br />
-              Остаток: <strong style={{ color: C.t1 }}>{formatGeo(balance)} GEO</strong>
+              {t('withdraw.success.time')}<br />
+              {t('withdraw.success.left')} <strong style={{ color: C.t1 }}>{formatGeo(balance)} GEO</strong>
             </div>
 
             <button onClick={() => navigate('/balance')} style={{
@@ -188,7 +190,7 @@ export default function Withdraw() {
               padding: '14px 40px', borderRadius: 13,
               fontWeight: 700, fontSize: 15, cursor: 'pointer',
             }}>
-              К кошельку
+              {t('withdraw.success.go')}
             </button>
           </div>
         ) : (
@@ -196,12 +198,12 @@ export default function Withdraw() {
             <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '20px 16px', marginBottom: 12 }}>
               {/* Card number */}
               <Field
-                label="Номер карты (Humo / Uzcard)"
+                label={t('withdraw.card_label')}
                 value={cardNumber}
                 onChange={handleCardInput}
-                placeholder="0000 0000 0000 0000"
+                placeholder={t('withdraw.card_placeholder')}
                 inputMode="numeric"
-                hint="16 цифр — Humo или Uzcard"
+                hint={t('withdraw.card_hint')}
               />
 
               {/* Card type badge (show after 4+ digits) */}
@@ -230,7 +232,7 @@ export default function Withdraw() {
               )}
 
               <Field
-                label="Сумма (GEO)"
+                label={t('withdraw.amount_label')}
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder={balance > 0 ? `До ${formatGeo(balance)}` : '0'}
@@ -243,7 +245,7 @@ export default function Withdraw() {
                 borderRadius: 10, padding: '9px 12px', marginBottom: 14,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
-                <span style={{ fontSize: 12, color: C.t3 }}>Минимальная сумма</span>
+                <span style={{ fontSize: 12, color: C.t3 }}>{t('withdraw.min')}</span>
                 <span style={{ fontSize: 12, fontWeight: 700, color: C.t2 }}>
                   {formatUzs(MIN_UZS)} UZS · {formatGeo(minGeo)} GEO
                 </span>
@@ -257,7 +259,7 @@ export default function Withdraw() {
                   borderRadius: 12, padding: '12px 14px', marginBottom: 14,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                  <span style={{ fontSize: 14, color: C.t3 }}>Получите на карту</span>
+                  <span style={{ fontSize: 14, color: C.t3 }}>{t('withdraw.receive')}</span>
                   <span style={{ fontWeight: 700, color: belowMin ? C.red : C.geo, fontSize: 16 }}>
                     {formatUzs(uzsPreview)} UZS
                   </span>
@@ -267,7 +269,7 @@ export default function Withdraw() {
               {/* Quick amounts */}
               {balance > 0 && (
                 <div>
-                  <div style={{ fontSize: 11, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Быстрый выбор</div>
+                  <div style={{ fontSize: 11, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>{t('withdraw.quick')}</div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     {[1000, 5000, 10000, balance]
                       .filter((v, i, a) => v <= balance && a.indexOf(v) === i)
@@ -282,7 +284,7 @@ export default function Withdraw() {
                             fontSize: 13, fontWeight: 600, cursor: 'pointer',
                             transition: 'all 0.15s',
                           }}>
-                            {v === balance ? 'Всё' : formatGeo(v)}
+                            {v === balance ? t('withdraw.all') : formatGeo(v)}
                           </button>
                         );
                       })}
@@ -316,13 +318,13 @@ export default function Withdraw() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             }}>
               {submitting
-                ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> Отправляем...</>
-                : <><CreditCard size={17} color={disabled ? C.t3 : C.bg} strokeWidth={2} /> Вывести GEO</>
+                ? <><Loader2 size={18} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} /> {t('withdraw.submitting')}</>
+                : <><CreditCard size={17} color={disabled ? C.t3 : C.bg} strokeWidth={2} /> {t('withdraw.submit')}</>
               }
             </button>
 
             <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: C.t3 }}>
-              1 GEO = {geoRate} UZS · без комиссии
+              {t('withdraw.no_commission', { rate: geoRate })}
             </div>
           </form>
         )}

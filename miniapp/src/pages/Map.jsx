@@ -6,12 +6,14 @@ import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag
 import { apiFetch } from '../lib/api';
 import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
-import { C, G, E, cardBase } from '../lib/design';
+import { C, cardBase } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
+import { pluralize } from '../lib/i18n';
 
-const TASK_LABEL = { visit: 'Визит', purchase: 'Покупка', review: 'Отзыв' };
-const TASK_ICON  = { visit: MapPin, purchase: ShoppingBag, review: Star };
+const TASK_ICON = { visit: MapPin, purchase: ShoppingBag, review: Star };
 
 function CampaignSheet({ campaign, userPos, onClose }) {
+  const { t } = useLanguage();
   const dist = userPos && campaign.lat && campaign.lng
     ? haversineMeters(userPos, { lat: +campaign.lat, lng: +campaign.lng })
     : null;
@@ -52,7 +54,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           {dist !== null && (
             <div style={{ fontSize: 13, color: C.purpleL, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
               <Navigation size={13} color={C.purpleL} />
-              {formatDistance(dist)} от вас
+              {formatDistance(dist)} {t('home.from_you')}
             </div>
           )}
 
@@ -63,7 +65,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             borderRadius: 18, padding: '20px',
             textAlign: 'center', marginBottom: 14,
           }}>
-            <div style={{ fontSize: 11, color: C.t3, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>Вознаграждение</div>
+            <div style={{ fontSize: 11, color: C.t3, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>{t('home.reward')}</div>
             <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -1, color: C.t1 }}>
               +{formatGeo(campaign.reward_amount)}
               <span style={{ fontSize: 18, fontWeight: 600, color: C.purpleL, marginLeft: 6 }}>GEO</span>
@@ -71,10 +73,10 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           </div>
 
           <div style={{ ...cardBase, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>Тип задания</div>
+            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>{t('home.task_type')}</div>
             <div style={{ fontWeight: 700, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 7 }}>
               <TaskIcon size={16} color={C.purple} strokeWidth={2} />
-              {TASK_LABEL[campaign.task_type] || 'Визит'}
+              {t('task.' + (campaign.task_type || 'visit'))}
             </div>
           </div>
 
@@ -86,7 +88,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             }}>
               <Lock size={16} color={C.gold} strokeWidth={2} />
               <span style={{ fontSize: 13, color: C.gold, fontWeight: 600 }}>
-                Требуется PIN от сотрудника
+                {t('map.requires_pin')}
               </span>
             </div>
           )}
@@ -98,7 +100,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             fontSize: 16, fontWeight: 700,
             color: C.t2, cursor: 'pointer',
           }}>
-            Закрыть
+            {t('home.close')}
           </button>
         </div>
       </div>
@@ -107,6 +109,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 }
 
 export default function MapPage() {
+  const { t, lang } = useLanguage();
   const navigate      = useNavigate();
   const containerRef  = useRef(null);
   const mapRef        = useRef(null);
@@ -228,7 +231,7 @@ export default function MapPage() {
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
           <MapIcon size={18} color={C.purpleL} strokeWidth={1.75} />
-          <span style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>Карта</span>
+          <span style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('map.title')}</span>
         </div>
         {!loading && (
           <div style={{
@@ -236,7 +239,7 @@ export default function MapPage() {
             background: 'rgba(255,255,255,0.05)',
             borderRadius: 10, padding: '3px 10px',
           }}>
-            {nearby.length} {nearby.length === 1 ? 'место' : nearby.length < 5 ? 'места' : 'мест'}
+            {pluralize(lang, nearby.length, t('map.place.one'), t('map.place.few'), t('map.place.many'))}
           </div>
         )}
       </div>
@@ -253,7 +256,7 @@ export default function MapPage() {
             alignItems: 'center', justifyContent: 'center', gap: 14,
           }}>
             <MapIcon size={48} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.4 }} />
-            <div style={{ color: C.t3, fontSize: 14, fontWeight: 600 }}>Загружаем карту…</div>
+            <div style={{ color: C.t3, fontSize: 14, fontWeight: 600 }}>{t('map.loading')}</div>
           </div>
         )}
 
@@ -297,7 +300,7 @@ export default function MapPage() {
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
             <Store size={13} color={C.t3} strokeWidth={2} />
-            {nearby.length} {nearby.length === 1 ? 'кампания' : nearby.length < 5 ? 'кампании' : 'кампаний'}
+            {pluralize(lang, nearby.length, t('map.camp.one'), t('map.camp.few'), t('map.camp.many'))}
           </div>
         )}
       </div>
@@ -306,12 +309,12 @@ export default function MapPage() {
       <div style={{ flex: 1, overflowY: 'auto', background: C.bg, paddingBottom: 88 }}>
         <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {userPos ? 'Рядом с вами' : 'Все заведения'}
+            {userPos ? t('map.nearby') : t('map.all_venues')}
           </div>
           {!userPos && !loading && (
             <div style={{ fontSize: 12, color: C.orange, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
               <MapPin size={12} color={C.orange} />
-              Геолокация недоступна
+              {t('map.geo_unavailable')}
             </div>
           )}
         </div>
@@ -334,9 +337,9 @@ export default function MapPage() {
           {!loading && nearby.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 16px' }}>
               <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.3, marginBottom: 14 }} />
-              <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: C.t1 }}>Нет кампаний на карте</div>
+              <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: C.t1 }}>{t('map.empty.title')}</div>
               <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
-                Бизнесы ещё не привязали<br />координаты к заведениям
+                {t('map.empty.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
               </div>
             </div>
           )}
@@ -385,7 +388,7 @@ export default function MapPage() {
                     {c.task_type && c.task_type !== 'visit' && (
                       <span style={{ fontSize: 11, color: C.t3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
                         <TIcon size={11} color={C.t3} />
-                        {TASK_LABEL[c.task_type]}
+                        {t('task.' + c.task_type)}
                       </span>
                     )}
                   </div>

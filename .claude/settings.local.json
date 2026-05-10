@@ -5,7 +5,9 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\" -Recurse -Name)",
+      "Bash(Select-Object -First 50)"
     ]
   }
 }

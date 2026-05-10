@@ -5,16 +5,13 @@ import { apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
 import { C, E, cardBase, pressable } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const TASK_ICONS = {
   visit:    MapPin,
   purchase: ShoppingBag,
   review:   Star,
-};
-const TASK_LABELS = {
-  visit:    'Визит',
-  purchase: 'Покупка',
-  review:   'Отзыв',
 };
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
@@ -32,6 +29,7 @@ function SkeletonCard() {
 }
 
 function CampaignSheet({ campaign, userPos, onClose }) {
+  const { t } = useLanguage();
   const dist = userPos && campaign.lat && campaign.lng
     ? haversineMeters(userPos, { lat: +campaign.lat, lng: +campaign.lng })
     : null;
@@ -78,7 +76,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           {dist !== null && (
             <div style={{ fontSize: 13, color: C.geo, fontWeight: 600, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 5 }}>
               <Compass size={12} color={C.geo} />
-              {formatDistance(dist)} от вас
+              {formatDistance(dist)} {t('home.from_you')}
             </div>
           )}
 
@@ -90,7 +88,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             textAlign: 'center', marginBottom: 12,
           }}>
             <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Вознаграждение
+              {t('home.reward')}
             </div>
             <div style={{ ...SYNE, fontSize: 48, fontWeight: 800, letterSpacing: -1.5, color: C.geo, lineHeight: 1 }}>
               +{formatGeo(campaign.reward_amount)}
@@ -101,11 +99,11 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           {/* Task type */}
           <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 10 }}>
             <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              Тип задания
+              {t('home.task_type')}
             </div>
             <div style={{ fontWeight: 600, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 8 }}>
               <TaskIcon size={15} color={C.geo} strokeWidth={2} />
-              {TASK_LABELS[campaign.task_type] || 'Визит'}
+              {t(`task.${campaign.task_type}`) || t('task.visit')}
             </div>
             {campaign.task_description && (
               <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.55, marginTop: 6 }}>
@@ -122,9 +120,9 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             }}>
               <Lock size={16} color={C.gold} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: C.gold, marginBottom: 2 }}>Требуется PIN</div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: C.gold, marginBottom: 2 }}>{t('home.pin_required')}</div>
                 <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.4 }}>
-                  Попросите сотрудника назвать PIN при чекине
+                  {t('home.pin_hint')}
                 </div>
               </div>
             </div>
@@ -133,12 +131,12 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           {/* How to earn */}
           <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
-              Как получить
+              {t('home.how.title')}
             </div>
             {[
-              [ScanLine, 'Отсканируйте QR-код в заведении'],
-              [MapPin,   'Разрешите доступ к геолокации'],
-              [Wallet,   'GEO зачислятся мгновенно'],
+              [ScanLine, t('home.sheet.how.1')],
+              [MapPin,   t('home.sheet.how.2')],
+              [Wallet,   t('home.sheet.how.3')],
             ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                 <div style={{
@@ -163,7 +161,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               color: C.t2, cursor: 'pointer',
             }}
           >
-            Закрыть
+            {t('home.close')}
           </button>
         </div>
       </div>
@@ -172,6 +170,8 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 }
 
 function CampaignCard({ campaign, onTap, index }) {
+  const { t } = useLanguage();
+  const detailsLabel = t('home.details');
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -234,7 +234,7 @@ function CampaignCard({ campaign, onTap, index }) {
           +{formatGeo(campaign.reward_amount)} GEO
         </div>
         <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-          Подробнее <ChevronRight size={10} color={C.t3} />
+          {detailsLabel} <ChevronRight size={10} color={C.t3} />
         </div>
       </div>
     </div>
@@ -243,6 +243,7 @@ function CampaignCard({ campaign, onTap, index }) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [campaigns, setCampaigns] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [error,     setError]     = useState('');
@@ -255,7 +256,7 @@ export default function Home() {
     apiFetch('/api/campaigns')
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
-      .catch(() => setError('Не удалось загрузить предложения.'))
+      .catch(() => setError(t('home.error.load')))
       .finally(() => setLoading(false));
   };
 
@@ -279,14 +280,17 @@ export default function Home() {
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s ease both' }}>
       {/* Hero */}
       <div style={{ padding: '44px 20px 28px', position: 'relative' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, letterSpacing: 2, marginBottom: 10, textTransform: 'uppercase' }}>
-          GeoEarn
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, letterSpacing: 2, textTransform: 'uppercase' }}>
+            GeoEarn
+          </div>
+          <LanguageSwitcher />
         </div>
         <div style={{ ...SYNE, fontSize: 28, fontWeight: 700, marginBottom: 8, lineHeight: 1.15, letterSpacing: -0.5, color: C.t1 }}>
-          Зарабатывайте GEO
+          {t('home.title')}
         </div>
         <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.6, maxWidth: 280 }}>
-          Посещайте заведения и получайте GEO-монеты за каждый визит
+          {t('home.subtitle')}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
@@ -298,7 +302,7 @@ export default function Home() {
               fontSize: 12, color: C.geo, fontWeight: 600,
             }}>
               <Compass size={11} color={C.geo} />
-              По расстоянию
+              {t('home.sorted')}
             </div>
           )}
           <button
@@ -315,7 +319,7 @@ export default function Home() {
             }}
           >
             <MapIcon size={12} color={C.t2} strokeWidth={1.75} />
-            Карта
+            {t('home.map')}
           </button>
         </div>
       </div>
@@ -327,7 +331,7 @@ export default function Home() {
       <div style={{ padding: '12px 16px 32px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-            Активные кампании
+            {t('home.campaigns')}
           </div>
           {!loading && displayed.length > 0 && (
             <div style={{
@@ -345,14 +349,14 @@ export default function Home() {
         {!loading && error && (
           <div style={{ textAlign: 'center', paddingTop: 56 }}>
             <AlertCircle size={48} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block' }} />
-            <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>Ошибка загрузки</div>
+            <div style={{ fontWeight: 700, fontSize: 16, color: C.red, marginBottom: 6 }}>{t('home.error.title')}</div>
             <div style={{ color: C.t3, fontSize: 14, marginBottom: 20 }}>{error}</div>
             <button onClick={loadCampaigns} style={{
               background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
               color: C.geo, borderRadius: 12, padding: '11px 28px',
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
             }}>
-              Повторить
+              {t('home.error.retry')}
             </button>
           </div>
         )}
@@ -360,9 +364,9 @@ export default function Home() {
         {!loading && !error && displayed.length === 0 && (
           <div style={{ textAlign: 'center', paddingTop: 56, paddingBottom: 24 }}>
             <Store size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-            <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активных кампаний</div>
+            <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('home.empty.title')}</div>
             <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-              Пока нет заведений с активными акциями.<br />Загляните позже!
+              {t('home.empty.text').split('\n').map((line, i) => <span key={i}>{line}{i === 0 && <br />}</span>)}
             </div>
           </div>
         )}
@@ -374,12 +378,12 @@ export default function Home() {
         {!loading && !error && displayed.length > 0 && (
           <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '16px', marginTop: 8 }}>
             <div style={{ fontWeight: 700, fontSize: 10, marginBottom: 12, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Как это работает
+              {t('home.how.title')}
             </div>
             {[
-              [ScanLine, 'Нажмите сканер и наведите на QR-код'],
-              [MapPin,   'Разрешите доступ к геолокации'],
-              [Wallet,   'GEO-монеты зачислятся мгновенно'],
+              [ScanLine, t('home.how.1')],
+              [MapPin,   t('home.how.2')],
+              [Wallet,   t('home.how.3')],
             ].map(([Icon, text]) => (
               <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
                 <div style={{
@@ -413,7 +417,7 @@ export default function Home() {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Условия пользования
+          {t('home.terms')}
         </button>
         <button
           onClick={() => navigate('/legal?tab=privacy')}
@@ -423,7 +427,7 @@ export default function Home() {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Конфиденциальность
+          {t('home.privacy')}
         </button>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { useLocation } from '../hooks/useLocation';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // ─── Rarity config ────────────────────────────────────────────────────────────
 
@@ -19,29 +20,29 @@ const RARITY = {
   legendary: { label: 'Legendary', color: '#FBBF24', glow: 'rgba(251,191,36,0.55)', bg: 'rgba(251,191,36,0.08)',  grad: 'linear-gradient(135deg,#B45309,#FBBF24)',    Icon: Zap    },
 };
 
-// ─── Error maps ───────────────────────────────────────────────────────────────
+// ─── Error maps (keys only — resolved via t() in render) ─────────────────────
 
 const ERRORS = {
-  TOO_FAR:            { Icon: MapPin,        title: 'Слишком далеко',      text: 'Подойдите ближе к заведению и попробуйте снова.' },
-  TOO_SOON:           { Icon: Clock,         title: 'Уже чекинились',      text: 'Вы недавно были в этом заведении. Возвращайтесь завтра!' },
-  NO_ACTIVE_CAMPAIGN: { Icon: ClipboardList, title: 'Нет акции',            text: 'В данный момент нет активных акций для этого заведения.' },
-  INVALID_QR_TOKEN:   { Icon: Link2,         title: 'Неверный QR',          text: 'QR-код недействителен. Попробуйте отсканировать заново.' },
-  PIN_REQUIRED:       { Icon: Lock,          title: 'Нужен PIN',             text: 'Для этого заведения требуется PIN-код от сотрудника.' },
-  INVALID_PIN:        { Icon: Key,           title: 'Неверный PIN',          text: 'Введённый PIN-код неверен. Попросите сотрудника повторить.' },
-  PIN_USED:           { Icon: Ban,           title: 'PIN уже использован',  text: 'Этот PIN уже использован. Попросите новый.' },
-  PIN_EXPIRED:        { Icon: Timer,         title: 'PIN устарел',           text: 'Срок действия PIN истёк. Попросите сотрудника сгенерировать новый.' },
+  TOO_FAR:            { Icon: MapPin,        titleKey: 'err.TOO_FAR.title',            textKey: 'err.TOO_FAR.text' },
+  TOO_SOON:           { Icon: Clock,         titleKey: 'err.TOO_SOON.title',           textKey: 'err.TOO_SOON.text' },
+  NO_ACTIVE_CAMPAIGN: { Icon: ClipboardList, titleKey: 'err.NO_ACTIVE_CAMPAIGN.title', textKey: 'err.NO_ACTIVE_CAMPAIGN.text' },
+  INVALID_QR_TOKEN:   { Icon: Link2,         titleKey: 'err.INVALID_QR_TOKEN.title',   textKey: 'err.INVALID_QR_TOKEN.text' },
+  PIN_REQUIRED:       { Icon: Lock,          titleKey: 'err.PIN_REQUIRED.title',       textKey: 'err.PIN_REQUIRED.text' },
+  INVALID_PIN:        { Icon: Key,           titleKey: 'err.INVALID_PIN.title',        textKey: 'err.INVALID_PIN.text' },
+  PIN_USED:           { Icon: Ban,           titleKey: 'err.PIN_USED.title',           textKey: 'err.PIN_USED.text' },
+  PIN_EXPIRED:        { Icon: Timer,         titleKey: 'err.PIN_EXPIRED.title',        textKey: 'err.PIN_EXPIRED.text' },
 };
 
 const PROMO_ERRORS = {
-  NOT_FOUND:           { Icon: Link2,        title: 'Промо не найдено',      text: 'QR-код недействителен или акция была удалена.' },
-  PROMO_INACTIVE:      { Icon: PauseCircle,  title: 'Акция приостановлена',  text: 'Эта промо-акция временно недоступна.' },
-  PROMO_EXPIRED:       { Icon: Clock,        title: 'Срок истёк',            text: 'Эта промо-акция уже завершилась.' },
-  PROMO_EXHAUSTED:     { Icon: XCircle,      title: 'Все призы разобраны',   text: 'К сожалению, все GEO по этой акции уже получены.' },
-  TOO_FAR:             { Icon: MapPin,       title: 'Слишком далеко',        text: 'Подойдите ближе к точке на карте и попробуйте снова.' },
-  ALREADY_CLAIMED:     { Icon: CheckCircle,  title: 'Уже получено',          text: 'Вы уже получили награду по этой акции.' },
-  COOLDOWN:            { Icon: Timer,        title: 'Подождите',             text: 'Вы сможете получить эту награду снова позже.' },
-  DAILY_LIMIT_REACHED: { Icon: Ban,          title: 'Дневной лимит',         text: 'Вы достигли лимита промо-наград на сегодня (3/день).' },
-  USER_BANNED:         { Icon: Ban,          title: 'Аккаунт заблокирован', text: 'Ваш аккаунт заблокирован.' },
+  NOT_FOUND:           { Icon: Link2,        titleKey: 'promo.NOT_FOUND.title',           textKey: 'promo.NOT_FOUND.text' },
+  PROMO_INACTIVE:      { Icon: PauseCircle,  titleKey: 'promo.PROMO_INACTIVE.title',      textKey: 'promo.PROMO_INACTIVE.text' },
+  PROMO_EXPIRED:       { Icon: Clock,        titleKey: 'promo.PROMO_EXPIRED.title',       textKey: 'promo.PROMO_EXPIRED.text' },
+  PROMO_EXHAUSTED:     { Icon: XCircle,      titleKey: 'promo.PROMO_EXHAUSTED.title',     textKey: 'promo.PROMO_EXHAUSTED.text' },
+  TOO_FAR:             { Icon: MapPin,       titleKey: 'promo.TOO_FAR.title',             textKey: 'promo.TOO_FAR.text' },
+  ALREADY_CLAIMED:     { Icon: CheckCircle,  titleKey: 'promo.ALREADY_CLAIMED.title',     textKey: 'promo.ALREADY_CLAIMED.text' },
+  COOLDOWN:            { Icon: Timer,        titleKey: 'promo.COOLDOWN.title',            textKey: 'promo.COOLDOWN.text' },
+  DAILY_LIMIT_REACHED: { Icon: Ban,          titleKey: 'promo.DAILY_LIMIT_REACHED.title', textKey: 'promo.DAILY_LIMIT_REACHED.text' },
+  USER_BANNED:         { Icon: Ban,          titleKey: 'promo.USER_BANNED.title',         textKey: 'promo.USER_BANNED.text' },
 };
 
 // ─── Particle burst ───────────────────────────────────────────────────────────
@@ -60,6 +61,7 @@ const BURST_COLORS = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Checkin() {
+  const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const token   = useMemo(() => searchParams.get('token') || '', [searchParams]);
   const isPromo = useMemo(() => searchParams.get('promo') === '1', [searchParams]);
@@ -84,7 +86,7 @@ export default function Checkin() {
 
   useEffect(() => {
     if (!token) {
-      setErrInfo({ Icon: Link2, title: 'Нет токена', text: 'Откройте приложение через Telegram-бота или QR-код.' });
+      setErrInfo({ Icon: Link2, titleKey: 'err.NO_TOKEN.title', textKey: 'err.NO_TOKEN.text' });
       setStatus('error');
       return;
     }
@@ -99,7 +101,7 @@ export default function Checkin() {
         if (!ok) {
           const code = data?.error || 'UNKNOWN';
           const map = isPromo ? PROMO_ERRORS : ERRORS;
-          setErrInfo(map[code] || { Icon: XCircle, title: 'Ошибка', text: 'Не удалось загрузить акцию.' });
+          setErrInfo(map[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
           setStatus('error');
         } else {
           if (isPromo) setPromoInfo(data);
@@ -107,7 +109,7 @@ export default function Checkin() {
         }
       })
       .catch(() => {
-        setErrInfo({ Icon: Wifi, title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
+        setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
         setStatus('error');
       });
   }, [token, isPromo]);
@@ -122,10 +124,8 @@ export default function Checkin() {
     if (locError) {
       setErrInfo({
         Icon: MapPin,
-        title: locError === 'denied_hard' ? 'Доступ запрещён' : 'Нет доступа к геолокации',
-        text: locError === 'denied_hard'
-          ? 'Браузер заблокировал геолокацию.\n\nОткройте Настройки Telegram → Конфиденциальность → Геолокация и разрешите доступ, затем вернитесь.'
-          : 'Чекин невозможен без геолокации. Нажмите кнопку ниже — браузер запросит разрешение.',
+        titleKey: locError === 'denied_hard' ? 'err.GEO_DENIED_HARD.title' : 'err.GEO_DENIED.title',
+        textKey:  locError === 'denied_hard' ? 'err.GEO_DENIED_HARD.text'  : 'err.GEO_DENIED.text',
         showRetry: locError === 'denied',
         showSettings: locError === 'denied_hard',
       });
@@ -159,11 +159,12 @@ export default function Checkin() {
         const code = data?.error || 'UNKNOWN';
         if (['PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'].includes(code)) {
           sent.current = false;
-          setPinError((ERRORS[code] || {}).text || 'Ошибка PIN');
+          const pinErrKey = (ERRORS[code] || {}).textKey || 'err.UNKNOWN.text';
+          setPinError(t(pinErrKey));
           setStatus('pin');
           setPin('');
         } else {
-          setErrInfo(ERRORS[code] || { Icon: XCircle, title: 'Ошибка', text: 'Не удалось выполнить чекин.' });
+          setErrInfo(ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
           setStatus('error');
         }
       } else {
@@ -173,7 +174,7 @@ export default function Checkin() {
         setTimeout(() => setShowBurst(false), 1200);
       }
     } catch {
-      setErrInfo({ Icon: Wifi, title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
+      setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
       setStatus('error');
     }
   }
@@ -193,7 +194,7 @@ export default function Checkin() {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) {
         const code = data?.error || 'UNKNOWN';
-        setErrInfo(PROMO_ERRORS[code] || { Icon: XCircle, title: 'Ошибка', text: 'Не удалось получить награду.' });
+        setErrInfo(PROMO_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
         setStatus('error');
       } else {
         setReward(data.reward);
@@ -203,14 +204,14 @@ export default function Checkin() {
         setTimeout(() => setShowBurst(false), 1400);
       }
     } catch {
-      setErrInfo({ Icon: Wifi, title: 'Нет соединения', text: 'Проверьте интернет и попробуйте снова.' });
+      setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
       setStatus('error');
     }
   }
 
   function handlePinSubmit(e) {
     e.preventDefault();
-    if (pin.length < 4) { setPinError('Введите PIN (4–6 цифр)'); return; }
+    if (pin.length < 4) { setPinError(t('checkin.pin.min_digits')); return; }
     setPinError('');
     doCheckin(pin);
   }
@@ -263,10 +264,16 @@ export default function Checkin() {
             </div>
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
-            {status === 'submitting' ? (isPromo ? 'Получаем награду…' : 'Отправляем чекин…') : 'Загружаем акцию…'}
+            {status === 'submitting'
+              ? (isPromo ? t('checkin.submitting_promo') : t('checkin.submitting_biz'))
+              : t('checkin.loading')}
           </div>
           <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.5 }}>
-            {status === 'submitting' ? 'Подождите секунду…' : locLoading ? 'Определяем местоположение…' : 'Проверяем данные…'}
+            {status === 'submitting'
+              ? t('checkin.wait')
+              : locLoading
+                ? t('checkin.locating')
+                : t('checkin.verifying')}
           </div>
           {isPromo && promoInfo && status === 'loading' && (
             <div style={{
@@ -295,10 +302,10 @@ export default function Checkin() {
           }}>
             <Lock size={38} color="#1a0800" strokeWidth={2} />
           </div>
-          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 6, color: C.t1 }}>Введите PIN-код</div>
+          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 6, color: C.t1 }}>{t('checkin.pin.title')}</div>
           <div style={{ color: C.purpleL, fontSize: 15, marginBottom: 6, fontWeight: 600 }}>{businessInfo.businessName}</div>
           <div style={{ color: C.t3, fontSize: 14, marginBottom: 28, lineHeight: 1.4 }}>
-            Попросите сотрудника назвать PIN-код
+            {t('checkin.pin.ask')}
           </div>
           <form onSubmit={handlePinSubmit}>
             <input
@@ -338,12 +345,12 @@ export default function Checkin() {
               cursor: pin.length >= 4 ? 'pointer' : 'not-allowed',
               transition: 'all 0.2s',
             }}>
-              Подтвердить
+              {t('checkin.pin.confirm')}
             </button>
           </form>
           {businessInfo.reward > 0 && (
             <div style={{ marginTop: 22, color: C.t3, fontSize: 13 }}>
-              Вознаграждение: <strong style={{ color: C.purpleL }}>+{formatGeo(businessInfo.reward)} GEO</strong>
+              {t('checkin.pin.reward')} <strong style={{ color: C.purpleL }}>+{formatGeo(businessInfo.reward)} GEO</strong>
             </div>
           )}
         </div>
@@ -380,7 +387,7 @@ export default function Checkin() {
           </div>
 
           <div style={{ fontWeight: 900, fontSize: 28, marginBottom: 6, color: C.t1, letterSpacing: -0.5, animation: 'fadeUp 0.4s 0.2s both' }}>
-            {isPromo ? 'Награда получена!' : 'Чекин выполнен!'}
+            {isPromo ? t('checkin.success_promo') : t('checkin.success_biz')}
           </div>
           {isPromo && promoInfo?.title && (
             <div style={{ color: isPromo && RC ? RC.color : C.t3, fontSize: 14, marginBottom: 4, fontWeight: 700, animation: 'fadeUp 0.4s 0.22s both' }}>
@@ -388,7 +395,7 @@ export default function Checkin() {
             </div>
           )}
           <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, animation: 'fadeUp 0.4s 0.25s both' }}>
-            GEO‑монеты зачислены на ваш кошелёк
+            {t('checkin.credited')}
           </div>
 
           {/* Reward card */}
@@ -400,7 +407,7 @@ export default function Checkin() {
             boxShadow: isPromo && RC ? `0 0 32px ${RC.glow}` : undefined,
           }}>
             <div style={{ color: C.t3, fontSize: 11, marginBottom: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-              Вы получили
+              {t('checkin.received')}
             </div>
             <div style={{ animation: 'pop 0.5s 0.45s both' }}>
               <div style={{
@@ -424,14 +431,14 @@ export default function Checkin() {
             boxShadow: isPromo && RC ? `0 6px 24px ${RC.glow}` : undefined,
             animation: 'fadeUp 0.4s 0.45s both',
           }}>
-            Перейти к кошельку
+            {t('checkin.go_wallet')}
           </Link>
           <Link to="/" style={{
             display: 'block', marginTop: 18,
             color: C.t3, fontSize: 14,
             textDecoration: 'none', animation: 'fadeUp 0.4s 0.55s both',
           }}>
-            Вернуться на главную
+            {t('checkin.go_home')}
           </Link>
         </>
       )}
@@ -448,10 +455,10 @@ export default function Checkin() {
             <errInfo.Icon size={48} color={C.red} strokeWidth={1.5} />
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
-            {errInfo.title}
+            {t(errInfo.titleKey)}
           </div>
           <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.6, marginBottom: 36, maxWidth: 280, whiteSpace: 'pre-line' }}>
-            {errInfo.text}
+            {t(errInfo.textKey)}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
             {errInfo.showRetry && (
@@ -460,7 +467,7 @@ export default function Checkin() {
                 padding: '14px 36px', borderRadius: 16,
                 fontWeight: 700, fontSize: 16, cursor: 'pointer',
               }}>
-                Разрешить доступ к геолокации
+                {t('checkin.geo_allow')}
               </button>
             )}
             <Link to="/" style={{
@@ -469,7 +476,7 @@ export default function Checkin() {
               padding: '14px 36px', borderRadius: 16,
               fontWeight: 700, fontSize: 16,
             }}>
-              На главную
+              {t('checkin.go_home_btn')}
             </Link>
           </div>
         </>

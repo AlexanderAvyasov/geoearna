@@ -5,20 +5,21 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { C, cardBase } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
 const LV = {
-  1:  { label: 'Новичок',       color: '#6B7280', bg: 'rgba(107,114,128,0.10)', min: 0,    next: 100   },
-  2:  { label: 'Исследователь', color: '#3B82F6', bg: 'rgba(59,130,246,0.10)',  min: 100,  next: 250   },
-  3:  { label: 'Постоянный',    color: C.green,   bg: C.greenFt,                min: 250,  next: 500   },
-  4:  { label: 'Активный',      color: C.gold,    bg: C.goldFt,                 min: 500,  next: 1000  },
-  5:  { label: 'Эксперт',       color: C.orange,  bg: 'rgba(251,146,60,0.10)',  min: 1000, next: 2000  },
-  6:  { label: 'Мастер',        color: '#F472B6', bg: 'rgba(244,114,182,0.10)', min: 2000, next: 3000  },
-  7:  { label: 'Ветеран',       color: '#A78BFA', bg: 'rgba(167,139,250,0.10)', min: 3000, next: 3750  },
-  8:  { label: 'Элита',         color: '#22D3EE', bg: 'rgba(34,211,238,0.10)',  min: 3750, next: 4500  },
-  9:  { label: 'Чемпион',       color: C.red,     bg: C.redFt,                  min: 4500, next: 5000  },
-  10: { label: 'Легенда',       color: C.geo,     bg: C.geoDim,                 min: 5000, next: null  },
+  1:  { color: '#6B7280', bg: 'rgba(107,114,128,0.10)', min: 0,    next: 100   },
+  2:  { color: '#3B82F6', bg: 'rgba(59,130,246,0.10)',  min: 100,  next: 250   },
+  3:  { color: C.green,   bg: C.greenFt,                min: 250,  next: 500   },
+  4:  { color: C.gold,    bg: C.goldFt,                 min: 500,  next: 1000  },
+  5:  { color: C.orange,  bg: 'rgba(251,146,60,0.10)',  min: 1000, next: 2000  },
+  6:  { color: '#F472B6', bg: 'rgba(244,114,182,0.10)', min: 2000, next: 3000  },
+  7:  { color: '#A78BFA', bg: 'rgba(167,139,250,0.10)', min: 3000, next: 3750  },
+  8:  { color: '#22D3EE', bg: 'rgba(34,211,238,0.10)',  min: 3750, next: 4500  },
+  9:  { color: C.red,     bg: C.redFt,                  min: 4500, next: 5000  },
+  10: { color: C.geo,     bg: C.geoDim,                 min: 5000, next: null  },
 };
 
 function xpPct(xp, level) {
@@ -55,6 +56,7 @@ function Skeleton() {
 }
 
 function ProfileCard({ data }) {
+  const { t } = useLanguage();
   const lv     = data.level || 1;
   const cfg    = LV[lv] || LV[1];
   const xp     = data.xp || 0;
@@ -80,7 +82,7 @@ function ProfileCard({ data }) {
         }}>
           <Crown size={13} color={cfg.color} strokeWidth={2} />
           <span style={{ fontSize: 13, fontWeight: 700, color: cfg.color }}>
-            L{lv} · {cfg.label}
+            L{lv} · {t(`level.${lv}`)}
           </span>
         </div>
 
@@ -101,11 +103,11 @@ function ProfileCard({ data }) {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-            Опыт (XP)
+            {t('game.xp')}
           </span>
           <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>
             {xp.toLocaleString('ru-RU')}
-            {cfg.next ? ` / ${cfg.next.toLocaleString('ru-RU')}` : ' · МАКС'}
+            {cfg.next ? ` / ${cfg.next.toLocaleString('ru-RU')}` : ` · ${t('game.xp_max')}`}
           </span>
         </div>
         <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
@@ -117,8 +119,8 @@ function ProfileCard({ data }) {
         </div>
         {cfg.next && (
           <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', justifyContent: 'space-between' }}>
-            <span>{freeze > 0 ? `Заморозок: ${freeze}` : ''}</span>
-            <span>+{(cfg.next - xp).toLocaleString('ru-RU')} XP до L{lv + 1}</span>
+            <span>{freeze > 0 ? t('game.freeze', { n: freeze }) : ''}</span>
+            <span>{t('game.xp_to_next', { xp: (cfg.next - xp).toLocaleString('ru-RU'), lv: lv + 1 })}</span>
           </div>
         )}
       </div>
@@ -132,7 +134,7 @@ function ProfileCard({ data }) {
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
           <Star size={13} color={C.orange} strokeWidth={2} />
-          Юбилейный день! Бонус x1.5 к следующему чекину
+          {t('game.milestone')}
         </div>
       )}
     </div>

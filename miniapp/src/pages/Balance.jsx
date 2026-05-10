@@ -4,6 +4,7 @@ import { Wallet, TrendingUp, MapPin, Calendar, CreditCard, AlertCircle, Clock, C
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
 import { C, E, cardBase } from '../lib/design';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
@@ -49,13 +50,14 @@ function useCountUp(target, running) {
   return value;
 }
 
-const WD_STATUS = {
-  pending:  { label: 'Ожидает',   Icon: Clock,       color: C.gold   },
-  approved: { label: 'Одобрено',  Icon: CheckCircle, color: C.green  },
-  rejected: { label: 'Отклонено', Icon: XCircle,     color: C.red    },
+const WD_STATUS_ICONS = {
+  pending:  { Icon: Clock,       color: C.gold  },
+  approved: { Icon: CheckCircle, color: C.green },
+  rejected: { Icon: XCircle,     color: C.red   },
 };
 
 export default function Balance() {
+  const { t } = useLanguage();
   const [user,        setUser]        = useState(null);
   const [visits,      setVisits]      = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
@@ -77,7 +79,7 @@ export default function Balance() {
         setGeoRate(cfg.geoRate || 1000);
         setWithdrawals(wds.withdrawals || []);
       })
-      .catch(() => setError('Не удалось загрузить данные.'))
+      .catch(() => setError(t('balance.error')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -133,8 +135,8 @@ export default function Balance() {
         {/* Stats */}
         <div style={{ display: 'flex', marginTop: 24, paddingTop: 20, borderTop: `0.5px solid ${C.b1}` }}>
           {[
-            { label: 'Визитов',    val: loading ? '—' : visits.length },
-            { label: 'Заработано', val: loading ? '—' : `${formatGeo(totalEarnedGeo)} GEO` },
+            { label: t('balance.visits'), val: loading ? '—' : visits.length },
+            { label: t('balance.earned'), val: loading ? '—' : `${formatGeo(totalEarnedGeo)} GEO` },
           ].map((item, i) => (
             <div key={i} style={{
               flex: 1,
@@ -165,14 +167,14 @@ export default function Balance() {
           animation: 'fadeUp 0.35s ease both',
         }}>
           <CreditCard size={18} color={C.bg} strokeWidth={2} />
-          Вывести GEO → UZS
+          {t('balance.withdraw_cta')}
         </Link>
 
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: C.card, borderRadius: 12, padding: 4 }}>
           {[
-            { key: 'visits',      label: 'Активность' },
-            { key: 'withdrawals', label: 'Выводы', badge: withdrawals.filter(w => w.status === 'pending').length },
+            { key: 'visits',      label: t('balance.tab.activity') },
+            { key: 'withdrawals', label: t('balance.tab.withdrawals'), badge: withdrawals.filter(w => w.status === 'pending').length },
           ].map(tab => (
             <button
               key={tab.key}
@@ -210,9 +212,9 @@ export default function Balance() {
             {!loading && visits.length === 0 && (
               <div style={{ textAlign: 'center', padding: '56px 16px' }}>
                 <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет активности</div>
+                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.visits.title')}</div>
                 <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-                  Сканируйте QR-коды в заведениях,<br />чтобы получать GEO
+                  {t('balance.empty.visits.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
                 </div>
               </div>
             )}
@@ -228,7 +230,7 @@ export default function Balance() {
               }}>
                 <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
                   <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
-                    {v.business_name || 'Заведение'}
+                    {v.business_name || t('balance.business')}
                   </div>
                   <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Calendar size={11} color={C.t3} />
@@ -260,15 +262,17 @@ export default function Balance() {
             {!loading && withdrawals.length === 0 && (
               <div style={{ textAlign: 'center', padding: '56px 16px' }}>
                 <ArrowDownCircle size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>Нет заявок</div>
+                <div style={{ ...SYNE, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.wd.title')}</div>
                 <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-                  Заявки на вывод появятся здесь
+                  {t('balance.empty.wd.text')}
                 </div>
               </div>
             )}
 
             {!loading && withdrawals.map((w, i) => {
-              const st = WD_STATUS[w.status] || WD_STATUS.pending;
+              const stIcons = WD_STATUS_ICONS[w.status] || WD_STATUS_ICONS.pending;
+              const stLabel = t(`balance.wd.${w.status}`) || t('balance.wd.pending');
+              const st = { ...stIcons, label: stLabel };
               return (
                 <div key={w.id} style={{
                   ...cardBase,

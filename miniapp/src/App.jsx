@@ -4,6 +4,7 @@ import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
 import { C, E } from './lib/design';
 import { waitForInitData } from './lib/api';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import Home       from './pages/Home';
 import Checkin    from './pages/Checkin';
 import Balance    from './pages/Balance';
@@ -182,6 +183,7 @@ const SPLASH_CSS = `
 // ─── Splash / Loading screen ──────────────────────────────────────────────────
 
 function SplashScreen({ fading }) {
+  const { t } = useLanguage();
   return (
     <>
       <style>{SPLASH_CSS}</style>
@@ -236,7 +238,7 @@ function SplashScreen({ fading }) {
             fontSize: 13, color: C.t3, fontWeight: 500,
             marginTop: 6, letterSpacing: 0.3,
           }}>
-            Зарабатывай, исследуя город
+            {t('splash.tagline')}
           </div>
         </div>
 
@@ -295,19 +297,20 @@ function parseToken(raw) {
 function ScanQrButton({ onToast }) {
   const navigate  = useNavigate();
   const [scanning, setScanning] = useState(false);
+  const { t } = useLanguage();
 
   function handleScan() {
     if (scanning) return;
     if (!tg?.isVersionAtLeast?.('6.4')) {
-      onToast('Обновите Telegram для сканирования QR');
+      onToast(t('scan.update_tg'));
       return;
     }
     if (typeof tg.showScanQrPopup !== 'function') {
-      onToast('Сканер недоступен в этой версии Telegram');
+      onToast(t('scan.unavailable'));
       return;
     }
     setScanning(true);
-    tg.showScanQrPopup({ text: 'Наведите на QR-код заведения' }, (scannedText) => {
+    tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
       const token = parseToken(scannedText);
       if (token) {
         tg.closeScanQrPopup();
@@ -375,19 +378,20 @@ function Toast({ message }) {
   );
 }
 
-const NAV_ITEMS = [
-  { to: '/',        Icon: HomeIcon,  label: 'Главная'  },
-  { to: '/game',    Icon: Star,      label: 'Прогресс' },
-  null,
-  { to: '/balance', Icon: Wallet,    label: 'Кошелёк'  },
-  IS_SUPER_ADMIN
-    ? { to: '/superadmin', Icon: Shield,    label: 'SA'      }
-    : { to: '/admin',      Icon: StoreIcon, label: 'Бизнес'  },
-];
-
 function BottomNav() {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
+  const { t } = useLanguage();
+
+  const NAV_ITEMS = [
+    { to: '/',        Icon: HomeIcon,  label: t('nav.home')     },
+    { to: '/game',    Icon: Star,      label: t('nav.game')     },
+    null,
+    { to: '/balance', Icon: Wallet,    label: t('nav.balance')  },
+    IS_SUPER_ADMIN
+      ? { to: '/superadmin', Icon: Shield,    label: 'SA'                }
+      : { to: '/admin',      Icon: StoreIcon, label: t('nav.business')   },
+  ];
 
   if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/map' || pathname === '/legal') return null;
   if (IS_SUPER_ADMIN && pathname === '/admin') return null;
@@ -521,7 +525,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <LanguageProvider>
       <style>{GLOBAL_CSS}</style>
 
       {/* Splash screen: shown until ready, fades out when fading=true */}
@@ -535,6 +539,6 @@ export default function App() {
           <AppLayout />
         </BrowserRouter>
       )}
-    </>
+    </LanguageProvider>
   );
 }
