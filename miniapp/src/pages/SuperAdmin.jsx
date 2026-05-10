@@ -5,10 +5,10 @@ import {
   Loader2, Clock, User, Smartphone, FileText, MapPin, Lock, Shield, CreditCard,
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
-  ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode,
+  ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode, Send,
 } from 'lucide-react';
 import { user } from '../hooks/useTelegram';
-import { API_BASE, waitForInitData } from '../lib/api';
+import { API_BASE, waitForInitData, apiFetch } from '../lib/api';
 import { formatGeo, formatUzs, geoToUzs } from '../lib/geo';
 import { C, G, cardBase } from '../lib/design';
 
@@ -2089,8 +2089,9 @@ function PromoCreateSheet({ onClose, onCreated }) {
 }
 
 function PromoResultSheet({ result, onClose }) {
-  const [copied, setCopied] = useState(false);
+  const [copied,    setCopied]    = useState(false);
   const [dlLoading, setDlLoading] = useState(false);
+  const [dlSent,    setDlSent]    = useState(false);
 
   function copy() {
     navigator.clipboard?.writeText(result.qrUrl).catch(() => {});
@@ -2098,19 +2099,21 @@ function PromoResultSheet({ result, onClose }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  async function downloadQR() {
+  async function sendQR() {
     setDlLoading(true);
-    const src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(result.qrUrl)}`;
     try {
-      const resp = await fetch(src);
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `promo-qr-${result.campaign.id}.png`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch { window.open(src, '_blank'); }
-    finally { setDlLoading(false); }
+      const r = await apiFetch('/api/send-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: result.qrUrl,
+          caption: `🎯 *${result.campaign.title}*\nPromo QR-код`,
+        }),
+      });
+      if (r.ok) { setDlSent(true); setTimeout(() => setDlSent(false), 3000); }
+    } catch { /* silent */ } finally {
+      setDlLoading(false);
+    }
   }
 
   const r = RARITY_CFG[result.campaign.rarity] || RARITY_CFG.common;
@@ -2157,8 +2160,9 @@ function PromoResultSheet({ result, onClose }) {
               {copied ? <CheckCircle size={14} /> : <Plus size={14} />}
               {copied ? 'Скопировано' : 'Копировать URL'}
             </Btn>
-            <Btn variant="purple" size="md" onClick={downloadQR} loading={dlLoading} style={{ flex: 1 }}>
-              <ArrowDownToLine size={14} /> Скачать QR
+            <Btn variant={dlSent ? 'success' : 'purple'} size="md" onClick={sendQR} loading={dlLoading} style={{ flex: 1 }}>
+              {dlSent ? <CheckCircle size={14} /> : <Send size={14} />}
+              {dlSent ? 'Отправлено' : 'В Telegram'}
             </Btn>
           </div>
           <div style={{ marginTop: 12 }}>
@@ -2175,6 +2179,7 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
   const [loading, setLoading] = useState(true);
   const [busy,    setBusy]    = useState(false);
   const [dlLoad,  setDlLoad]  = useState(false);
+  const [dlSent,  setDlSent]  = useState(false);
   const r = RARITY_CFG[campaign.rarity] || RARITY_CFG.common;
 
   useEffect(() => {
@@ -2193,19 +2198,21 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
     setBusy(false);
   }
 
-  async function downloadQR() {
+  async function sendQR() {
     setDlLoad(true);
-    const src = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(campaign.qrUrl)}`;
     try {
-      const resp = await fetch(src);
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `promo-${campaign.id}.png`;
-      document.body.appendChild(a); a.click();
-      document.body.removeChild(a); URL.revokeObjectURL(url);
-    } catch { window.open(src, '_blank'); }
-    finally { setDlLoad(false); }
+      const r = await apiFetch('/api/send-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: campaign.qrUrl,
+          caption: `🎯 *${campaign.title}*\nPromo QR-код`,
+        }),
+      });
+      if (r.ok) { setDlSent(true); setTimeout(() => setDlSent(false), 3000); }
+    } catch { /* silent */ } finally {
+      setDlLoad(false);
+    }
   }
 
   return (
@@ -2319,8 +2326,9 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
             <Btn variant={campaign.active ? 'gold' : 'success'} size="md" onClick={toggleActive} loading={busy} style={{ flex: 1 }}>
               {campaign.active ? <><PauseCircle size={13} /> Пауза</> : <><PlayCircle size={13} /> Запустить</>}
             </Btn>
-            <Btn variant="ghost" size="md" onClick={downloadQR} loading={dlLoad} style={{ flex: 1 }}>
-              <ArrowDownToLine size={13} /> QR PNG
+            <Btn variant={dlSent ? 'success' : 'ghost'} size="md" onClick={sendQR} loading={dlLoad} style={{ flex: 1 }}>
+              {dlSent ? <CheckCircle size={13} /> : <Send size={13} />}
+              {dlSent ? 'Отправлено' : 'QR в Telegram'}
             </Btn>
           </div>
         </div>

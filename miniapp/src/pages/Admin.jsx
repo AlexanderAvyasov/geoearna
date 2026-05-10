@@ -4,7 +4,7 @@ import {
   MapPin, Wallet, Lock, Store, CheckCircle, AlertTriangle, Loader2,
   RefreshCw, Zap, Copy, Calendar, StopCircle, ShoppingBag, Star,
   BarChart2, Megaphone, CreditCard, Download, TrendingUp, TrendingDown,
-  Users, Clock, AlertCircle, QrCode,
+  Users, Clock, AlertCircle, QrCode, Send,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
@@ -1459,6 +1459,7 @@ function TopupTab({ business, stats }) {
 function QrTab({ business, webappUrl }) {
   const [copied,    setCopied]    = useState(false);
   const [dlLoading, setDlLoading] = useState(false);
+  const [dlSent,    setDlSent]    = useState(false);
   const [qrLoaded,  setQrLoaded]  = useState(false);
 
   const checkinUrl = `${webappUrl}/checkin?token=${encodeURIComponent(business.qr_token)}`;
@@ -1472,22 +1473,19 @@ function QrTab({ business, webappUrl }) {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  async function downloadQR() {
+  async function sendQR() {
     setDlLoading(true);
     try {
-      const resp = await fetch(qrImageUrl);
-      const blob = await resp.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `geo-qr-${(business.name || 'business').replace(/\s+/g, '-')}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch {
-      window.open(qrImageUrl, '_blank');
-    } finally {
+      const r = await apiFetch('/api/send-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: checkinUrl,
+          caption: `🏪 *${business.name || 'Заведение'}*\nQR-код заведения`,
+        }),
+      });
+      if (r.ok) { setDlSent(true); setTimeout(() => setDlSent(false), 3000); }
+    } catch { /* silent */ } finally {
       setDlLoading(false);
     }
   }
@@ -1554,22 +1552,25 @@ function QrTab({ business, webappUrl }) {
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10 }}>
           <button
-            onClick={downloadQR}
+            onClick={sendQR}
             disabled={dlLoading}
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              background: C.blue, color: '#fff',
+              background: dlSent ? C.green : C.blue, color: '#fff',
               border: 'none', borderRadius: 14, padding: '13px',
               fontSize: 14, fontWeight: 700,
               cursor: dlLoading ? 'not-allowed' : 'pointer',
               opacity: dlLoading ? 0.7 : 1,
-              boxShadow: `0 4px 16px ${C.blueGl}`,
+              boxShadow: `0 4px 16px ${dlSent ? C.greenGl : C.blueGl}`,
+              transition: 'background 0.2s, box-shadow 0.2s',
             }}>
             {dlLoading
               ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
-              : <Download size={15} color="#fff" strokeWidth={2} />
+              : dlSent
+                ? <CheckCircle size={15} color="#fff" strokeWidth={2} />
+                : <Send size={15} color="#fff" strokeWidth={2} />
             }
-            Скачать
+            {dlSent ? 'Отправлено' : 'В Telegram'}
           </button>
           <button
             onClick={copyLink}
