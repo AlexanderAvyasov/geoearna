@@ -4,7 +4,7 @@ import {
   MapPin, Wallet, Lock, Store, CheckCircle, AlertTriangle, Loader2,
   RefreshCw, Zap, Copy, Calendar, StopCircle, ShoppingBag, Star,
   BarChart2, Megaphone, CreditCard, Download, TrendingUp, TrendingDown,
-  Users, Clock, AlertCircle,
+  Users, Clock, AlertCircle, QrCode,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
@@ -29,6 +29,7 @@ const TABS = [
   { key: 'overview',   label: 'Обзор',       Icon: BarChart2  },
   { key: 'campaigns',  label: 'Кампании',    Icon: Megaphone  },
   { key: 'topup',      label: 'Пополнение',  Icon: CreditCard },
+  { key: 'qr',         label: 'QR',          Icon: QrCode     },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1202,6 +1203,163 @@ function TopupTab({ business, stats }) {
   );
 }
 
+// ─── Tab: QR заведения ───────────────────────────────────────────────────────
+
+function QrTab({ business, webappUrl }) {
+  const [copied,    setCopied]    = useState(false);
+  const [dlLoading, setDlLoading] = useState(false);
+  const [qrLoaded,  setQrLoaded]  = useState(false);
+
+  const checkinUrl = `${webappUrl}/checkin?token=${encodeURIComponent(business.qr_token)}`;
+  const qrImageUrl =
+    `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=3` +
+    `&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`;
+
+  function copyLink() {
+    navigator.clipboard?.writeText(checkinUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function downloadQR() {
+    setDlLoading(true);
+    try {
+      const resp = await fetch(qrImageUrl);
+      const blob = await resp.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `geo-qr-${(business.name || 'business').replace(/\s+/g, '-')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(qrImageUrl, '_blank');
+    } finally {
+      setDlLoading(false);
+    }
+  }
+
+  const infoRows = [
+    { label: 'Название',   value: business.name },
+    { label: 'Адрес',      value: business.address || '—' },
+    { label: 'Баланс',     value: `${(business.balance || 0).toLocaleString('ru-RU')} GEO` },
+  ];
+
+  return (
+    <div>
+      {/* Business card with QR */}
+      <div style={{
+        ...cardBase,
+        border: `1px solid ${C.b1}`,
+        padding: '28px 20px 24px',
+        marginBottom: 14,
+        textAlign: 'center',
+      }}>
+        {/* QR image */}
+        <div style={{
+          width: 220, height: 220,
+          margin: '0 auto 22px',
+          borderRadius: 20,
+          background: '#fff',
+          padding: 14,
+          boxShadow: '0 6px 32px rgba(0,0,0,0.25)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          {!qrLoaded && (
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 20,
+              background: 'rgba(255,255,255,0.9)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          )}
+          <img
+            src={qrImageUrl}
+            alt="QR код заведения"
+            onLoad={() => setQrLoaded(true)}
+            style={{ width: '100%', height: '100%', borderRadius: 8, display: 'block' }}
+          />
+        </div>
+
+        {/* Name & address */}
+        <div style={{ fontSize: 20, fontWeight: 800, color: C.t1, marginBottom: 5 }}>
+          {business.name}
+        </div>
+        {business.address && (
+          <div style={{ fontSize: 13, color: C.t3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 18 }}>
+            <MapPin size={13} color={C.t3} strokeWidth={2} />
+            {business.address}
+          </div>
+        )}
+
+        <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.6, marginBottom: 22, maxWidth: 280, margin: '0 auto 22px' }}>
+          Разместите QR в заведении. Клиенты сканируют и получают GEO-бонусы при чекине.
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={downloadQR}
+            disabled={dlLoading}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: C.blue, color: '#fff',
+              border: 'none', borderRadius: 14, padding: '13px',
+              fontSize: 14, fontWeight: 700,
+              cursor: dlLoading ? 'not-allowed' : 'pointer',
+              opacity: dlLoading ? 0.7 : 1,
+              boxShadow: `0 4px 16px ${C.blueGl}`,
+            }}>
+            {dlLoading
+              ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+              : <Download size={15} color="#fff" strokeWidth={2} />
+            }
+            Скачать
+          </button>
+          <button
+            onClick={copyLink}
+            style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: copied ? C.geoFt : C.card,
+              color: copied ? C.geo : C.t2,
+              border: `1px solid ${copied ? C.geoGl : C.b1}`,
+              borderRadius: 14, padding: '13px',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}>
+            {copied
+              ? <CheckCircle size={15} color={C.geo} strokeWidth={2} />
+              : <Copy size={15} color={C.t2} strokeWidth={2} />
+            }
+            {copied ? 'Скопировано' : 'Ссылка'}
+          </button>
+        </div>
+      </div>
+
+      {/* Info card */}
+      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '18px 18px 10px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 14 }}>
+          Информация о заведении
+        </div>
+        {infoRows.map(({ label, value }, i) => (
+          <div key={label} style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            paddingBottom: 12, marginBottom: 12,
+            borderBottom: i < infoRows.length - 1 ? `1px solid ${C.b0}` : 'none',
+          }}>
+            <span style={{ fontSize: 13, color: C.t3 }}>{label}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.t1, maxWidth: '60%', textAlign: 'right' }}>{value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Admin (root) ─────────────────────────────────────────────────────────────
 
 export default function Admin() {
@@ -1384,6 +1542,9 @@ export default function Admin() {
           )}
           {activeTab === 'topup' && (
             <TopupTab business={business} stats={stats} />
+          )}
+          {activeTab === 'qr' && (
+            <QrTab business={business} webappUrl={webappUrl} />
           )}
         </div>
       </div>

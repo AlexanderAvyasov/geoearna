@@ -1,8 +1,9 @@
+const { InlineKeyboard, InputFile } = require('grammy');
 const QRCode = require('qrcode');
-const { InputFile } = require('grammy');
 const { supabase } = require('../../db/index');
 
-async function myqrHandler(ctx) {
+async function myqrAction(ctx) {
+  await ctx.answerCallbackQuery();
   const telegramId = String(ctx.from?.id);
 
   const { data: business, error } = await supabase
@@ -12,17 +13,30 @@ async function myqrHandler(ctx) {
     .maybeSingle();
 
   if (error || !business) {
-    return ctx.reply('Вы не зарегистрированы как владелец заведения. Обратитесь к администратору.');
+    const kb = new InlineKeyboard().text('« Назад', 'action:menu');
+    return ctx.reply(
+      'Вы не зарегистрированы как владелец заведения. Обратитесь к администратору.',
+      { reply_markup: kb }
+    );
   }
 
   const checkinUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(business.qr_token)}`;
-  const qrBuffer = await QRCode.toBuffer(checkinUrl, { width: 512, margin: 2 });
+  const qrBuffer   = await QRCode.toBuffer(checkinUrl, { width: 512, margin: 2 });
+
+  const kb = new InlineKeyboard()
+    .webApp('🏪 Панель заведения', `${process.env.WEBAPP_URL}/admin`)
+    .row()
+    .text('🔐 Новый PIN', 'action:mypin')
+    .text('« Назад', 'action:menu');
 
   await ctx.replyWithPhoto(new InputFile(qrBuffer, 'qr.png'), {
     caption:
-      `QR-код для заведения "${business.name}"\n\n` +
-      `Разместите этот код в заведении. Клиенты сканируют его для чекина и получения бонусов.`,
+      `🏪 *${business.name}*\n\n` +
+      `Этот QR-код ведёт клиентов на чекин в вашем заведении.\n\n` +
+      `Разместите его на видном месте — посетители сканируют и получают GEO-бонусы.`,
+    parse_mode: 'Markdown',
+    reply_markup: kb,
   });
 }
 
-module.exports = myqrHandler;
+module.exports = { myqrAction };
