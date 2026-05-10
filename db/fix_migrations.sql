@@ -4,6 +4,9 @@
 -- ============================================================
 
 
+-- ── 0. Extensions ─────────────────────────────────────────────────────────────
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ── 1. Platform wallet — создать таблицу и инициализировать строку ─────────────
 CREATE TABLE IF NOT EXISTS platform_wallet (
   id      INTEGER PRIMARY KEY DEFAULT 1,
@@ -35,6 +38,11 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS task_description TEXT;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS requires_pin     BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS budget           INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- Уникальный QR-токен каждой кампании (отдельный от токена бизнеса)
+ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS qr_token VARCHAR(64) UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_campaigns_qr_token ON campaigns (qr_token) WHERE qr_token IS NOT NULL;
+-- Backfill существующих кампаний рандомными токенами
+UPDATE campaigns SET qr_token = encode(gen_random_bytes(24), 'hex') WHERE qr_token IS NULL;
 
 
 -- ── 5. Колонки withdrawals ─────────────────────────────────────────────────────
@@ -351,7 +359,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION create_campaign_with_commission(
   p_business_id INTEGER, p_budget INTEGER, p_reward_amount INTEGER,
   p_max_visits INTEGER, p_task_type VARCHAR, p_task_description TEXT,
-  p_requires_pin BOOLEAN, p_ends_at TIMESTAMPTZ
+  p_requires_pin BOOLEAN, p_ends_at TIMESTAMPTZ, p_qr_token VARCHAR
 ) RETURNS INTEGER AS $$
 DECLARE
   v_biz_balance INTEGER;
@@ -370,9 +378,9 @@ BEGIN
   UPDATE businesses      SET balance = balance - v_commission WHERE id = p_business_id;
   UPDATE platform_wallet SET balance = balance + v_commission WHERE id = 1;
   INSERT INTO campaigns (business_id, budget, reward_amount, max_visits,
-    task_type, task_description, requires_pin, ends_at, active)
+    task_type, task_description, requires_pin, ends_at, active, qr_token)
   VALUES (p_business_id, v_rewards_sum, p_reward_amount, p_max_visits,
-    p_task_type, p_task_description, p_requires_pin, p_ends_at, true)
+    p_task_type, p_task_description, p_requires_pin, p_ends_at, true, p_qr_token)
   RETURNING id INTO v_campaign_id;
   INSERT INTO platform_transactions (campaign_id, business_id, amount)
     VALUES (v_campaign_id, p_business_id, v_commission);

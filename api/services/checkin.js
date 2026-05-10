@@ -64,55 +64,78 @@ async function activateReferral(userId, telegramId) {
 }
 
 async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
-  const { data: business, error: businessError } = await supabase
-    .from('businesses')
-    .select('*')
+  const now = new Date();
+  let business, campaign;
+
+  // ── Try campaign-level QR token first ─────────────────────────────────────
+  const { data: campaignByToken, error: campLookupErr } = await supabase
+    .from('campaigns')
+    .select('*, businesses(*)')
     .eq('qr_token', qrToken)
     .maybeSingle();
 
-  if (businessError) {
-    console.error('checkin business lookup error', businessError);
+  if (campLookupErr) {
+    console.error('checkin campaign token lookup error', campLookupErr);
     throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
   }
-  if (!business) {
-    throw Object.assign(new Error('INVALID_QR_TOKEN'), { code: 'INVALID_QR_TOKEN' });
+
+  if (campaignByToken) {
+    business = campaignByToken.businesses;
+    const endsAt = campaignByToken.ends_at ? new Date(campaignByToken.ends_at) : null;
+    const valid  = campaignByToken.active && (!endsAt || endsAt > now) && campaignByToken.visits_count < campaignByToken.max_visits;
+    campaign = valid ? campaignByToken : null;
+    if (!campaign) {
+      throw Object.assign(new Error('NO_ACTIVE_CAMPAIGN'), { code: 'NO_ACTIVE_CAMPAIGN' });
+    }
+  } else {
+    // ── Fallback: business-level QR token ─────────────────────────────────────
+    const { data: businessRow, error: businessError } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('qr_token', qrToken)
+      .maybeSingle();
+
+    if (businessError) {
+      console.error('checkin business lookup error', businessError);
+      throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
+    }
+    if (!businessRow) {
+      throw Object.assign(new Error('INVALID_QR_TOKEN'), { code: 'INVALID_QR_TOKEN' });
+    }
+    business = businessRow;
+
+    const { data: campaigns, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('business_id', business.id)
+      .eq('active', true);
+
+    if (campaignError) {
+      console.error('checkin campaign lookup error', campaignError);
+      throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
+    }
+
+    if (campaignId) {
+      const found = (campaigns || []).find(item => item.id === campaignId);
+      if (found) {
+        const endsAt = found.ends_at ? new Date(found.ends_at) : null;
+        campaign = (found.active && (!endsAt || endsAt > now) && found.visits_count < found.max_visits) ? found : null;
+      }
+    } else {
+      campaign = (campaigns || []).find(item => {
+        const endsAt = item.ends_at ? new Date(item.ends_at) : null;
+        return (!endsAt || endsAt > now) && item.visits_count < item.max_visits;
+      });
+    }
+
+    if (!campaign) {
+      throw Object.assign(new Error('NO_ACTIVE_CAMPAIGN'), { code: 'NO_ACTIVE_CAMPAIGN' });
+    }
   }
 
   const distance = getDistance({ lat, lng }, { lat: business.lat, lng: business.lng });
   if (distance > business.radius_m) {
     throw Object.assign(new Error('TOO_FAR'), { code: 'TOO_FAR' });
-  }
-
-  const { data: campaigns, error: campaignError } = await supabase
-    .from('campaigns')
-    .select('*')
-    .eq('business_id', business.id)
-    .eq('active', true);
-
-  if (campaignError) {
-    console.error('checkin campaign lookup error', campaignError);
-    throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
-  }
-
-  const now = new Date();
-  let campaign;
-  if (campaignId) {
-    campaign = (campaigns || []).find(item => item.id === campaignId);
-    if (campaign) {
-      const endsAt = campaign.ends_at ? new Date(campaign.ends_at) : null;
-      if (!campaign.active || (endsAt && endsAt <= now) || campaign.visits_count >= campaign.max_visits) {
-        campaign = null;
-      }
-    }
-  } else {
-    campaign = (campaigns || []).find(item => {
-      const endsAt = item.ends_at ? new Date(item.ends_at) : null;
-      return (!endsAt || endsAt > now) && item.visits_count < item.max_visits;
-    });
-  }
-
-  if (!campaign) {
-    throw Object.assign(new Error('NO_ACTIVE_CAMPAIGN'), { code: 'NO_ACTIVE_CAMPAIGN' });
   }
   if (business.balance < campaign.reward_amount) {
     throw Object.assign(new Error('BUSINESS_INSUFFICIENT_FUNDS'), { code: 'BUSINESS_INSUFFICIENT_FUNDS' });

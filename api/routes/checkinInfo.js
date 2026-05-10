@@ -9,25 +9,62 @@ router.get('/api/checkin/info', async (req, res) => {
     return res.status(400).json({ error: 'INVALID_PARAMS' });
   }
 
-  const { data: business, error } = await supabase
+  const now = new Date();
+
+  // ── Try campaign-level QR token first ───────────────────────────────────────
+  const { data: campaignRow, error: campErr } = await supabase
+    .from('campaigns')
+    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits, businesses(id, name, address)')
+    .eq('qr_token', token)
+    .maybeSingle();
+
+  if (campErr) {
+    console.error('[checkin/info] campaign lookup error', campErr);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+
+  if (campaignRow) {
+    const expired   = campaignRow.ends_at && new Date(campaignRow.ends_at) <= now;
+    const exhausted = campaignRow.visits_count >= campaignRow.max_visits;
+    if (!campaignRow.active || expired || exhausted) {
+      return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
+    }
+    const biz = campaignRow.businesses;
+    return res.json({
+      businessName:    biz?.name        || '',
+      address:         biz?.address     || null,
+      reward:          campaignRow.reward_amount,
+      taskType:        campaignRow.task_type || 'visit',
+      taskDescription: campaignRow.task_description || null,
+      requiresPin:     campaignRow.requires_pin || false,
+      campaignId:      campaignRow.id,
+    });
+  }
+
+  // ── Fallback: business-level QR token (backward compat) ─────────────────────
+  const { data: business, error: bizErr } = await supabase
     .from('businesses')
     .select('id, name, address, campaigns(id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits)')
     .eq('qr_token', token)
     .maybeSingle();
 
-  if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  if (bizErr) {
+    console.error('[checkin/info] business lookup error', bizErr);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
   if (!business) {
-    console.warn(`[checkin/info] invalid token from ${req.ip}`);
+    console.warn(`[checkin/info] unknown token from ${req.ip}`);
     return res.status(404).json({ error: 'INVALID_QR_TOKEN' });
   }
 
-  const now = new Date();
   const cidParam = req.query.cid ? parseInt(req.query.cid, 10) : null;
-
   let campaign;
+
   if (cidParam) {
     campaign = (business.campaigns || []).find(c => c.id === cidParam);
-    if (!campaign || !campaign.active || (campaign.ends_at && new Date(campaign.ends_at) <= now) || campaign.visits_count >= campaign.max_visits) {
+    if (!campaign || !campaign.active ||
+        (campaign.ends_at && new Date(campaign.ends_at) <= now) ||
+        campaign.visits_count >= campaign.max_visits) {
       return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
     }
   } else {
@@ -41,13 +78,13 @@ router.get('/api/checkin/info', async (req, res) => {
   }
 
   return res.json({
-    businessName: business.name,
-    address: business.address,
-    reward: campaign.reward_amount,
-    taskType: campaign.task_type || 'visit',
+    businessName:    business.name,
+    address:         business.address,
+    reward:          campaign.reward_amount,
+    taskType:        campaign.task_type || 'visit',
     taskDescription: campaign.task_description || null,
-    requiresPin: campaign.requires_pin || false,
-    campaignId: campaign.id,
+    requiresPin:     campaign.requires_pin || false,
+    campaignId:      campaign.id,
   });
 });
 

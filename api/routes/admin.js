@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { getGeoRate } = require('../lib/geoRate');
@@ -10,7 +11,7 @@ router.get('/api/admin/business', validateTma, async (req, res) => {
 
   const { data: business, error } = await supabase
     .from('businesses')
-    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at)')
+    .select('id, name, address, balance, qr_token, campaigns(id, budget, reward_amount, visits_count, max_visits, active, requires_pin, task_type, task_description, ends_at, qr_token, created_at)')
     .eq('owner_telegram_id', telegramId)
     .maybeSingle();
 
@@ -141,6 +142,8 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
     return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
   }
 
+  const campaignQrToken = crypto.randomBytes(24).toString('hex');
+
   // Atomically: deduct commission → platform_wallet, record campaign; rewards paid per checkin
   const { data: campaignId, error: rpcError } = await supabase.rpc('create_campaign_with_commission', {
     p_business_id:      business.id,
@@ -151,6 +154,7 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
     p_task_description: task_description || null,
     p_requires_pin:     !!requires_pin,
     p_ends_at:          ends_at || null,
+    p_qr_token:         campaignQrToken,
   });
 
   if (rpcError) {

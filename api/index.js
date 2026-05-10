@@ -14,6 +14,7 @@ const configRoutes = require('./routes/config');
 const superadminRoutes   = require('./routes/superadmin');
 const gamificationRoutes = require('./routes/gamification');
 const promoRoutes        = require('./routes/promo');
+const sendQrRoutes       = require('./routes/sendQr');
 
 dotenv.config();
 
@@ -146,6 +147,7 @@ app.use(configRoutes);
 app.use(superadminRoutes);
 app.use(gamificationRoutes);
 app.use(promoRoutes);
+app.use(sendQrRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });

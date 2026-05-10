@@ -132,8 +132,7 @@ function StatCard({ label, value, sub, subUp, Icon, color, loading }) {
 
 // ─── CampaignCard ─────────────────────────────────────────────────────────────
 
-function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onEdit }) {
-  const [dlLoading, setDlLoading] = useState(false);
+function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onOpenDetail }) {
   const isActive   = campaign.active;
   const remaining  = campaign.max_visits - campaign.visits_count;
   const exhausted  = remaining <= 0;
@@ -146,28 +145,6 @@ function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onEdit 
   const endsDate = campaign.ends_at
     ? new Date(campaign.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
     : null;
-
-  async function downloadQR() {
-    setDlLoading(true);
-    const checkinUrl = `${webappUrl}/checkin?token=${business.qr_token}&cid=${campaign.id}`;
-    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=2&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`;
-    try {
-      const resp = await fetch(qrSrc);
-      const blob = await resp.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `geo-qr-${business.name.replace(/\s+/g, '-')}.png`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(qrSrc, '_blank');
-    } finally {
-      setDlLoading(false);
-    }
-  }
 
   return (
     <div style={{
@@ -238,7 +215,7 @@ function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onEdit 
 
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {endsDate && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: isActive ? C.orange : C.t3 }}>
               <Clock size={11} color={isActive ? C.orange : C.t3} />
@@ -252,39 +229,310 @@ function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onEdit 
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            onClick={() => onEdit && onEdit(campaign)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: C.card, border: `1px solid ${C.b1}`,
-              borderRadius: 8, padding: '5px 10px',
-              fontSize: 11, fontWeight: 700, color: C.t2,
-              cursor: 'pointer',
-            }}>
-            <RefreshCw size={11} color={C.t2} strokeWidth={2} />
-            Изменить
-          </button>
-          <button
-            onClick={downloadQR}
-            disabled={dlLoading}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: C.card, border: `1px solid ${C.b1}`,
-              borderRadius: 8, padding: '5px 10px',
-              fontSize: 11, fontWeight: 700, color: C.t2,
-              cursor: dlLoading ? 'not-allowed' : 'pointer',
-              opacity: dlLoading ? 0.5 : 1,
-            }}>
-            {dlLoading
-              ? <Loader2 size={11} color={C.t2} style={{ animation: 'spin 1s linear infinite' }} />
-              : <Download size={11} color={C.t2} strokeWidth={2} />
-            }
-            QR
-          </button>
-        </div>
+        <button
+          onClick={() => onOpenDetail && onOpenDetail(campaign)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: C.card, border: `1px solid ${C.b1}`,
+            borderRadius: 8, padding: '6px 12px',
+            fontSize: 12, fontWeight: 700, color: C.purpleL,
+            cursor: 'pointer',
+          }}>
+          <QrCode size={12} color={C.purpleL} strokeWidth={2} />
+          Карточка
+        </button>
       </div>
     </div>
+  );
+}
+
+// ─── CampaignDetailModal ──────────────────────────────────────────────────────
+
+function CampaignDetailModal({ campaign, business, webappUrl, onClose, onStop, stopping, onEdit, onSaved }) {
+  const [dlLoading, setDlLoading] = useState(false);
+  const [qrLoaded,  setQrLoaded]  = useState(false);
+  const [copied,    setCopied]    = useState(false);
+  const [showEdit,  setShowEdit]  = useState(false);
+
+  const isActive  = campaign.active;
+  const pct       = campaign.max_visits > 0 ? (campaign.visits_count / campaign.max_visits) * 100 : 0;
+  const remaining = campaign.max_visits - campaign.visits_count;
+  const exhausted = remaining <= 0;
+  const meta      = TASK_META[campaign.task_type] || TASK_META.visit;
+
+  const statusLabel = isActive ? 'Активна' : exhausted ? 'Завершена' : 'Остановлена';
+  const statusColor = isActive ? C.geo : C.t3;
+
+  const endsDate = campaign.ends_at
+    ? new Date(campaign.ends_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null;
+  const createdDate = campaign.created_at
+    ? new Date(campaign.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+
+  // Campaign-specific QR (falls back to business token for old campaigns without their own token)
+  const checkinToken = campaign.qr_token || business?.qr_token;
+  const checkinUrl   = checkinToken ? `${webappUrl}/checkin?token=${encodeURIComponent(checkinToken)}` : null;
+  const qrImageUrl   = checkinUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=3&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`
+    : null;
+
+  function copyLink() {
+    if (!checkinUrl) return;
+    navigator.clipboard?.writeText(checkinUrl).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  const [dlSent, setDlSent] = useState(false);
+
+  async function sendQR() {
+    if (!checkinUrl) return;
+    setDlLoading(true);
+    try {
+      const r = await apiFetch('/api/send-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: checkinUrl,
+          caption: `🏪 *${business?.name || 'Заведение'}*\nQR-код кампании`,
+        }),
+      });
+      if (r.ok) { setDlSent(true); setTimeout(() => setDlSent(false), 3000); }
+    } catch { /* silent */ } finally {
+      setDlLoading(false);
+    }
+  }
+
+  if (showEdit) {
+    return (
+      <CampaignEditModal
+        campaign={campaign}
+        balance={business?.balance || 0}
+        onClose={() => setShowEdit(false)}
+        onSaved={() => { setShowEdit(false); onSaved && onSaved(); onClose(); }}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 200, animation: 'backdropIn 0.25s ease',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 201,
+        background: C.surf, borderRadius: '28px 28px 0 0',
+        border: `1px solid ${C.b1}`, borderBottom: 'none',
+        maxWidth: 480, margin: '0 auto',
+        maxHeight: '92vh', overflowY: 'auto',
+        animation: 'slideUp 0.35s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 60px rgba(0,0,0,0.7)',
+      }}>
+        <div style={{ width: 38, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 0' }} />
+
+        <div style={{ padding: '20px 20px 48px' }}>
+          {/* Status + title row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {isActive && (
+                <span style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: C.geo, boxShadow: `0 0 6px ${C.geo}`, display: 'inline-block',
+                }} />
+              )}
+              <span style={{ fontSize: 12, fontWeight: 700, color: statusColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {statusLabel}
+              </span>
+              <span style={{
+                fontSize: 11, color: C.t3, fontWeight: 600,
+                background: C.card, borderRadius: 6, padding: '2px 8px',
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                <meta.Icon size={10} color={C.t3} strokeWidth={2} />
+                {meta.label}
+              </span>
+            </div>
+            {createdDate && (
+              <span style={{ fontSize: 11, color: C.t3 }}>{createdDate}</span>
+            )}
+          </div>
+
+          {/* Reward */}
+          <div style={{ fontSize: 38, fontWeight: 900, color: isActive ? C.geo : C.t2, letterSpacing: -1.5, marginBottom: 4 }}>
+            +{formatGeo(campaign.reward_amount)}
+            <span style={{ fontSize: 16, fontWeight: 600, color: C.t3, marginLeft: 8 }}>GEO / задание</span>
+          </div>
+
+          {campaign.task_description && (
+            <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.5, marginBottom: 16 }}>
+              {campaign.task_description}
+            </div>
+          )}
+
+          {/* Progress */}
+          <div style={{
+            ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', marginBottom: 14,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: C.t3, marginBottom: 8 }}>
+              <span>Активации</span>
+              <span style={{ fontWeight: 700, color: isActive && !exhausted ? C.geo : C.t2 }}>
+                {campaign.visits_count} / {campaign.max_visits}
+              </span>
+            </div>
+            <ProgressBar pct={pct} color={isActive && !exhausted ? G.geo : C.b2} />
+            {isActive && !exhausted && (
+              <div style={{ fontSize: 12, color: C.t3, marginTop: 8, textAlign: 'right' }}>
+                Осталось: <strong style={{ color: C.geo }}>{remaining}</strong>
+              </div>
+            )}
+          </div>
+
+          {/* Info pills */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+            {endsDate && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: C.card, border: `1px solid ${C.b1}`,
+                borderRadius: 10, padding: '7px 12px',
+                fontSize: 12, fontWeight: 600, color: isActive ? C.orange : C.t3,
+              }}>
+                <Clock size={12} color={isActive ? C.orange : C.t3} strokeWidth={2} />
+                до {endsDate}
+              </div>
+            )}
+            {campaign.requires_pin && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: C.goldFt, border: `1px solid ${C.goldGl}`,
+                borderRadius: 10, padding: '7px 12px',
+                fontSize: 12, fontWeight: 600, color: C.gold,
+              }}>
+                <Lock size={12} color={C.gold} strokeWidth={2} />
+                Требует PIN
+              </div>
+            )}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: C.card, border: `1px solid ${C.b1}`,
+              borderRadius: 10, padding: '7px 12px',
+              fontSize: 12, fontWeight: 600, color: C.t3,
+            }}>
+              <Wallet size={12} color={C.t3} strokeWidth={2} />
+              Бюджет: {formatGeo(campaign.budget)} GEO
+            </div>
+          </div>
+
+          {/* QR code */}
+          {qrImageUrl && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 12 }}>
+                QR-код кампании
+              </div>
+              <div style={{
+                background: C.card, border: `1px solid ${C.b1}`,
+                borderRadius: 20, padding: '20px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                marginBottom: 14,
+              }}>
+                <div style={{
+                  width: 200, height: 200,
+                  background: '#fff', borderRadius: 16, padding: 12,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                  marginBottom: 16, position: 'relative', overflow: 'hidden',
+                }}>
+                  {!qrLoaded && (
+                    <div style={{
+                      position: 'absolute', inset: 0, borderRadius: 16,
+                      background: 'rgba(255,255,255,0.95)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Loader2 size={24} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+                    </div>
+                  )}
+                  <img
+                    src={qrImageUrl}
+                    alt={`QR кампании ${campaign.id}`}
+                    onLoad={() => setQrLoaded(true)}
+                    style={{ width: '100%', height: '100%', borderRadius: 8, display: 'block' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                  <button onClick={sendQR} disabled={dlLoading} style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    background: dlSent ? C.geoFt : C.blue, color: dlSent ? C.geo : '#fff',
+                    border: dlSent ? `1px solid ${C.geoGl}` : 'none',
+                    borderRadius: 12, padding: '11px',
+                    fontSize: 13, fontWeight: 700,
+                    cursor: dlLoading ? 'not-allowed' : 'pointer',
+                    opacity: dlLoading ? 0.7 : 1,
+                    transition: 'all 0.2s',
+                    boxShadow: dlSent ? 'none' : `0 4px 14px ${C.blueGl}`,
+                  }}>
+                    {dlLoading
+                      ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                      : dlSent
+                        ? <CheckCircle size={14} color={C.geo} strokeWidth={2} />
+                        : <Send size={14} strokeWidth={2} />
+                    }
+                    {dlSent ? 'Отправлено' : 'В Telegram'}
+                  </button>
+                  <button onClick={copyLink} style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    background: copied ? C.geoFt : C.card,
+                    color: copied ? C.geo : C.t2,
+                    border: `1px solid ${copied ? C.geoGl : C.b1}`,
+                    borderRadius: 12, padding: '11px',
+                    fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}>
+                    {copied
+                      ? <CheckCircle size={14} color={C.geo} strokeWidth={2} />
+                      : <Copy size={14} strokeWidth={2} />
+                    }
+                    {copied ? 'Скопировано' : 'Ссылка'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowEdit(true)} style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: C.card, border: `1px solid ${C.b1}`,
+              borderRadius: 14, padding: '14px',
+              fontSize: 14, fontWeight: 700, color: C.t2, cursor: 'pointer',
+            }}>
+              <RefreshCw size={15} color={C.t2} strokeWidth={2} />
+              Изменить
+            </button>
+            {isActive && (
+              <button
+                onClick={() => { onStop(campaign.id); onClose(); }}
+                disabled={stopping === campaign.id}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  background: C.redFt, border: `1px solid rgba(255,59,92,0.2)`,
+                  borderRadius: 14, padding: '14px',
+                  fontSize: 14, fontWeight: 700, color: C.red,
+                  cursor: stopping === campaign.id ? 'not-allowed' : 'pointer',
+                  opacity: stopping === campaign.id ? 0.6 : 1,
+                }}>
+                {stopping === campaign.id
+                  ? <Loader2 size={15} color={C.red} style={{ animation: 'spin 1s linear infinite' }} />
+                  : <StopCircle size={15} color={C.red} strokeWidth={2} />
+                }
+                Остановить
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -900,7 +1148,7 @@ function OverviewTab({ business, stats, statsLoading, onShowForm }) {
 // ─── Tab: Кампании ────────────────────────────────────────────────────────────
 
 function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, pinExpires, pinLoading, pinCopied, onGeneratePin, onCopyPin, onReload }) {
-  const [editCampaign, setEditCampaign] = useState(null);
+  const [detailCampaign, setDetailCampaign] = useState(null);
 
   const allCampaigns = [...(business?.campaigns || [])].sort((a, b) => {
     if (a.active !== b.active) return (b.active ? 1 : 0) - (a.active ? 1 : 0);
@@ -940,7 +1188,7 @@ function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, 
             webappUrl={webappUrl}
             onStop={onStop}
             stopping={stopping}
-            onEdit={setEditCampaign}
+            onOpenDetail={setDetailCampaign}
           />
         ))
       )}
@@ -999,12 +1247,15 @@ function CampaignsTab({ business, webappUrl, onStop, stopping, onShowForm, pin, 
         )}
       </div>
 
-      {editCampaign && createPortal(
-        <CampaignEditModal
-          campaign={editCampaign}
-          balance={business?.balance || 0}
-          onClose={() => setEditCampaign(null)}
-          onSaved={() => { setEditCampaign(null); onReload && onReload(); }}
+      {detailCampaign && createPortal(
+        <CampaignDetailModal
+          campaign={detailCampaign}
+          business={business}
+          webappUrl={webappUrl}
+          onClose={() => setDetailCampaign(null)}
+          onStop={onStop}
+          stopping={stopping}
+          onSaved={() => { setDetailCampaign(null); onReload && onReload(); }}
         />,
         document.body
       )}
