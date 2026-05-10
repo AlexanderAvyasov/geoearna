@@ -127,17 +127,21 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
 
   if (businessError) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   if (!business) return res.status(403).json({ error: 'NOT_OWNER' });
-  if (business.balance < budget) return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
 
-  // Commission is taken at top-up — 100% of budget goes to rewards
+  // RPC computes 5% commission internally; pre-check here with same formula
   const rewardAmount = Math.floor(budget / max_visits);
   if (rewardAmount < 1) {
     return res.status(400).json({ error: 'REWARD_TOO_LOW', message: 'Increase budget or reduce activations' });
   }
+  const rewardsSum = rewardAmount * max_visits;
+  const commission = Math.max(Math.ceil(rewardsSum * 0.05), rewardsSum > 0 ? 1 : 0);
+  const totalCost  = rewardsSum + commission;
 
-  const commission = budget - rewardAmount * max_visits; // rounding residual only
+  if (business.balance < totalCost) {
+    return res.status(400).json({ error: 'INSUFFICIENT_BALANCE' });
+  }
 
-  // Atomically: deduct commission from business balance, credit platform_wallet, insert campaign
+  // Atomically: deduct commission → platform_wallet, record campaign; rewards paid per checkin
   const { data: campaignId, error: rpcError } = await supabase.rpc('create_campaign_with_commission', {
     p_business_id:      business.id,
     p_budget:           budget,
@@ -167,9 +171,9 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
   return res.json({
     campaign,
     breakdown: {
-      budget,
+      rewardsPool:         rewardsSum,
       commission,
-      totalToUsers: rewardAmount * max_visits,
+      totalCharged:        totalCost,
       rewardPerActivation: rewardAmount,
     },
   });

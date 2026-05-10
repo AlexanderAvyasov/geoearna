@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C, G, E, cardBase } from '../lib/design';
 
@@ -126,12 +127,7 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      p => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
-    );
+    getGeoPos().then(p => setUserPos(p)).catch(() => {});
   }, []);
 
   useEffect(() => {

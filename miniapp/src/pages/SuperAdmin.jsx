@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   LayoutDashboard, ShieldAlert, Store, Megaphone, Wallet, Users, Settings,
   TrendingUp, TrendingDown, Bell, AlertTriangle, CheckCircle, XCircle,
-  Loader2, Clock, User, Smartphone, FileText, MapPin, Lock, Shield,
+  Loader2, Clock, User, Smartphone, FileText, MapPin, Lock, Shield, CreditCard,
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode,
@@ -986,7 +986,7 @@ function WithdrawalSheet({ w, geoRate, onClose, onApprove, onReject, busy }) {
           {/* Details */}
           <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', borderRadius: 14, marginBottom: 16 }}>
             {[
-              [Smartphone, 'Payme', w.phone, C.blue],
+              [CreditCard, 'Карта', w.phone, C.blue],
               [User,       'Пользователь', w.users?.username ? `@${w.users.username}` : `ID ${w.users?.telegram_id}`, C.t2],
               [Wallet,     'Остаток', w.users?.balance != null ? `${formatGeo(w.users.balance)} GEO` : '—', C.t2],
               [Clock,      'Дата заявки', fmtDate(w.created_at), C.t3],

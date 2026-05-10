@@ -120,7 +120,15 @@ export default function Checkin() {
     if (!info) return;
 
     if (locError) {
-      setErrInfo({ Icon: MapPin, title: 'Нет геолокации', text: locError });
+      const isDenied = locError === 'denied';
+      setErrInfo({
+        Icon: MapPin,
+        title: isDenied ? 'Геолокация запрещена' : 'Нет геолокации',
+        text: isDenied
+          ? 'Чекин невозможен без доступа к геолокации.\n\nРазрешите доступ в настройках Telegram → Конфиденциальность → Геолокация, затем вернитесь в приложение.'
+          : locError,
+        retry: isDenied,
+      });
       setStatus('error');
       return;
     }
@@ -442,17 +450,28 @@ export default function Checkin() {
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
             {errInfo.title}
           </div>
-          <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.6, marginBottom: 36, maxWidth: 280 }}>
+          <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.6, marginBottom: 36, maxWidth: 280, whiteSpace: 'pre-line' }}>
             {errInfo.text}
           </div>
-          <Link to="/" style={{
-            background: C.surf, border: `1px solid ${C.b2}`,
-            color: C.purpleL, textDecoration: 'none',
-            padding: '14px 36px', borderRadius: 16,
-            fontWeight: 700, fontSize: 16,
-          }}>
-            На главную
-          </Link>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+            {errInfo.retry && (
+              <button onClick={() => window.location.reload()} style={{
+                background: C.geo, color: C.bg, border: 'none',
+                padding: '14px 36px', borderRadius: 16,
+                fontWeight: 700, fontSize: 16, cursor: 'pointer',
+              }}>
+                Попробовать снова
+              </button>
+            )}
+            <Link to="/" style={{
+              background: C.surf, border: `1px solid ${C.b2}`,
+              color: C.purpleL, textDecoration: 'none',
+              padding: '14px 36px', borderRadius: 16,
+              fontWeight: 700, fontSize: 16,
+            }}>
+              На главную
+            </Link>
+          </div>
         </>
       )}
     </div>

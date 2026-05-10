@@ -15,15 +15,18 @@ export function formatUzs(amount) {
   return Number(amount).toLocaleString('ru-RU');
 }
 
-export function isValidUzPhone(raw) {
-  const cleaned = String(raw).replace(/[\s\-\(\)]/g, '');
-  return /^\+998[0-9]{9}$/.test(cleaned);
+// Card number validation for Humo / Uzcard (16 digits)
+export function isValidCardNumber(raw) {
+  return /^\d{16}$/.test(String(raw).replace(/[\s\-]/g, ''));
 }
 
-export function normalizePhone(raw) {
-  let cleaned = String(raw).replace(/[\s\-\(\)]/g, '');
-  if (!cleaned.startsWith('+')) cleaned = '+' + cleaned;
-  return cleaned;
+export function normalizeCardNumber(raw) {
+  return String(raw).replace(/[\s\-]/g, '');
+}
+
+export function formatCardNumber(raw) {
+  const digits = String(raw).replace(/\D/g, '').slice(0, 16);
+  return digits.replace(/(.{4})/g, '$1 ').trim();
 }
 
 export function haversineMeters(a, b) {

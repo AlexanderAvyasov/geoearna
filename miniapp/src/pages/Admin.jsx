@@ -33,9 +33,14 @@ const TABS = [
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function calcReward(budget, visits) {
-  if (!budget || !visits) return 0;
-  return Math.floor(budget / visits);
+const PLATFORM_FEE = 0.05; // 5% комиссия платформы
+
+function calcCampaign(budget, visits) {
+  if (!budget || !visits || visits < 1) return { reward: 0, commission: 0, totalCost: 0 };
+  const reward     = Math.floor(budget / visits);
+  const rewardsSum = reward * visits;
+  const commission = Math.max(Math.ceil(rewardsSum * PLATFORM_FEE), rewardsSum > 0 ? 1 : 0);
+  return { reward, rewardsSum, commission, totalCost: rewardsSum + commission };
 }
 
 function formatUZS(amount) {
@@ -440,8 +445,8 @@ function CampaignForm({ balance, onClose, onCreated }) {
 
   const budgetNum = parseInt(budget, 10) || 0;
   const visitsNum = parseInt(visits, 10) || 0;
-  const reward    = calcReward(budgetNum, visitsNum);
-  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && budgetNum <= balance;
+  const { reward, rewardsSum, commission, totalCost } = calcCampaign(budgetNum, visitsNum);
+  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && totalCost <= balance;
   const today = new Date().toISOString().split('T')[0];
 
   async function handleSubmit(e) {
@@ -513,22 +518,43 @@ function CampaignForm({ balance, onClose, onCreated }) {
 
             {budgetNum > 0 && visitsNum > 0 && (
               <div style={{
-                background: reward >= 1 ? C.geoFt : C.redFt,
-                border: `1.5px solid ${reward >= 1 ? C.geoGl : 'rgba(255,59,92,0.25)'}`,
+                background: reward >= 1 && totalCost <= balance ? C.geoFt : C.redFt,
+                border: `1.5px solid ${reward >= 1 && totalCost <= balance ? C.geoGl : 'rgba(255,59,92,0.25)'}`,
                 borderRadius: 14, padding: '14px', marginBottom: 16,
               }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 13, color: C.t2, lineHeight: 2 }}>
-                  <div>Бюджет: <strong style={{ color: C.t1 }}>{formatGeo(budgetNum)} GEO</strong></div>
-                  <div style={{ borderTop: `1px solid ${C.b1}`, paddingTop: 6, marginTop: 2 }}>
-                    ÷ Активаций: <strong style={{ color: C.t1 }}>{visitsNum}</strong>
-                  </div>
-                  <div style={{ borderTop: `1px solid ${C.b1}`, paddingTop: 6, marginTop: 2, fontSize: 15, color: reward >= 1 ? C.geo : C.red, fontWeight: 900 }}>
-                    = За задание: <strong>{formatGeo(reward)} GEO</strong>
+                <div style={{ fontSize: 13, color: C.t2, lineHeight: 1 }}>
+                  {[
+                    ['Пул наград', `${formatGeo(rewardsSum)} GEO`],
+                    [`Комиссия платформы 5%`, `+ ${formatGeo(commission)} GEO`],
+                    ['Итого с вашего баланса', `${formatGeo(totalCost)} GEO`],
+                  ].map(([label, val], i) => (
+                    <div key={i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '9px 0',
+                      borderTop: i > 0 ? `1px solid ${C.b1}` : 'none',
+                    }}>
+                      <span>{label}</span>
+                      <strong style={{ color: i === 2 ? (totalCost <= balance ? C.geo : C.red) : C.t1 }}>{val}</strong>
+                    </div>
+                  ))}
+                  <div style={{
+                    borderTop: `1px solid ${C.b1}`, paddingTop: 9, marginTop: 0,
+                    display: 'flex', justifyContent: 'space-between',
+                  }}>
+                    <span>Награда за задание</span>
+                    <strong style={{ color: reward >= 1 ? C.geo : C.red, fontSize: 15 }}>
+                      {formatGeo(reward)} GEO
+                    </strong>
                   </div>
                 </div>
                 {reward < 1 && (
                   <div style={{ color: C.red, fontSize: 12, marginTop: 8, fontWeight: 600 }}>
                     Увеличьте бюджет или уменьшите активации
+                  </div>
+                )}
+                {reward >= 1 && totalCost > balance && (
+                  <div style={{ color: C.red, fontSize: 12, marginTop: 8, fontWeight: 600 }}>
+                    Недостаточно GEO — нужно ещё {formatGeo(totalCost - balance)} GEO
                   </div>
                 )}
               </div>

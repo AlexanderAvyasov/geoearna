@@ -6,25 +6,19 @@ const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
-const UZ_PHONE_RE = /^\+998[0-9]{9}$/;
-
-function normalizePhone(raw) {
-  let p = String(raw).replace(/[\s\-\(\)]/g, '');
-  if (!p.startsWith('+')) p = '+' + p;
-  return p;
-}
+const CARD_RE = /^\d{16}$/;
 
 router.post('/api/withdraw', validateTma, async (req, res) => {
   try {
-    const { amount, phone } = req.body;
+    const { amount, phone: rawCard } = req.body;
 
     if (!Number.isInteger(amount) || amount <= 0) {
       return res.status(400).json({ error: 'INVALID_PARAMS' });
     }
 
-    const normalizedPhone = normalizePhone(phone || '');
-    if (!UZ_PHONE_RE.test(normalizedPhone)) {
-      return res.status(400).json({ error: 'INVALID_PHONE' });
+    const cardNumber = String(rawCard || '').replace(/[\s\-]/g, '');
+    if (!CARD_RE.test(cardNumber)) {
+      return res.status(400).json({ error: 'INVALID_CARD' });
     }
 
     const geoRate = getGeoRate();
@@ -39,8 +33,8 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
 
     const { data, error } = await supabase.rpc('process_withdrawal', {
       p_user_id: req.user.id,
-      p_amount: amount,
-      p_phone: normalizedPhone,
+      p_amount:  amount,
+      p_phone:   cardNumber,
     });
 
     if (error) {
@@ -53,13 +47,14 @@ router.post('/api/withdraw', validateTma, async (req, res) => {
 
     const row = Array.isArray(data) ? data[0] : data;
     const uzsAmount = Math.round(amount * geoRate);
+    const maskedCard = `**** **** **** ${cardNumber.slice(-4)}`;
 
     sendMessage(
       req.user.telegram_id,
       `✅ *Заявка на вывод принята!*\n\n` +
       `💎 GEO: *${amount.toLocaleString('ru-RU')} GEO*\n` +
       `💵 К выплате: *${uzsAmount.toLocaleString('ru-RU')} UZS*\n` +
-      `📱 Payme: \`${normalizedPhone}\`\n\n` +
+      `💳 Карта: \`${maskedCard}\`\n\n` +
       `Средства поступят в течение 24 часов.\n` +
       `Остаток: *${row.new_balance.toLocaleString('ru-RU')} GEO*`
     ).catch(() => {});

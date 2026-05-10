@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { geoToUzs, formatGeo, formatUzs, isValidUzPhone, normalizePhone } from '../lib/geo';
+import { geoToUzs, formatGeo, formatUzs, isValidCardNumber, normalizeCardNumber, formatCardNumber } from '../lib/geo';
 import { C, E, cardBase, inputStyle } from '../lib/design';
 
 const SYNE = { fontFamily: "'Syne', sans-serif" };
 
-function Field({ label, value, onChange, placeholder, type = 'text', inputMode, hint }) {
+function Field({ label, value, onChange, placeholder, inputMode, hint }) {
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 18 }}>
@@ -18,7 +18,6 @@ function Field({ label, value, onChange, placeholder, type = 'text', inputMode, 
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        type={type}
         inputMode={inputMode}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -32,14 +31,14 @@ function Field({ label, value, onChange, placeholder, type = 'text', inputMode, 
 }
 
 export default function Withdraw() {
-  const [phone,     setPhone]     = useState('');
-  const [amount,    setAmount]    = useState('');
-  const [balance,   setBalance]   = useState(0);
-  const [geoRate,   setGeoRate]   = useState(1000);
-  const [success,   setSuccess]   = useState(false);
+  const [cardNumber, setCardNumber] = useState('');
+  const [amount,     setAmount]     = useState('');
+  const [balance,    setBalance]    = useState(0);
+  const [geoRate,    setGeoRate]    = useState(1000);
+  const [success,    setSuccess]    = useState(false);
   const [successData, setSuccessData] = useState(null);
-  const [error,     setError]     = useState('');
-  const [loading,   setLoading]   = useState(true);
+  const [error,      setError]      = useState('');
+  const [loading,    setLoading]    = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -56,36 +55,41 @@ export default function Withdraw() {
       .finally(() => setLoading(false));
   }, []);
 
-  const MIN_UZS   = 50_000;
-  const geoVal    = Number(amount.replace(/\s+/g, '').replace(',', '.')) || 0;
+  const MIN_UZS    = 50_000;
+  const geoVal     = Number(amount.replace(/\s+/g, '').replace(',', '.')) || 0;
   const uzsPreview = geoToUzs(geoVal, geoRate);
-  const minGeo    = Math.ceil(MIN_UZS / geoRate);
-  const belowMin  = geoVal > 0 && uzsPreview < MIN_UZS;
-  const overMax   = geoVal > balance;
+  const minGeo     = Math.ceil(MIN_UZS / geoRate);
+  const belowMin   = geoVal > 0 && uzsPreview < MIN_UZS;
+  const overMax    = geoVal > balance;
+  const cardDigits = normalizeCardNumber(cardNumber);
+  const cardValid  = isValidCardNumber(cardDigits);
+
+  function handleCardInput(e) {
+    setCardNumber(formatCardNumber(e.target.value));
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
 
-    if (!phone.trim())           return setError('Введите номер телефона Payme.');
-    if (!isValidUzPhone(phone))  return setError('Формат: +998901234567');
+    if (!cardValid) return setError('Введите корректный номер карты (16 цифр).');
     if (!Number.isFinite(geoVal) || geoVal <= 0) return setError('Введите корректную сумму.');
-    if (belowMin)                return setError(`Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(minGeo)} GEO)`);
-    if (geoVal > balance)        return setError(`Максимум: ${formatGeo(balance)} GEO`);
+    if (belowMin) return setError(`Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(minGeo)} GEO)`);
+    if (geoVal > balance) return setError(`Максимум: ${formatGeo(balance)} GEO`);
 
     setSubmitting(true);
     try {
       const r = await apiFetch('/api/withdraw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: normalizePhone(phone), amount: geoVal }),
+        body: JSON.stringify({ phone: cardDigits, amount: geoVal }),
       });
       const data = await r.json();
       if (!r.ok) {
         const msgs = {
           INSUFFICIENT_FUNDS: 'Недостаточно GEO на балансе.',
-          INVALID_PHONE: 'Неверный формат телефона. Пример: +998901234567',
-          BELOW_MINIMUM: `Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(data.minGeo || minGeo)} GEO)`,
+          INVALID_CARD:       'Неверный номер карты. Введите 16 цифр.',
+          BELOW_MINIMUM:      `Минимум вывода: ${formatUzs(MIN_UZS)} UZS (${formatGeo(data.minGeo || minGeo)} GEO)`,
         };
         setError(msgs[data.error] || 'Не удалось создать заявку. Попробуйте позже.');
         return;
@@ -100,7 +104,7 @@ export default function Withdraw() {
     }
   }
 
-  const disabled = submitting || loading || belowMin || overMax;
+  const disabled = submitting || loading || belowMin || overMax || !cardValid;
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.4s ease both' }}>
@@ -169,12 +173,12 @@ export default function Withdraw() {
                 {formatGeo(geoVal)} GEO
               </div>
               <div style={{ fontSize: 14, color: C.t3 }}>
-                = {formatUzs(successData?.uzsAmount || uzsPreview)} UZS → Payme
+                = {formatUzs(successData?.uzsAmount || uzsPreview)} UZS → на карту
               </div>
             </div>
 
             <div style={{ color: C.t3, fontSize: 14, marginBottom: 32, lineHeight: 1.6 }}>
-              Перевод на Payme в течение 24 часов.<br />
+              Перевод на карту в течение 24 часов.<br />
               Остаток: <strong style={{ color: C.t1 }}>{formatGeo(balance)} GEO</strong>
             </div>
 
@@ -190,14 +194,41 @@ export default function Withdraw() {
         ) : (
           <form onSubmit={handleSubmit} style={{ animation: 'fadeUp 0.35s 0.1s both' }}>
             <div style={{ ...cardBase, border: `0.5px solid ${C.b1}`, padding: '20px 16px', marginBottom: 12 }}>
+              {/* Card number */}
               <Field
-                label="Номер Payme"
-                value={phone}
-                onChange={e => setPhone(e.target.value)}
-                placeholder="+998 90 123 45 67"
-                type="tel"
-                hint="Формат: +998XXXXXXXXX"
+                label="Номер карты (Humo / Uzcard)"
+                value={cardNumber}
+                onChange={handleCardInput}
+                placeholder="0000 0000 0000 0000"
+                inputMode="numeric"
+                hint="16 цифр — Humo или Uzcard"
               />
+
+              {/* Card type badge (show after 4+ digits) */}
+              {cardDigits.length >= 4 && (
+                <div style={{
+                  display: 'flex', gap: 8, marginTop: -8, marginBottom: 14,
+                }}>
+                  {[
+                    { label: 'Humo',   prefix: '9860' },
+                    { label: 'Uzcard', prefix: '8600' },
+                  ].map(({ label, prefix }) => {
+                    const match = cardDigits.startsWith(prefix);
+                    return (
+                      <div key={label} style={{
+                        padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+                        background: match ? C.geoDim : C.t4,
+                        color: match ? C.geo : C.t3,
+                        border: `0.5px solid ${match ? C.geoGl : C.b1}`,
+                        transition: 'all 0.15s',
+                      }}>
+                        {label}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <Field
                 label="Сумма (GEO)"
                 value={amount}
@@ -226,7 +257,7 @@ export default function Withdraw() {
                   borderRadius: 12, padding: '12px 14px', marginBottom: 14,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                  <span style={{ fontSize: 14, color: C.t3 }}>Получите на Payme</span>
+                  <span style={{ fontSize: 14, color: C.t3 }}>Получите на карту</span>
                   <span style={{ fontWeight: 700, color: belowMin ? C.red : C.geo, fontSize: 16 }}>
                     {formatUzs(uzsPreview)} UZS
                   </span>
@@ -291,7 +322,7 @@ export default function Withdraw() {
             </button>
 
             <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: C.t3 }}>
-              1 GEO = {geoRate} UZS
+              1 GEO = {geoRate} UZS · без комиссии
             </div>
           </form>
         )}

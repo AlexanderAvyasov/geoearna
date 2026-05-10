@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle, Store, ChevronRight, Map as MapIcon } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
+import { getGeoPos } from '../lib/geoPos';
 import { C, E, cardBase, pressable } from '../lib/design';
 
 const TASK_ICONS = {
@@ -261,12 +262,7 @@ export default function Home() {
   useEffect(() => { loadCampaigns(); }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      p => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {},
-      { maximumAge: 60000, timeout: 10000 }
-    );
+    getGeoPos().then(p => setUserPos(p)).catch(() => {});
   }, []);
 
   const displayed = (() => {

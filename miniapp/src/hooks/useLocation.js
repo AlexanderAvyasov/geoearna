@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getGeoPos } from '../lib/geoPos';
 
 export function useLocation() {
   const [lat, setLat] = useState(null);
@@ -7,32 +8,18 @@ export function useLocation() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setError('Геолокация не поддерживается в этом браузере.');
-      setLoading(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLat(position.coords.latitude);
-        setLng(position.coords.longitude);
-        setLoading(false);
-      },
-      (positionError) => {
-        if (positionError.code === positionError.PERMISSION_DENIED) {
-          setError('Разрешите доступ к геолокации, чтобы проверить чекин.');
+    getGeoPos()
+      .then(pos => { setLat(pos.lat); setLng(pos.lng); })
+      .catch(err => {
+        if (err.code === 1 || err.message === 'PERMISSION_DENIED') {
+          setError('denied');
+        } else if (err.message === 'UNSUPPORTED') {
+          setError('Геолокация не поддерживается в этом браузере.');
         } else {
-          setError('Не удалось определить местоположение. Попробуйте еще раз.');
+          setError('Не удалось определить местоположение. Попробуйте ещё раз.');
         }
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 10000,
-      }
-    );
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   return { lat, lng, error, loading };

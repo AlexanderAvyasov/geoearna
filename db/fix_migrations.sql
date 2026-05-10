@@ -251,6 +251,8 @@ CREATE INDEX IF NOT EXISTS idx_promo_claims_user_day   ON promo_claims(user_id, 
 -- ── 15. RPC-функции ───────────────────────────────────────────────────────────
 
 -- Подтверждение топапа
+-- При подтверждении GEO «входит» в систему: зачисляется бизнесу
+-- И фиксируется в platform_wallet (платформа получила реальные деньги).
 CREATE OR REPLACE FUNCTION confirm_topup(p_request_id INTEGER)
 RETURNS void AS $$
 DECLARE
@@ -263,7 +265,24 @@ BEGIN
      FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION 'REQUEST_NOT_FOUND'; END IF;
   UPDATE topup_requests SET status = 'confirmed', processed_at = NOW() WHERE id = p_request_id;
-  UPDATE businesses SET balance = balance + v_amount WHERE id = v_business_id;
+  UPDATE businesses      SET balance = balance + v_amount WHERE id = v_business_id;
+  UPDATE platform_wallet SET balance = balance + v_amount WHERE id = 1;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Одобрение вывода (атомично: статус + списание из platform_wallet)
+-- При одобрении GEO «выходит» из системы: платформа платит реальные деньги.
+CREATE OR REPLACE FUNCTION approve_withdrawal(p_withdrawal_id INTEGER)
+RETURNS void AS $$
+DECLARE
+  v_amount INTEGER;
+BEGIN
+  SELECT amount INTO v_amount
+    FROM withdrawals WHERE id = p_withdrawal_id AND status = 'pending'
+    FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'NOT_FOUND'; END IF;
+  UPDATE withdrawals     SET status = 'approved', processed_at = NOW() WHERE id = p_withdrawal_id;
+  UPDATE platform_wallet SET balance = balance - v_amount WHERE id = 1;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -330,7 +349,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Создание кампании (атомично, с комиссией)
+-- Создание кампании (атомично, с комиссией платформы 5%)
+-- Итого с бизнеса списывается: reward_amount * max_visits + 5% комиссии.
+-- 5% идут в platform_wallet. Остальное расходуется по мере чекинов.
 CREATE OR REPLACE FUNCTION create_campaign_with_commission(
   p_business_id INTEGER, p_budget INTEGER, p_reward_amount INTEGER,
   p_max_visits INTEGER, p_task_type VARCHAR, p_task_description TEXT,
@@ -338,17 +359,23 @@ CREATE OR REPLACE FUNCTION create_campaign_with_commission(
 ) RETURNS INTEGER AS $$
 DECLARE
   v_biz_balance INTEGER;
+  v_rewards_sum INTEGER;
   v_commission  INTEGER;
+  v_total_cost  INTEGER;
   v_campaign_id INTEGER;
 BEGIN
   SELECT balance INTO v_biz_balance FROM businesses WHERE id = p_business_id FOR UPDATE;
-  IF v_biz_balance < p_budget THEN RAISE EXCEPTION 'INSUFFICIENT_BALANCE'; END IF;
-  v_commission := p_budget - (p_reward_amount * p_max_visits);
-  UPDATE businesses SET balance = balance - v_commission WHERE id = p_business_id;
+  v_rewards_sum := p_reward_amount * p_max_visits;
+  -- 5% комиссия, минимум 1 GEO если бюджет ненулевой
+  v_commission  := GREATEST(CEIL(v_rewards_sum * 0.05)::INTEGER, CASE WHEN v_rewards_sum > 0 THEN 1 ELSE 0 END);
+  v_total_cost  := v_rewards_sum + v_commission;
+  IF v_biz_balance < v_total_cost THEN RAISE EXCEPTION 'INSUFFICIENT_BALANCE'; END IF;
+  -- Немедленно списываем комиссию; награды списываются по мере чекинов
+  UPDATE businesses      SET balance = balance - v_commission WHERE id = p_business_id;
   UPDATE platform_wallet SET balance = balance + v_commission WHERE id = 1;
   INSERT INTO campaigns (business_id, budget, reward_amount, max_visits,
     task_type, task_description, requires_pin, ends_at, active)
-  VALUES (p_business_id, p_budget, p_reward_amount, p_max_visits,
+  VALUES (p_business_id, v_rewards_sum, p_reward_amount, p_max_visits,
     p_task_type, p_task_description, p_requires_pin, p_ends_at, true)
   RETURNING id INTO v_campaign_id;
   INSERT INTO platform_transactions (campaign_id, business_id, amount)

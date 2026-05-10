@@ -27,8 +27,8 @@ const SLIDES = [
     accent: C.gold,
     accentDim: C.goldFt,
     accentGl:  C.goldGl,
-    title: 'Вывод\nна Payme',
-    text: 'Конвертируйте GEO в сумы и выводите на Payme в любой момент. Без комиссии для пользователей.',
+    title: 'Вывод\nна карту',
+    text: 'Конвертируйте GEO в сумы и выводите на Humo или Uzcard в любой момент. Без комиссии для пользователей.',
   },
 ];
 

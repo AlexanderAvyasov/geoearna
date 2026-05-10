@@ -99,22 +99,24 @@ router.post('/api/superadmin/withdrawals/:id/approve', ...SA, async (req, res) =
     if (fetchErr || !wd) return res.status(404).json({ error: 'NOT_FOUND' });
     if (wd.status !== 'pending') return res.status(400).json({ error: 'NOT_PENDING' });
 
-    const { error } = await supabase
-      .from('withdrawals')
-      .update({ status: 'approved', processed_at: new Date().toISOString() })
-      .eq('id', id);
+    // Атомично: одобряем вывод + списываем из platform_wallet
+    const { error } = await supabase.rpc('approve_withdrawal', { p_withdrawal_id: id });
 
-    if (error) throw error;
+    if (error) {
+      if (error.message?.includes('NOT_FOUND')) return res.status(404).json({ error: 'NOT_FOUND' });
+      throw error;
+    }
 
     const geoRate   = getGeoRate();
     const uzsAmount = Math.round(wd.amount * geoRate);
 
+    const maskedCard = wd.phone ? `**** **** **** ${String(wd.phone).slice(-4)}` : '—';
     sendMessage(
       wd.users.telegram_id,
       `✅ *Вывод одобрен!*\n\n` +
       `💎 ${wd.amount.toLocaleString('ru-RU')} GEO → ${uzsAmount.toLocaleString('ru-RU')} UZS\n` +
-      `📱 Payme: \`${wd.phone}\`\n\n` +
-      `Средства отправлены на ваш Payme-кошелёк.`
+      `💳 Карта: \`${maskedCard}\`\n\n` +
+      `Средства отправлены на вашу карту.`
     ).catch(() => {});
 
     return res.json({ ok: true });
