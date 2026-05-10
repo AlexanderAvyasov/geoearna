@@ -1,5 +1,6 @@
-// Shared geolocation helper with sessionStorage caching and permissions pre-check.
-// All pages import getGeoPos() instead of calling navigator.geolocation directly.
+// Shared geolocation helper with sessionStorage caching.
+// Calling getGeoPos() triggers the browser/Telegram permission dialog
+// if permission has not been granted yet — no pre-check, no settings redirect.
 
 const CACHE_KEY = '_geo_pos';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -18,46 +19,34 @@ function writeCache(lat, lng) {
   } catch {}
 }
 
-function rawGet(maxAge) {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        writeCache(pos.coords.latitude, pos.coords.longitude);
-        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      err => reject(err),
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: maxAge }
-    );
-  });
+export function clearGeoCache() {
+  try { sessionStorage.removeItem(CACHE_KEY); } catch {}
 }
 
 // Returns Promise<{ lat, lng }>.
-// Rejects with err.code === 1 (PERMISSION_DENIED) or err.message === 'UNSUPPORTED'.
-export function getGeoPos() {
+// Uses cache when fresh. On miss — calls getCurrentPosition which:
+//   • shows the system permission dialog if permission is 'prompt'
+//   • returns immediately if permission is already 'granted'
+//   • rejects with err.code === 1 if permission is 'denied' at OS level
+export function getGeoPos({ forceRefresh = false } = {}) {
   if (!navigator?.geolocation) {
     return Promise.reject(Object.assign(new Error('UNSUPPORTED'), { code: 0 }));
   }
 
-  const cached = readCache();
-  if (cached) return Promise.resolve(cached);
-
-  if (navigator.permissions) {
-    return navigator.permissions
-      .query({ name: 'geolocation' })
-      .then(result => {
-        if (result.state === 'denied') {
-          return Promise.reject(Object.assign(new Error('PERMISSION_DENIED'), { code: 1 }));
-        }
-        // 'granted' → browser already has permission, use large maxAge so it returns instantly
-        // 'prompt'  → will show the permission dialog once
-        return rawGet(result.state === 'granted' ? CACHE_TTL : 0);
-      })
-      .catch(err => {
-        // permissions API threw (some browsers don't support it) — fall back to direct call
-        if (err.code === 1) return Promise.reject(err);
-        return rawGet(10000);
-      });
+  if (!forceRefresh) {
+    const cached = readCache();
+    if (cached) return Promise.resolve(cached);
   }
 
-  return rawGet(10000);
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        writeCache(lat, lng);
+        resolve({ lat, lng });
+      },
+      err => reject(err),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    );
+  });
 }

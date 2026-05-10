@@ -64,7 +64,7 @@ export default function Checkin() {
   const token   = useMemo(() => searchParams.get('token') || '', [searchParams]);
   const isPromo = useMemo(() => searchParams.get('promo') === '1', [searchParams]);
 
-  const { lat, lng, error: locError, loading: locLoading } = useLocation();
+  const { lat, lng, error: locError, loading: locLoading, retry: retryGeo } = useLocation();
 
   const [status,       setStatus]       = useState('loading');
   const [reward,       setReward]       = useState(null);
@@ -120,14 +120,14 @@ export default function Checkin() {
     if (!info) return;
 
     if (locError) {
-      const isDenied = locError === 'denied';
       setErrInfo({
         Icon: MapPin,
-        title: isDenied ? 'Геолокация запрещена' : 'Нет геолокации',
-        text: isDenied
-          ? 'Чекин невозможен без доступа к геолокации.\n\nРазрешите доступ в настройках Telegram → Конфиденциальность → Геолокация, затем вернитесь в приложение.'
-          : locError,
-        retry: isDenied,
+        title: locError === 'denied_hard' ? 'Доступ запрещён' : 'Нет доступа к геолокации',
+        text: locError === 'denied_hard'
+          ? 'Браузер заблокировал геолокацию.\n\nОткройте Настройки Telegram → Конфиденциальность → Геолокация и разрешите доступ, затем вернитесь.'
+          : 'Чекин невозможен без геолокации. Нажмите кнопку ниже — браузер запросит разрешение.',
+        showRetry: locError === 'denied',
+        showSettings: locError === 'denied_hard',
       });
       setStatus('error');
       return;
@@ -454,13 +454,13 @@ export default function Checkin() {
             {errInfo.text}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
-            {errInfo.retry && (
-              <button onClick={() => window.location.reload()} style={{
+            {errInfo.showRetry && (
+              <button onClick={retryGeo} style={{
                 background: C.geo, color: C.bg, border: 'none',
                 padding: '14px 36px', borderRadius: 16,
                 fontWeight: 700, fontSize: 16, cursor: 'pointer',
               }}>
-                Попробовать снова
+                Разрешить доступ к геолокации
               </button>
             )}
             <Link to="/" style={{

@@ -251,8 +251,9 @@ CREATE INDEX IF NOT EXISTS idx_promo_claims_user_day   ON promo_claims(user_id, 
 -- ── 15. RPC-функции ───────────────────────────────────────────────────────────
 
 -- Подтверждение топапа
--- При подтверждении GEO «входит» в систему: зачисляется бизнесу
--- И фиксируется в platform_wallet (платформа получила реальные деньги).
+-- При подтверждении GEO зачисляется бизнесу.
+-- platform_wallet НЕ трогается — платформа зарабатывает только на комиссии (5%)
+-- при создании кампании, не при пополнении.
 CREATE OR REPLACE FUNCTION confirm_topup(p_request_id INTEGER)
 RETURNS void AS $$
 DECLARE
@@ -266,23 +267,18 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'REQUEST_NOT_FOUND'; END IF;
   UPDATE topup_requests SET status = 'confirmed', processed_at = NOW() WHERE id = p_request_id;
   UPDATE businesses      SET balance = balance + v_amount WHERE id = v_business_id;
-  UPDATE platform_wallet SET balance = balance + v_amount WHERE id = 1;
 END;
 $$ LANGUAGE plpgsql;
 
--- Одобрение вывода (атомично: статус + списание из platform_wallet)
--- При одобрении GEO «выходит» из системы: платформа платит реальные деньги.
+-- Одобрение вывода (атомично: только статус)
+-- platform_wallet НЕ уменьшается — он хранит только заработанные комиссии (прибыль).
+-- Реальная выплата идёт из операционного счёта платформы, а не из platform_wallet.
 CREATE OR REPLACE FUNCTION approve_withdrawal(p_withdrawal_id INTEGER)
 RETURNS void AS $$
-DECLARE
-  v_amount INTEGER;
 BEGIN
-  SELECT amount INTO v_amount
-    FROM withdrawals WHERE id = p_withdrawal_id AND status = 'pending'
-    FOR UPDATE;
+  UPDATE withdrawals SET status = 'approved', processed_at = NOW()
+   WHERE id = p_withdrawal_id AND status = 'pending';
   IF NOT FOUND THEN RAISE EXCEPTION 'NOT_FOUND'; END IF;
-  UPDATE withdrawals     SET status = 'approved', processed_at = NOW() WHERE id = p_withdrawal_id;
-  UPDATE platform_wallet SET balance = balance - v_amount WHERE id = 1;
 END;
 $$ LANGUAGE plpgsql;
 
