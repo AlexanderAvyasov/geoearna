@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
 import { C, E } from './lib/design';
@@ -662,9 +662,9 @@ export default function App() {
       {!onboarded ? (
         <Onboarding onDone={handleOnboardDone} />
       ) : (
-        <HashRouter>
+        <BrowserRouter>
           <AppLayout />
-        </HashRouter>
+        </BrowserRouter>
       )}
     </LanguageProvider>
   );
