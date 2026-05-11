@@ -120,6 +120,7 @@ export default function MapPage() {
   const [userPos,   setUserPos]   = useState(null);
   const [selected,  setSelected]  = useState(null);
   const [loading,   setLoading]   = useState(true);
+  const [mapError,  setMapError]  = useState(false);
 
   useEffect(() => {
     apiFetch('/api/campaigns')
@@ -134,21 +135,33 @@ export default function MapPage() {
   }, []);
 
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    const el = containerRef.current;
+    if (!el || mapRef.current) return;
 
-    const center = [41.2995, 69.2401];
-    const map = L.map(containerRef.current, {
-      center, zoom: 13,
-      zoomControl: false, attributionControl: false,
-    });
+    // Clear any stale Leaflet binding left by a prior mount (React StrictMode or fast-nav)
+    if (el._leaflet_id) { delete el._leaflet_id; }
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd',
-    }).addTo(map);
+    let map, t;
+    try {
+      map = L.map(el, {
+        center: [41.2995, 69.2401], zoom: 13,
+        zoomControl: false, attributionControl: false,
+      });
 
-    mapRef.current = map;
-    return () => { map.remove(); mapRef.current = null; };
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        subdomains: 'abcd',
+      }).addTo(map);
+
+      mapRef.current = map;
+      t = setTimeout(() => map.invalidateSize(), 150);
+    } catch (e) {
+      console.error('[Map] init error:', e);
+      setMapError(true);
+      return;
+    }
+
+    return () => { clearTimeout(t); try { map.remove(); } catch {} mapRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -248,10 +261,10 @@ export default function MapPage() {
       </div>
 
       {/* Map */}
-      <div style={{ position: 'relative', flex: '0 0 48vh' }}>
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <div ref={containerRef} style={{ width: '100%', height: '48vh', minHeight: 240 }} />
 
-        {loading && (
+        {(loading || mapError) && (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 10,
             background: C.surf,
@@ -259,7 +272,9 @@ export default function MapPage() {
             alignItems: 'center', justifyContent: 'center', gap: 14,
           }}>
             <MapIcon size={48} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.4 }} />
-            <div style={{ color: C.t3, fontSize: 14, fontWeight: 600 }}>{t('map.loading')}</div>
+            <div style={{ color: C.t3, fontSize: 14, fontWeight: 600 }}>
+              {mapError ? 'Ошибка загрузки карты' : t('map.loading')}
+            </div>
           </div>
         )}
 
