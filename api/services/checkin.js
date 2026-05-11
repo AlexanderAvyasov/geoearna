@@ -70,7 +70,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   // ── Try campaign-level QR token first ─────────────────────────────────────
   const { data: campaignByToken, error: campLookupErr } = await supabase
     .from('campaigns')
-    .select('*, businesses(*)')
+    .select('*')
     .eq('qr_token', qrToken)
     .maybeSingle();
 
@@ -80,7 +80,16 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   }
 
   if (campaignByToken) {
-    business = campaignByToken.businesses;
+    const { data: bizByToken, error: bizTokenErr } = await supabase
+      .from('businesses')
+      .select('*')
+      .eq('id', campaignByToken.business_id)
+      .maybeSingle();
+    if (bizTokenErr || !bizByToken) {
+      console.error('checkin business lookup by campaign error', bizTokenErr);
+      throw Object.assign(new Error('INTERNAL_ERROR'), { code: 'INTERNAL_ERROR' });
+    }
+    business = bizByToken;
     const endsAt = campaignByToken.ends_at ? new Date(campaignByToken.ends_at) : null;
     const valid  = campaignByToken.active && (!endsAt || endsAt > now) && campaignByToken.visits_count < campaignByToken.max_visits;
     campaign = valid ? campaignByToken : null;

@@ -11,10 +11,10 @@ router.get('/api/checkin/info', async (req, res) => {
 
   const now = new Date();
 
-  // ── Try campaign-level QR token first ───────────────────────────────────────
+  // ── Try campaign-level QR token first ────────────────────────────────────────
   const { data: campaignRow, error: campErr } = await supabase
     .from('campaigns')
-    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits, businesses(id, name, address)')
+    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits, business_id')
     .eq('qr_token', token)
     .maybeSingle();
 
@@ -29,7 +29,17 @@ router.get('/api/checkin/info', async (req, res) => {
     if (!campaignRow.active || expired || exhausted) {
       return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
     }
-    const biz = campaignRow.businesses;
+
+    const { data: biz, error: bizCampErr } = await supabase
+      .from('businesses')
+      .select('id, name, address')
+      .eq('id', campaignRow.business_id)
+      .maybeSingle();
+    if (bizCampErr) {
+      console.error('[checkin/info] biz lookup error', bizCampErr);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+
     return res.json({
       businessName:    biz?.name        || '',
       address:         biz?.address     || null,
@@ -41,10 +51,10 @@ router.get('/api/checkin/info', async (req, res) => {
     });
   }
 
-  // ── Fallback: business-level QR token (backward compat) ─────────────────────
+  // ── Fallback: business-level QR token ────────────────────────────────────────
   const { data: business, error: bizErr } = await supabase
     .from('businesses')
-    .select('id, name, address, campaigns(id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits)')
+    .select('id, name, address')
     .eq('qr_token', token)
     .maybeSingle();
 
@@ -57,18 +67,28 @@ router.get('/api/checkin/info', async (req, res) => {
     return res.status(404).json({ error: 'INVALID_QR_TOKEN' });
   }
 
+  const { data: campaigns, error: campListErr } = await supabase
+    .from('campaigns')
+    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits')
+    .eq('business_id', business.id);
+
+  if (campListErr) {
+    console.error('[checkin/info] campaign list error', campListErr);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+
   const cidParam = req.query.cid ? parseInt(req.query.cid, 10) : null;
   let campaign;
 
   if (cidParam) {
-    campaign = (business.campaigns || []).find(c => c.id === cidParam);
+    campaign = (campaigns || []).find(c => c.id === cidParam);
     if (!campaign || !campaign.active ||
         (campaign.ends_at && new Date(campaign.ends_at) <= now) ||
         campaign.visits_count >= campaign.max_visits) {
       return res.status(404).json({ error: 'NO_ACTIVE_CAMPAIGN' });
     }
   } else {
-    campaign = (business.campaigns || []).find(c => {
+    campaign = (campaigns || []).find(c => {
       if (!c.active) return false;
       if (c.ends_at && new Date(c.ends_at) <= now) return false;
       if (c.visits_count >= c.max_visits) return false;

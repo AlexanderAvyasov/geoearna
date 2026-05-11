@@ -18,6 +18,9 @@ import ChannelSub from './pages/ChannelSub';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
+// Module-level — computed once on load, reliable across all Telegram clients
+const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
+
 // ─── Browser gate (shown when not running inside Telegram Mini App) ───────────
 function BrowserGate() {
   return (
@@ -617,18 +620,6 @@ function AppLayout() {
 
 export default function App() {
   useTelegram();
-
-  // If running in a regular browser (not Telegram Mini App) — show gate screen
-  const isInTelegram = Boolean(window.Telegram?.WebApp?.platform) || import.meta.env.DEV;
-  if (!isInTelegram) {
-    return (
-      <LanguageProvider>
-        <style>{GLOBAL_CSS}</style>
-        <BrowserGate />
-      </LanguageProvider>
-    );
-  }
-
   const { ready, fading } = useAppReady();
   const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem(ONBOARD_KEY));
@@ -637,6 +628,15 @@ export default function App() {
     localStorage.setItem(ONBOARD_KEY, '1');
     if (mode) localStorage.setItem('geo_mode', mode);
     setOnboarded(true);
+  }
+
+  if (!IS_TELEGRAM) {
+    return (
+      <LanguageProvider>
+        <style>{GLOBAL_CSS}</style>
+        <BrowserGate />
+      </LanguageProvider>
+    );
   }
 
   return (
