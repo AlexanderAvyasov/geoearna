@@ -8,7 +8,7 @@ import {
 import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
 import RippleButton from '../lib/RippleButton';
-import { apiFetch } from '../lib/api';
+import { apiFetch, API_BASE } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -106,8 +106,9 @@ export default function Checkin() {
       return;
     }
 
+    // Info endpoints are public — use plain fetch, no initData wait
     if (isGeohunt) {
-      apiFetch(`/api/geohunt/info?token=${encodeURIComponent(token)}`)
+      fetch(`${API_BASE}/api/geohunt/info?token=${encodeURIComponent(token)}`)
         .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
         .then(({ ok, data }) => {
           if (!ok) {
@@ -117,6 +118,7 @@ export default function Checkin() {
               HUNT_EXPIRED:     { Icon: Clock,        titleKey: 'promo.PROMO_EXPIRED.title',  textKey: 'promo.PROMO_EXPIRED.text' },
               HUNT_NOT_STARTED: { Icon: Timer,        titleKey: 'promo.PROMO_INACTIVE.title', textKey: 'promo.PROMO_INACTIVE.text' },
               CODE_USED:        { Icon: XCircle,      titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
+              INTERNAL_ERROR:   { Icon: Wifi,         titleKey: 'err.UNKNOWN.title',           textKey: 'err.UNKNOWN.text' },
             };
             const code = data?.error || 'UNKNOWN';
             setErrInfo(GEOHUNT_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
@@ -136,7 +138,7 @@ export default function Checkin() {
       ? `/api/promo/info?token=${encodeURIComponent(token)}`
       : `/api/checkin/info?token=${encodeURIComponent(token)}`;
 
-    apiFetch(endpoint)
+    fetch(`${API_BASE}${endpoint}`)
       .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
       .then(({ ok, data }) => {
         if (!ok) {
@@ -180,7 +182,20 @@ export default function Checkin() {
       setStatus('error');
       return;
     }
-    if (locLoading || lat == null || lng == null) return;
+    // If geolocation is still pending, set a 12s bail-out so we don't spin forever
+    if (locLoading || lat == null || lng == null) {
+      const bail = setTimeout(() => {
+        if (sent.current) return;
+        setErrInfo({
+          Icon: MapPin,
+          titleKey: 'err.GEO_DENIED.title',
+          textKey:  'err.GEO_DENIED.text',
+          showRetry: true,
+        });
+        setStatus('error');
+      }, 12000);
+      return () => clearTimeout(bail);
+    }
 
     if (!isPromo && businessInfo?.requiresPin) {
       setStatus('pin');

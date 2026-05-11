@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
-  Store, ChevronRight, Map as MapIcon, Tv2,
+  Store, ChevronRight, Map as MapIcon, Tv2, Crosshair,
 } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
 import { C, E, cardBase, pressable } from '../lib/design';
@@ -340,12 +340,75 @@ function PlatformPromoCard({ promo, onTap, index }) {
   );
 }
 
+// ── GeoHunt card ──────────────────────────────────────────────────────────────
+function GeoHuntCard({ hunt, index }) {
+  const [pressed, setPressed] = useState(false);
+  const tp = TYPE.geohunt;
+  const remaining = hunt.total_codes - hunt.claimed_codes;
+
+  return (
+    <div
+      onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
+      style={{
+        ...cardBase,
+        padding: '14px 16px', marginBottom: 8,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        border: `0.5px solid ${tp.border}`,
+        background: `linear-gradient(135deg, ${tp.glow} 0%, #161B24 50%)`,
+        ...pressable(pressed),
+        animation: `fadeUp 0.32s ${E.smooth} both`,
+        animationDelay: `${index * 0.05}s`,
+        userSelect: 'none', WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 5 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+            {hunt.title}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            background: tp.badge.bg, color: tp.badge.color,
+            borderRadius: 6, padding: '2px 7px',
+            border: `0.5px solid ${tp.border}`,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}>
+            <Crosshair size={9} color={tp.badge.color} />
+            {tp.badge.label}
+          </span>
+          <span style={{ fontSize: 12, color: C.t3 }}>
+            {remaining} / {hunt.total_codes} точек осталось
+          </span>
+        </div>
+      </div>
+      <div style={{ flexShrink: 0, textAlign: 'right' }}>
+        <div style={{
+          background: C.goldFt, border: `0.5px solid ${C.goldGl}`,
+          color: C.gold, borderRadius: 12, padding: '8px 12px',
+          fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+        }}>
+          +{hunt.reward_per_code} GEO
+        </div>
+        <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+          Сканировать QR <ChevronRight size={10} color={C.t3} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [campaigns,    setCampaigns]    = useState([]);
   const [platformPromos, setPlatformPromos] = useState([]);
+  const [geohunts,     setGeohunts]     = useState([]);
   const [loading,      setLoading]      = useState(true);
   const [promoLoading, setPromoLoading] = useState(true);
   const [error,        setError]        = useState('');
@@ -355,7 +418,7 @@ export default function Home() {
   const loadCampaigns = () => {
     setLoading(true);
     setError('');
-    apiFetch('/api/campaigns')
+    fetch(`${API_BASE}/api/campaigns`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => setError(t('home.error.load')))
@@ -365,11 +428,18 @@ export default function Home() {
   useEffect(() => { loadCampaigns(); }, []);
 
   useEffect(() => {
-    apiFetch('/api/platform-promo/list')
+    fetch(`${API_BASE}/api/platform-promo/list`)
       .then(r => r.ok ? r.json() : { promos: [] })
       .then(d => setPlatformPromos(d.promos || []))
       .catch(() => {})
       .finally(() => setPromoLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/geohunts/active`)
+      .then(r => r.ok ? r.json() : { hunts: [] })
+      .then(d => setGeohunts(d.hunts || []))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -464,6 +534,30 @@ export default function Home() {
             </div>
             {platformPromos.map((p, i) => (
               <PlatformPromoCard key={p.id} promo={p} onTap={handlePlatformTap} index={i} />
+            ))}
+          </div>
+        )}
+
+        {/* ── GeoHunt section ── */}
+        {geohunts.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Crosshair size={11} color={C.gold} strokeWidth={2} />
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                  GeoHunt
+                </div>
+              </div>
+              <div style={{
+                fontSize: 11, color: C.gold, fontWeight: 700,
+                background: C.goldFt, borderRadius: 8, padding: '3px 9px',
+                border: `0.5px solid ${C.goldGl}`,
+              }}>
+                {geohunts.length}
+              </div>
+            </div>
+            {geohunts.map((h, i) => (
+              <GeoHuntCard key={h.id} hunt={h} index={i} />
             ))}
           </div>
         )}

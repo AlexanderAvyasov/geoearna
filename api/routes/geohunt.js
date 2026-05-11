@@ -6,6 +6,21 @@ const router = express.Router();
 
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
 
+// GET /api/geohunts/active  — public: list active hunts for home screen
+router.get('/api/geohunts/active', async (_req, res) => {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('geohunts')
+    .select('id, title, description, reward_per_code, total_codes, claimed_codes, starts_at, ends_at')
+    .eq('active', true)
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error('[geohunts/active]', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  return res.json({ hunts: data || [] });
+});
+
 // GET /api/geohunt/info?token=  — public: get code info before claiming
 router.get('/api/geohunt/info', async (req, res) => {
   const { token } = req.query;

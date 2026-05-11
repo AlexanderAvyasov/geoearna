@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft, Loader2 } from 'lucide-react';
-import { apiFetch } from '../lib/api';
+import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { API_BASE } from '../lib/api';
 import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C, cardBase } from '../lib/design';
@@ -52,30 +52,29 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             </div>
           )}
           {dist !== null && (
-            <div style={{ fontSize: 13, color: C.purpleL, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Navigation size={13} color={C.purpleL} />
+            <div style={{ fontSize: 13, color: C.geo, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Navigation size={13} color={C.geo} />
               {formatDistance(dist)} {t('home.from_you')}
             </div>
           )}
 
-          {/* Reward hero */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(124,58,237,0.14) 0%, rgba(99,102,241,0.08) 100%)',
-            border: '1.5px solid rgba(124,58,237,0.22)',
+            background: 'linear-gradient(135deg, rgba(198,241,53,0.10) 0%, rgba(198,241,53,0.05) 100%)',
+            border: '1.5px solid rgba(198,241,53,0.20)',
             borderRadius: 18, padding: '20px',
             textAlign: 'center', marginBottom: 14,
           }}>
             <div style={{ fontSize: 11, color: C.t3, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>{t('home.reward')}</div>
             <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -1, color: C.t1 }}>
               +{formatGeo(campaign.reward_amount)}
-              <span style={{ fontSize: 18, fontWeight: 600, color: C.purpleL, marginLeft: 6 }}>GEO</span>
+              <span style={{ fontSize: 18, fontWeight: 600, color: C.geo, marginLeft: 6 }}>GEO</span>
             </div>
           </div>
 
           <div style={{ ...cardBase, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
             <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>{t('home.task_type')}</div>
             <div style={{ fontWeight: 700, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <TaskIcon size={16} color={C.purple} strokeWidth={2} />
+              <TaskIcon size={16} color={C.geo} strokeWidth={2} />
               {t('task.' + (campaign.task_type || 'visit'))}
             </div>
           </div>
@@ -116,65 +115,106 @@ export default function MapPage() {
   const markersRef    = useRef([]);
   const userMarkerRef = useRef(null);
 
-  const [campaigns, setCampaigns] = useState([]);
-  const [userPos,   setUserPos]   = useState(null);
-  const [selected,  setSelected]  = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [mapError,  setMapError]  = useState(false);
+  const [campaigns,  setCampaigns]  = useState([]);
+  const [userPos,    setUserPos]    = useState(null);
+  const [selected,   setSelected]   = useState(null);
+  const [loading,    setLoading]    = useState(true);
+  const [mapReady,   setMapReady]   = useState(false);
+  const [tileError,  setTileError]  = useState(false);
 
+  // Campaigns fetch — public endpoint, no initData wait needed
   useEffect(() => {
-    const bail = setTimeout(() => setLoading(false), 8000);
-    apiFetch('/api/campaigns')
+    const ctrl = new AbortController();
+    const bail = setTimeout(() => { ctrl.abort(); setLoading(false); }, 6000);
+
+    fetch(`${API_BASE}/api/campaigns`, { signal: ctrl.signal })
       .then(r => r.ok ? r.json() : [])
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => { clearTimeout(bail); setLoading(false); });
-    return () => clearTimeout(bail);
+
+    return () => { ctrl.abort(); clearTimeout(bail); };
   }, []);
 
+  // Geolocation (non-blocking)
   useEffect(() => {
     getGeoPos().then(p => setUserPos(p)).catch(() => {});
   }, []);
 
+  // Leaflet init — waits for container to have actual pixel size
   useEffect(() => {
     const el = containerRef.current;
-    if (!el || mapRef.current) return;
+    if (!el) return;
 
-    // Clear any stale Leaflet binding left by a prior mount (React StrictMode or fast-nav)
+    // Clear any stale Leaflet binding from prior mount
     if (el._leaflet_id) { delete el._leaflet_id; }
 
-    let map, t;
-    try {
-      map = L.map(el, {
-        center: [41.2995, 69.2401], zoom: 13,
-        zoomControl: false, attributionControl: false,
-      });
+    let map;
+    let timers = [];
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        subdomains: 'abcd',
-      }).addTo(map);
+    function init() {
+      if (mapRef.current) return;
+      try {
+        map = L.map(el, {
+          center: [41.2995, 69.2401], zoom: 12,
+          zoomControl: false,
+          attributionControl: false,
+          preferCanvas: true,
+        });
 
-      mapRef.current = map;
-      t = setTimeout(() => map.invalidateSize(), 150);
-    } catch (e) {
-      console.error('[Map] init error:', e);
-      setMapError(true);
-      return;
+        // OpenStreetMap tiles — reliable globally, no API key needed
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          subdomains: 'abc',
+        });
+
+        // Detect if tiles actually load; fall back gracefully
+        let tileLoaded = false;
+        osmLayer.on('tileload', () => { tileLoaded = true; setTileError(false); });
+        osmLayer.on('tileerror', () => { if (!tileLoaded) setTileError(true); });
+        osmLayer.addTo(map);
+
+        mapRef.current = map;
+
+        // Multiple invalidateSize calls to handle async container expansion
+        [100, 300, 600].forEach(ms => {
+          const t = setTimeout(() => {
+            try { map.invalidateSize(); } catch {}
+          }, ms);
+          timers.push(t);
+        });
+
+        setMapReady(true);
+      } catch (e) {
+        console.error('[Map] init error:', e);
+      }
     }
 
-    return () => { clearTimeout(t); try { map.remove(); } catch {} mapRef.current = null; };
+    // Use rAF to ensure the DOM element has rendered with its CSS dimensions
+    const raf = requestAnimationFrame(() => {
+      // Small delay so flex layout has settled
+      const t = setTimeout(init, 50);
+      timers.push(t);
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      timers.forEach(clearTimeout);
+      if (map) { try { map.remove(); } catch {} }
+      mapRef.current = null;
+      setMapReady(false);
+    };
   }, []);
 
+  // User position marker
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !userPos) return;
-    if (userMarkerRef.current) userMarkerRef.current.remove();
+    if (userMarkerRef.current) { userMarkerRef.current.remove(); }
 
     const icon = L.divIcon({
       html: `<div style="position:relative;width:16px;height:16px;">
         <div style="position:absolute;inset:-12px;border-radius:50%;background:rgba(198,241,53,0.18);animation:userPing 2s ease-out infinite;"></div>
-        <div style="position:absolute;inset:-6px;border-radius:50%;background:rgba(198,241,53,0.10);animation:userPing 2s ease-out 0.7s infinite;"></div>
         <div style="width:16px;height:16px;border-radius:50%;background:#C6F135;border:2.5px solid #090B10;"></div>
       </div>`,
       className: '', iconSize: [16, 16], iconAnchor: [8, 8],
@@ -182,18 +222,18 @@ export default function MapPage() {
 
     userMarkerRef.current = L.marker([userPos.lat, userPos.lng], { icon, zIndexOffset: 1000 }).addTo(map);
     map.setView([userPos.lat, userPos.lng], 14);
-  }, [userPos]);
+  }, [userPos, mapReady]);
 
+  // Campaign markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || campaigns.length === 0) return;
+    if (!map) return;
 
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
     campaigns.forEach((c, idx) => {
       if (!c.lat || !c.lng) return;
-
       const delay = idx * 60;
       const icon = L.divIcon({
         html: `<div style="
@@ -203,10 +243,8 @@ export default function MapPage() {
           color:#090B10;padding:5px 11px;border-radius:20px;
           font-size:13px;font-weight:800;white-space:nowrap;
           border:1.5px solid rgba(198,241,53,0.3);
-          font-family:'Barlow Condensed',-apple-system,BlinkMacSystemFont,sans-serif;
-          letter-spacing:0.3px;
           pointer-events:none;
-          animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both,markerPulse 2.5s ease-in-out ${delay + 400}ms infinite;
+          animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both;
         ">+${formatGeo(c.reward_amount)} GEO</div>`,
         className: '',
         iconSize: [0, 0],
@@ -217,7 +255,7 @@ export default function MapPage() {
       marker.on('click', () => setSelected(c));
       markersRef.current.push(marker);
     });
-  }, [campaigns]);
+  }, [campaigns, mapReady]);
 
   const nearby = (() => {
     const withCoords = campaigns.filter(c => c.lat && c.lng);
@@ -228,33 +266,33 @@ export default function MapPage() {
   })();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: C.bg }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: C.bg }}>
+
       {/* Header */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '12px 16px',
-        background: 'rgba(7,11,20,0.95)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0, position: 'relative', zIndex: 20,
+        background: C.surf,
+        borderBottom: `1px solid ${C.b1}`,
+        flexShrink: 0,
+        zIndex: 20,
       }}>
         <button onClick={() => navigate('/')} style={{
           background: 'none', border: 'none', cursor: 'pointer',
-          color: C.blue, padding: '4px 8px 4px 0',
+          color: C.geo, padding: '4px 8px 4px 0',
           display: 'flex', alignItems: 'center',
           WebkitTapHighlightColor: 'transparent',
         }}>
-          <ArrowLeft size={22} color={C.blue} strokeWidth={2} />
+          <ArrowLeft size={22} color={C.geo} strokeWidth={2} />
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-          <MapIcon size={18} color={C.purpleL} strokeWidth={1.75} />
+          <MapIcon size={18} color={C.geo} strokeWidth={1.75} />
           <span style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('map.title')}</span>
         </div>
         {!loading && (
           <div style={{
-            fontSize: 12, color: C.t3, fontWeight: 600,
-            background: 'rgba(255,255,255,0.05)',
+            fontSize: 12, color: C.t2, fontWeight: 600,
+            background: C.b0,
             borderRadius: 10, padding: '3px 10px',
           }}>
             {pluralize(lang, nearby.length, t('map.place.one'), t('map.place.few'), t('map.place.many'))}
@@ -262,21 +300,23 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* Map */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div ref={containerRef} style={{ width: '100%', height: '48vh', minHeight: 240 }} />
+      {/* Map container */}
+      <div style={{ position: 'relative', flexShrink: 0, height: '46vh', minHeight: 220 }}>
+        <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-        {(loading || mapError) && (
+        {/* Tile error banner */}
+        {tileError && (
           <div style={{
-            position: 'absolute', inset: 0, zIndex: 10,
-            background: C.surf,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 14,
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 15, background: 'rgba(248,113,113,0.15)',
+            border: '1px solid rgba(248,113,113,0.3)',
+            borderRadius: 10, padding: '5px 12px',
+            fontSize: 12, color: C.red, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 5,
+            whiteSpace: 'nowrap',
           }}>
-            <MapIcon size={48} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.4 }} />
-            <div style={{ color: C.t3, fontSize: 14, fontWeight: 600 }}>
-              {mapError ? 'Ошибка загрузки карты' : t('map.loading')}
-            </div>
+            <AlertCircle size={13} color={C.red} />
+            Карты недоступны
           </div>
         )}
 
@@ -288,8 +328,8 @@ export default function MapPage() {
               if (map) i === 0 ? map.zoomIn() : map.zoomOut();
             }} style={{
               width: 36, height: 36, borderRadius: 10,
-              border: `1px solid rgba(255,255,255,0.08)`,
-              background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(8px)',
+              border: `1px solid ${C.b2}`,
+              background: C.card, backdropFilter: 'blur(8px)',
               boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
               fontSize: 18, fontWeight: 700, cursor: 'pointer', color: C.t1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -298,23 +338,23 @@ export default function MapPage() {
           {userPos && (
             <button onClick={() => mapRef.current?.setView([userPos.lat, userPos.lng], 15)} style={{
               width: 36, height: 36, borderRadius: 10,
-              border: `1px solid rgba(124,58,237,0.25)`,
-              background: 'rgba(13,17,23,0.92)', backdropFilter: 'blur(8px)',
+              border: `1px solid rgba(198,241,53,0.25)`,
+              background: C.card, backdropFilter: 'blur(8px)',
               boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Crosshair size={18} color={C.purple} strokeWidth={2} />
+              <Crosshair size={18} color={C.geo} strokeWidth={2} />
             </button>
           )}
         </div>
 
-        {/* Count badge */}
+        {/* Campaign count badge */}
         {!loading && nearby.length > 0 && (
           <div style={{
             position: 'absolute', top: 12, left: 12, zIndex: 10,
-            background: 'rgba(7,11,20,0.90)', backdropFilter: 'blur(8px)',
-            border: `1px solid rgba(255,255,255,0.07)`,
+            background: C.card, backdropFilter: 'blur(8px)',
+            border: `1px solid ${C.b1}`,
             borderRadius: 20, padding: '6px 12px',
             fontSize: 13, fontWeight: 700, color: C.t1,
             display: 'flex', alignItems: 'center', gap: 6,
@@ -325,7 +365,7 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* Nearby list */}
+      {/* Campaign list */}
       <div style={{ flex: 1, overflowY: 'auto', background: C.bg, paddingBottom: 88 }}>
         <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -341,14 +381,15 @@ export default function MapPage() {
 
         <div style={{ padding: '0 16px' }}>
           {loading && (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-              <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 0', gap: 14 }}>
+              <Loader2 size={32} color={C.geo} style={{ animation: 'spin 1s linear infinite' }} />
+              <div style={{ fontSize: 13, color: C.t2, fontWeight: 600 }}>Загрузка акций…</div>
             </div>
           )}
 
           {!loading && nearby.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-              <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.3, marginBottom: 14 }} />
+              <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.4, marginBottom: 14 }} />
               <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: C.t1 }}>{t('map.empty.title')}</div>
               <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
                 {t('map.empty.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
@@ -369,7 +410,7 @@ export default function MapPage() {
                 }}
                 style={{
                   ...cardBase,
-                  border: `1px solid rgba(255,255,255,0.06)`,
+                  border: `1px solid ${C.b1}`,
                   padding: '14px 16px', marginBottom: 8,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   cursor: 'pointer',
@@ -383,8 +424,8 @@ export default function MapPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {c.dist !== undefined && (
-                      <span style={{ fontSize: 12, color: C.purpleL, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Navigation size={11} color={C.purpleL} />
+                      <span style={{ fontSize: 12, color: C.geo, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <Navigation size={11} color={C.geo} />
                         {formatDistance(c.dist)}
                       </span>
                     )}
