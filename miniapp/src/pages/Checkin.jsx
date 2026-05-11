@@ -72,8 +72,6 @@ const PARTICLES = genParticles();
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Checkin() {
-  console.log('[CHECKIN:RENDER] component function called — window.location:', window.location.href);
-
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const token      = useMemo(() => searchParams.get('token') || '', [searchParams]);
@@ -102,6 +100,7 @@ export default function Checkin() {
   // ── Mount log ──────────────────────────────────────────────────────────────
   useEffect(() => {
     console.log('[CHECKIN:MOUNT] token:', token, '| isPromo:', isPromo, '| isGeohunt:', isGeohunt, '| href:', window.location.href);
+    console.log('[CHECKIN:RENDER] (logged post-mount) window.location:', window.location.href);
     return () => console.log('[CHECKIN:UNMOUNT]');
   }, []);
 
