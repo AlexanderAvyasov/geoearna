@@ -7,7 +7,9 @@
       "Bash(git push *)",
       "Bash(npm install *)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\" -Recurse -Name)",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('Map:', !!l.Map, 'Crosshair:', !!l.Crosshair, 'ShoppingBag:', !!l.ShoppingBag, 'Store:', !!l.Store, 'Loader2:', !!l.Loader2, 'ArrowLeft:', !!l.ArrowLeft, 'Navigation:', !!l.Navigation, 'Lock:', !!l.Lock, 'Star:', !!l.Star, 'MapPin:', !!l.MapPin\\);\")",
+      "Bash(node -e \"const l = require\\('leaflet'\\); console.log\\('Leaflet version:', l.version\\);\")"
     ]
   }
 }

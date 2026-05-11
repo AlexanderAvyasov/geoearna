@@ -123,11 +123,13 @@ export default function MapPage() {
   const [mapError,  setMapError]  = useState(false);
 
   useEffect(() => {
+    const bail = setTimeout(() => setLoading(false), 8000);
     apiFetch('/api/campaigns')
       .then(r => r.ok ? r.json() : [])
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { clearTimeout(bail); setLoading(false); });
+    return () => clearTimeout(bail);
   }, []);
 
   useEffect(() => {
