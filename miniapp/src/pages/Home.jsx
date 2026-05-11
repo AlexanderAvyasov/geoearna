@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
-  Store, ChevronRight, Map as MapIcon, Tv2, Crosshair,
+  Store, ChevronRight, Tv2, Crosshair, ExternalLink,
 } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -181,6 +181,24 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             ))}
           </div>
 
+          {campaign.lat && campaign.lng && (
+            <button
+              onClick={() => openMaps(campaign.lat, campaign.lng)}
+              style={{
+                width: '100%', marginBottom: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                background: C.geoDim,
+                border: `0.5px solid ${C.geoGl}`,
+                borderRadius: 14, padding: '14px',
+                fontSize: 15, fontWeight: 700,
+                color: C.geo, cursor: 'pointer',
+              }}
+            >
+              <ExternalLink size={16} color={C.geo} strokeWidth={2} />
+              Открыть в Google Картах
+            </button>
+          )}
+
           <button
             onClick={onClose}
             style={{
@@ -217,10 +235,9 @@ function CampaignCard({ campaign, onTap, index }) {
         ...cardBase,
         padding: '14px 16px',
         marginBottom: 8,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', flexDirection: 'column', gap: 10,
         cursor: 'pointer',
         border: `0.5px solid ${tp.border}`,
-        boxShadow: pressed ? 'none' : `inset 0 0 0 0 transparent`,
         ...pressable(pressed),
         animation: `fadeUp 0.32s ${E.smooth} both`,
         animationDelay: `${index * 0.05}s`,
@@ -229,48 +246,69 @@ function CampaignCard({ campaign, onTap, index }) {
         background: `linear-gradient(135deg, ${tp.glow} 0%, #161B24 50%)`,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
-        <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
-          {campaign.business_name}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+            {campaign.business_name}
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            {campaign.dist !== undefined && campaign.dist !== Infinity && (
+              <span style={{ fontSize: 12, color: C.geo, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <Compass size={11} color={C.geo} />
+                {formatDistance(campaign.dist)}
+              </span>
+            )}
+            {campaign.address && campaign.dist === undefined && (
+              <span style={{ fontSize: 12, color: C.t3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
+                <MapPin size={11} color={C.t3} />
+                {campaign.address}
+              </span>
+            )}
+            {campaign.requires_pin && (
+              <span style={{
+                fontSize: 10, color: C.gold, fontWeight: 700,
+                background: C.goldFt, borderRadius: 6, padding: '2px 6px',
+                border: `0.5px solid rgba(245,166,35,0.20)`,
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+              }}>
+                <Lock size={9} color={C.gold} /> PIN
+              </span>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ fontSize: 12, color: C.geo, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Compass size={11} color={C.geo} />
-              {formatDistance(campaign.dist)}
-            </span>
-          )}
-          {campaign.address && campaign.dist === undefined && (
-            <span style={{ fontSize: 12, color: C.t3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3 }}>
-              <MapPin size={11} color={C.t3} />
-              {campaign.address}
-            </span>
-          )}
-          {campaign.requires_pin && (
-            <span style={{
-              fontSize: 10, color: C.gold, fontWeight: 700,
-              background: C.goldFt, borderRadius: 6, padding: '2px 6px',
-              border: `0.5px solid rgba(245,166,35,0.20)`,
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-            }}>
-              <Lock size={9} color={C.gold} /> PIN
-            </span>
-          )}
+        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+          <div style={{
+            background: C.geoDim,
+            border: `0.5px solid ${C.geoGl}`,
+            color: C.geo, borderRadius: 12, padding: '8px 12px',
+            fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+          }}>
+            +{formatGeo(campaign.reward_amount)} GEO
+          </div>
+          <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+            {t('home.details')} <ChevronRight size={10} color={C.t3} />
+          </div>
         </div>
       </div>
-      <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{
-          background: C.geoDim,
-          border: `0.5px solid ${C.geoGl}`,
-          color: C.geo, borderRadius: 12, padding: '8px 12px',
-          fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
-        }}>
-          +{formatGeo(campaign.reward_amount)} GEO
-        </div>
-        <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
-          {t('home.details')} <ChevronRight size={10} color={C.t3} />
-        </div>
-      </div>
+
+      {campaign.lat && campaign.lng && (
+        <button
+          onClick={e => { e.stopPropagation(); openMaps(campaign.lat, campaign.lng); }}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: 'transparent',
+            border: `0.5px solid ${C.b2}`,
+            borderRadius: 8, padding: '6px 10px',
+            fontSize: 12, fontWeight: 600, color: C.t2,
+            cursor: 'pointer', alignSelf: 'flex-start',
+            WebkitTapHighlightColor: 'transparent',
+            outline: 'none',
+          }}
+        >
+          <ExternalLink size={11} color={C.t2} strokeWidth={2} />
+          Открыть в картах
+        </button>
+      )}
     </div>
   );
 }
@@ -402,6 +440,15 @@ function GeoHuntCard({ hunt, index }) {
   );
 }
 
+function openMaps(lat, lng) {
+  const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  if (window.Telegram?.WebApp?.openLink) {
+    window.Telegram.WebApp.openLink(url);
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
@@ -477,35 +524,17 @@ export default function Home() {
           {t('home.subtitle')}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
-          {userPos && !loading && displayed.length > 0 && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
-              borderRadius: 20, padding: '5px 12px',
-              fontSize: 12, color: C.geo, fontWeight: 600,
-            }}>
-              <Compass size={11} color={C.geo} />
-              {t('home.sorted')}
-            </div>
-          )}
-          <button
-            onClick={() => navigate('/map')}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: 'transparent',
-              border: `0.5px solid ${C.b2}`,
-              borderRadius: 20, padding: '5px 14px',
-              fontSize: 12, color: C.t2, fontWeight: 600,
-              cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              outline: 'none',
-            }}
-          >
-            <MapIcon size={12} color={C.t2} strokeWidth={1.75} />
-            {t('home.map')}
-          </button>
-        </div>
+        {userPos && !loading && displayed.length > 0 && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
+            borderRadius: 20, padding: '5px 12px', marginTop: 20,
+            fontSize: 12, color: C.geo, fontWeight: 600,
+          }}>
+            <Compass size={11} color={C.geo} />
+            {t('home.sorted')}
+          </div>
+        )}
       </div>
 
       {/* Divider */}
