@@ -1,10 +1,9 @@
 const express = require('express');
-const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
-router.get('/api/campaigns', validateTma, async (req, res) => {
+router.get('/api/campaigns', async (_req, res) => {
   try {
     const { data, error } = await supabase
       .from('campaigns')

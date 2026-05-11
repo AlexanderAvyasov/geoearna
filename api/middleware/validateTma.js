@@ -54,7 +54,7 @@ async function validateTma(req, res, next) {
     // 5 min is for bot webhooks; Mini App sessions can last longer
     const authDate = parseInt(payload.auth_date, 10);
     const nowSec = Math.floor(Date.now() / 1000);
-    if (!authDate || nowSec - authDate > 3600) {
+    if (!authDate || nowSec - authDate > 86400) {
       return res.status(401).json({ error: 'INITDATA_EXPIRED' });
     }
 

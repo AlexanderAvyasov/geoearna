@@ -1952,6 +1952,13 @@ function PromoCreateSheet({ onClose, onCreated }) {
   useEffect(() => { upd('reward_amount', String(RARITY_CFG[form.rarity]?.geo || 5)); }, [form.rarity]);
 
   async function handleCreate() {
+    const missing = [];
+    if (!form.title.trim())                          missing.push('название');
+    if (!form.max_claims)                            missing.push('макс. клеймов');
+    if (!form.lat || isNaN(parseFloat(form.lat)))    missing.push('широта (lat)');
+    if (!form.lng || isNaN(parseFloat(form.lng)))    missing.push('долгота (lng)');
+    if (missing.length) { setError('Заполните: ' + missing.join(', ')); return; }
+
     setLoading(true); setError('');
     try {
       const body = {
@@ -1974,8 +1981,7 @@ function PromoCreateSheet({ onClose, onCreated }) {
     } finally { setLoading(false); }
   }
 
-  const canSubmit = form.title.trim() && form.max_claims && form.lat && form.lng &&
-    !isNaN(parseFloat(form.lat)) && !isNaN(parseFloat(form.lng)) && !loading;
+  const canSubmit = !loading;
 
   const inStyle = {
     width: '100%', boxSizing: 'border-box',
@@ -2519,8 +2525,10 @@ const GH_BG    = C.goldFt;
 const GH_BORDER = C.goldGl;
 
 function GeoHuntCodesSheet({ hunt, onClose }) {
-  const [codes,   setCodes]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [codes,    setCodes]    = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [sending,  setSending]  = useState(false);
+  const [sendMsg,  setSendMsg]  = useState('');
 
   useEffect(() => {
     saFetch(`/api/sa/geohunts/${hunt.id}/codes`)
@@ -2536,6 +2544,19 @@ function GeoHuntCodesSheet({ hunt, onClose }) {
       `${c.point_label || `Код ${c.id.slice(0, 6)}`}: ${baseUrl}/checkin?token=${c.token}&geohunt=1`
     ).join('\n');
     navigator.clipboard?.writeText(lines).catch(() => {});
+  }
+
+  async function sendQr() {
+    setSending(true);
+    setSendMsg('');
+    try {
+      const d = await saFetch(`/api/sa/geohunts/${hunt.id}/send-qr`, { method: 'POST' });
+      setSendMsg(`Отправлено ${d.total} QR в Telegram`);
+    } catch {
+      setSendMsg('Ошибка отправки');
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -2558,8 +2579,16 @@ function GeoHuntCodesSheet({ hunt, onClose }) {
               {hunt.claimed_codes}/{hunt.total_codes} кодов использовано · {hunt.reward_per_code} GEO/код
             </div>
           </div>
-          <Btn variant="ghost" size="sm" onClick={copyAll}><Send size={12} /> Скопировать все</Btn>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <Btn variant="ghost" size="sm" onClick={copyAll}><Send size={12} /> Скопировать все</Btn>
+            <Btn variant="ghost" size="sm" onClick={sendQr} disabled={sending}>
+              <Send size={12} /> {sending ? 'Отправка…' : 'В Telegram'}
+            </Btn>
+          </div>
         </div>
+        {sendMsg && (
+          <div style={{ margin: '0 20px 8px', fontSize: 12, color: GH_GOLD, textAlign: 'right' }}>{sendMsg}</div>
+        )}
         <div style={{ overflowY: 'auto', padding: '0 20px', flex: 1 }}>
           {loading && [1,2,3].map(i => (
             <div key={i} style={{ ...cardBase, padding: '10px 14px', marginBottom: 8, borderRadius: 12 }}>

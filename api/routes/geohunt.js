@@ -13,23 +13,30 @@ router.get('/api/geohunt/info', async (req, res) => {
     return res.status(400).json({ error: 'INVALID_PARAMS' });
   }
 
-  const { data: code, error } = await supabase
+  // Two-step query — avoids relying on PostgREST FK traversal (fails when FK
+  // constraints are missing from the table schema).
+  const { data: code, error: codeErr } = await supabase
     .from('geohunt_codes')
-    .select('id, token, point_label, used_by, hunt_id, geohunts(id, title, description, reward_per_code, active, starts_at, ends_at)')
+    .select('id, token, point_label, used_by, hunt_id')
     .eq('token', token)
     .maybeSingle();
 
-  if (error) { console.error('[geohunt/info]', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
-  if (!code) return res.status(404).json({ error: 'NOT_FOUND' });
+  if (codeErr) { console.error('[geohunt/info] code', codeErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (!code)   return res.status(404).json({ error: 'NOT_FOUND' });
+  if (code.used_by) return res.status(410).json({ error: 'CODE_USED' });
 
-  const hunt = code.geohunts;
+  const { data: hunt, error: huntErr } = await supabase
+    .from('geohunts')
+    .select('id, title, description, reward_per_code, active, starts_at, ends_at')
+    .eq('id', code.hunt_id)
+    .maybeSingle();
+
+  if (huntErr) { console.error('[geohunt/info] hunt', huntErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
   if (!hunt || !hunt.active) return res.status(410).json({ error: 'HUNT_INACTIVE' });
 
   const now = new Date();
   if (hunt.starts_at && new Date(hunt.starts_at) > now) return res.status(400).json({ error: 'HUNT_NOT_STARTED' });
   if (hunt.ends_at   && new Date(hunt.ends_at)   < now) return res.status(410).json({ error: 'HUNT_EXPIRED' });
-
-  if (code.used_by) return res.status(410).json({ error: 'CODE_USED' });
 
   return res.json({
     codeId:     code.id,
@@ -53,17 +60,23 @@ router.post('/api/geohunt/claim', validateTma, async (req, res) => {
   const { data: userRow } = await supabase.from('users').select('banned_at').eq('id', userId).single();
   if (userRow?.banned_at) return res.status(403).json({ error: 'USER_BANNED' });
 
-  // Fetch code + hunt
+  // Two-step fetch — avoids PostgREST FK traversal dependency
   const { data: code, error: codeErr } = await supabase
     .from('geohunt_codes')
-    .select('id, token, used_by, hunt_id, geohunts(id, title, reward_per_code, active, starts_at, ends_at)')
+    .select('id, token, used_by, hunt_id')
     .eq('token', token)
     .maybeSingle();
 
-  if (codeErr) { console.error('[geohunt/claim] fetch', codeErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (codeErr) { console.error('[geohunt/claim] fetch code', codeErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
   if (!code) return res.status(404).json({ error: 'NOT_FOUND' });
 
-  const hunt = code.geohunts;
+  const { data: hunt, error: huntErr } = await supabase
+    .from('geohunts')
+    .select('id, title, reward_per_code, active, starts_at, ends_at')
+    .eq('id', code.hunt_id)
+    .maybeSingle();
+
+  if (huntErr) { console.error('[geohunt/claim] fetch hunt', huntErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
   if (!hunt || !hunt.active) return res.status(400).json({ error: 'HUNT_INACTIVE' });
 
   const now = new Date();
@@ -152,6 +165,56 @@ router.post('/api/sa/geohunts', validateTma, async (req, res) => {
   if (codesErr) { console.error('[sa/geohunts] codes', codesErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 
   return res.status(201).json({ hunt, codes });
+});
+
+// ── SuperAdmin: send all QR images to SA's Telegram ────────────────────────
+router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
+
+  const { id } = req.params;
+  const webappUrl = process.env.WEBAPP_URL || '';
+
+  const { data: hunt } = await supabase.from('geohunts').select('title').eq('id', id).single();
+  if (!hunt) return res.status(404).json({ error: 'NOT_FOUND' });
+
+  const { data: codes } = await supabase
+    .from('geohunt_codes')
+    .select('id, token, point_label')
+    .eq('hunt_id', id)
+    .order('created_at', { ascending: true });
+
+  if (!codes || codes.length === 0) return res.status(400).json({ error: 'NO_CODES' });
+
+  // Respond immediately so the client doesn't wait
+  res.json({ ok: true, total: codes.length });
+
+  // Background: send text summary + individual QR images
+  const QRCode        = require('qrcode');
+  const { sendPhoto, sendMessage } = require('../services/notify');
+
+  const urlList = codes.map((c, i) => {
+    const url   = `${webappUrl}/checkin?token=${c.token}&geohunt=1`;
+    const label = c.point_label || `Код ${i + 1}`;
+    return `📍 *${label}*\n\`${url}\``;
+  }).join('\n\n');
+
+  await sendMessage(SUPER_ADMIN_ID,
+    `🗺 *GeoHunt: "${hunt.title}"*\nВсего точек: ${codes.length}\n\n${urlList}`,
+  ).catch(() => {});
+
+  for (let i = 0; i < codes.length; i++) {
+    const code  = codes[i];
+    const url   = `${webappUrl}/checkin?token=${code.token}&geohunt=1`;
+    const label = code.point_label || `Код ${i + 1}`;
+    try {
+      const buf = await QRCode.toBuffer(url, { width: 600, margin: 3 });
+      await sendPhoto(SUPER_ADMIN_ID, buf, `*${label}*`);
+    } catch (e) {
+      console.error('[sa/geohunts/send-qr]', e.message);
+    }
+    // Small pause every 10 photos to avoid Telegram rate limits
+    if (i > 0 && i % 10 === 0) await new Promise(r => setTimeout(r, 800));
+  }
 });
 
 // ── SuperAdmin: toggle hunt active ──────────────────────────────────────────
