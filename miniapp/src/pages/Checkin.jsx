@@ -72,6 +72,8 @@ const PARTICLES = genParticles();
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function Checkin() {
+  console.log('[CHECKIN:RENDER] component function called — window.location:', window.location.href);
+
   const { t } = useLanguage();
   const [searchParams] = useSearchParams();
   const token      = useMemo(() => searchParams.get('token') || '', [searchParams]);
@@ -97,10 +99,18 @@ export default function Checkin() {
   const rarity = promoInfo?.rarity;
   const RC     = RARITY[rarity] || null;
 
+  // ── Mount log ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    console.log('[CHECKIN:MOUNT] token:', token, '| isPromo:', isPromo, '| isGeohunt:', isGeohunt, '| href:', window.location.href);
+    return () => console.log('[CHECKIN:UNMOUNT]');
+  }, []);
+
   // ── Fetch info ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
+    console.log('[CHECKIN:FETCH_INFO] token:', token, '| isPromo:', isPromo, '| isGeohunt:', isGeohunt);
     if (!token) {
+      console.warn('[CHECKIN:FETCH_INFO] no token — showing error');
       setErrInfo({ Icon: Link2, titleKey: 'err.NO_TOKEN.title', textKey: 'err.NO_TOKEN.text' });
       setStatus('error');
       return;
@@ -108,9 +118,12 @@ export default function Checkin() {
 
     // Info endpoints are public — use plain fetch, no initData wait
     if (isGeohunt) {
-      fetch(`${API_BASE}/api/geohunt/info?token=${encodeURIComponent(token)}`)
-        .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
-        .then(({ ok, data }) => {
+      const url = `${API_BASE}/api/geohunt/info?token=${encodeURIComponent(token)}`;
+      console.log('[CHECKIN:FETCH_INFO] geohunt GET', url);
+      fetch(url)
+        .then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })))
+        .then(({ ok, status: s, data }) => {
+          console.log('[CHECKIN:FETCH_INFO] geohunt response status:', s, '| ok:', ok, '| data:', JSON.stringify(data));
           if (!ok) {
             const GEOHUNT_ERRORS = {
               NOT_FOUND:        { Icon: Link2,        titleKey: 'err.INVALID_QR_TOKEN.title', textKey: 'err.INVALID_QR_TOKEN.text' },
@@ -121,13 +134,16 @@ export default function Checkin() {
               INTERNAL_ERROR:   { Icon: Wifi,         titleKey: 'err.UNKNOWN.title',           textKey: 'err.UNKNOWN.text' },
             };
             const code = data?.error || 'UNKNOWN';
+            console.warn('[CHECKIN:FETCH_INFO] geohunt error code:', code);
             setErrInfo(GEOHUNT_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
             setStatus('error');
           } else {
+            console.log('[CHECKIN:FETCH_INFO] geohunt info OK, setting huntInfo');
             setHuntInfo(data);
           }
         })
-        .catch(() => {
+        .catch(e => {
+          console.error('[CHECKIN:FETCH_INFO] geohunt fetch exception:', e.message);
           setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
           setStatus('error');
         });
@@ -138,20 +154,25 @@ export default function Checkin() {
       ? `/api/promo/info?token=${encodeURIComponent(token)}`
       : `/api/checkin/info?token=${encodeURIComponent(token)}`;
 
-    fetch(`${API_BASE}${endpoint}`)
-      .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
-      .then(({ ok, data }) => {
+    const fullUrl = `${API_BASE}${endpoint}`;
+    console.log('[CHECKIN:FETCH_INFO] GET', fullUrl);
+    fetch(fullUrl)
+      .then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })))
+      .then(({ ok, status: s, data }) => {
+        console.log('[CHECKIN:FETCH_INFO] response status:', s, '| ok:', ok, '| data:', JSON.stringify(data));
         if (!ok) {
           const code = data?.error || 'UNKNOWN';
+          console.warn('[CHECKIN:FETCH_INFO] error code:', code);
           const map = isPromo ? PROMO_ERRORS : ERRORS;
           setErrInfo(map[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
           setStatus('error');
         } else {
-          if (isPromo) setPromoInfo(data);
-          else         setBusinessInfo(data);
+          if (isPromo) { console.log('[CHECKIN:FETCH_INFO] promo info OK'); setPromoInfo(data); }
+          else         { console.log('[CHECKIN:FETCH_INFO] business info OK'); setBusinessInfo(data); }
         }
       })
-      .catch(() => {
+      .catch(e => {
+        console.error('[CHECKIN:FETCH_INFO] fetch exception:', e.message);
         setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
         setStatus('error');
       });
@@ -160,15 +181,18 @@ export default function Checkin() {
   // ── GeoHunt: auto-submit as soon as info loads (no location needed) ──────────
 
   useEffect(() => {
+    console.log('[CHECKIN:GEOHUNT_EFFECT] isGeohunt:', isGeohunt, '| huntInfo:', !!huntInfo, '| sent:', sent.current, '| status:', status);
     if (!isGeohunt || !huntInfo || sent.current || status === 'error') return;
+    console.log('[CHECKIN:GEOHUNT_EFFECT] → calling doGeohunt()');
     doGeohunt();
   }, [huntInfo, isGeohunt]);
 
   // ── Auto-submit when ready (business + promo) ────────────────────────────────
 
   useEffect(() => {
-    if (isGeohunt || sent.current || status === 'error') return;
     const info = isPromo ? promoInfo : businessInfo;
+    console.log('[CHECKIN:AUTOSUBMIT_EFFECT] isGeohunt:', isGeohunt, '| sent:', sent.current, '| status:', status, '| info:', !!info, '| locLoading:', locLoading, '| lat:', lat, '| lng:', lng, '| locError:', locError);
+    if (isGeohunt || sent.current || status === 'error') return;
     if (!info) return;
 
     if (locError) {
@@ -198,9 +222,11 @@ export default function Checkin() {
     }
 
     if (!isPromo && businessInfo?.requiresPin) {
+      console.log('[CHECKIN:AUTOSUBMIT_EFFECT] → requiresPin, showing PIN screen');
       setStatus('pin');
       setTimeout(() => pinRef.current?.focus(), 300);
     } else {
+      console.log('[CHECKIN:AUTOSUBMIT_EFFECT] → calling', isPromo ? 'doPromo()' : 'doCheckin(null)');
       isPromo ? doPromo() : doCheckin(null);
     }
   }, [businessInfo, promoInfo, locLoading, locError, lat, lng]);
@@ -208,6 +234,7 @@ export default function Checkin() {
   // ── Checkin (business) ──────────────────────────────────────────────────────
 
   async function doCheckin(pinValue) {
+    console.log('[CHECKIN:DO_CHECKIN] token:', token, '| lat:', lat, '| lng:', lng, '| pin:', pinValue ? '***' : null);
     if (sent.current) return;
     sent.current = true;
     setStatus('submitting');
@@ -218,8 +245,10 @@ export default function Checkin() {
         body: JSON.stringify({ qrToken: token, lat, lng, pin: pinValue || undefined }),
       });
       const data = await r.json().catch(() => ({}));
+      console.log('[CHECKIN:DO_CHECKIN] response status:', r.status, '| data:', JSON.stringify(data));
       if (!r.ok) {
         const code = data?.error || 'UNKNOWN';
+        console.warn('[CHECKIN:DO_CHECKIN] error code:', code);
         if (['PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'].includes(code)) {
           sent.current = false;
           const pinErrKey = (ERRORS[code] || {}).textKey || 'err.UNKNOWN.text';
@@ -231,6 +260,7 @@ export default function Checkin() {
           setStatus('error');
         }
       } else {
+        console.log('[CHECKIN:DO_CHECKIN] SUCCESS reward:', data.reward);
         setReward(data.reward);
         setStatus('success');
         setShowBurst(true);
@@ -286,6 +316,7 @@ export default function Checkin() {
   // ── GeoHunt claim ───────────────────────────────────────────────────────────
 
   async function doGeohunt() {
+    console.log('[CHECKIN:DO_GEOHUNT] token:', token);
     if (sent.current) return;
     sent.current = true;
     setStatus('submitting');

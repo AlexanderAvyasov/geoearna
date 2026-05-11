@@ -21,6 +21,14 @@ const IS_SUPER_ADMIN = user?.id === 930826522;
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 
+// ─── Global error capture ─────────────────────────────────────────────────────
+window.onerror = (msg, src, line, col, err) => {
+  console.error('[GLOBAL:ERROR]', msg, `${src}:${line}:${col}`, err?.stack || '');
+};
+window.addEventListener('unhandledrejection', e => {
+  console.error('[GLOBAL:UNHANDLED_REJECTION]', e.reason?.message || String(e.reason), e.reason?.stack || '');
+});
+
 // ─── Browser gate (shown when not running inside Telegram Mini App) ───────────
 function BrowserGate() {
   return (
@@ -376,47 +384,63 @@ function parseScanResult(raw) {
   return null;
 }
 
-function ScanQrButton({ onToast }) {
-  const navigate   = useNavigate();
+// ScanQrButton owns NO navigation logic.
+// It only scans, parses, and calls onQrResult(result).
+// AppLayout owns navigate and scheduling.
+function ScanQrButton({ onToast, onQrResult }) {
   const [scanning, setScanning] = useState(false);
-  const scanRef    = useRef(false);
+  const scanRef = useRef(false);
   const { t } = useLanguage();
 
   function handleScan() {
+    console.log('[QR:SCAN_START] scanRef.current:', scanRef.current);
     if (scanRef.current) return;
     if (!tg?.isVersionAtLeast?.('6.4')) {
+      console.log('[QR:SCAN_START] TG version too old');
       onToast(t('scan.update_tg'));
       return;
     }
     if (typeof tg.showScanQrPopup !== 'function') {
+      console.log('[QR:SCAN_START] showScanQrPopup not available');
       onToast(t('scan.unavailable'));
       return;
     }
+
     scanRef.current = true;
     setScanning(true);
+    console.log('[QR:POPUP_OPEN] showScanQrPopup called');
+
     try {
       tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
+        console.log('[QR:CALLBACK] raw:', scannedText?.slice(0, 80), '| length:', scannedText?.length);
         const result = parseScanResult(scannedText);
+        console.log('[QR:PARSE] result:', JSON.stringify(result));
+
         if (result) {
+          console.log('[QR:POPUP_CLOSE] calling closeScanQrPopup');
           tg.closeScanQrPopup();
           scanRef.current = false;
           setScanning(false);
-          const qs = new URLSearchParams({ token: result.token });
-          if (result.promo)   qs.set('promo',   '1');
-          if (result.geohunt) qs.set('geohunt', '1');
-          // navigate() вызывается из внешнего SDK-колбека.
-          // setTimeout позволяет попапу закрыться и React обработать обновления.
-          const target = `/checkin?${qs.toString()}`;
-          setTimeout(() => navigate(target), 400);
+          console.log('[QR:PASS_TO_APP] calling onQrResult with token:', result.token);
+          onQrResult(result);
           return true;
         }
+        console.log('[QR:UNRECOGNIZED] no result — keeping popup open');
         return false;
       });
     } catch (e) {
+      console.error('[QR:POPUP_ERROR]', e.message);
       scanRef.current = false;
       setScanning(false);
     }
-    setTimeout(() => { scanRef.current = false; setScanning(false); }, 30000);
+
+    setTimeout(() => {
+      if (scanRef.current) {
+        console.log('[QR:TIMEOUT] 30s timeout — resetting scan state');
+        scanRef.current = false;
+        setScanning(false);
+      }
+    }, 30000);
   }
 
   return (
@@ -474,7 +498,7 @@ function Toast({ message }) {
   );
 }
 
-function BottomNav() {
+function BottomNav({ onQrResult }) {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
   const { t } = useLanguage();
@@ -545,7 +569,7 @@ function BottomNav() {
                 flex: 1.2, display: 'flex', justifyContent: 'center',
                 alignItems: 'flex-end', paddingBottom: 6,
               }}>
-                <ScanQrButton onToast={showToast} />
+                <ScanQrButton onToast={showToast} onQrResult={onQrResult} />
               </div>
             );
           }
@@ -595,9 +619,35 @@ function BottomNav() {
 }
 
 function AppLayout() {
-  const location  = useLocation();
+  const location   = useLocation();
+  const navigate   = useNavigate();
   const { pathname } = location;
-  const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
+
+  // Keep navigate in a ref — stable across re-renders, safe to call from setTimeout
+  const navigateRef = useRef(navigate);
+  navigateRef.current = navigate;
+
+  // Log every route change so we can see if BrowserRouter responds to navigation
+  useEffect(() => {
+    console.log('[ROUTER:CHANGE] pathname:', pathname, '| search:', location.search, '| hash:', window.location.hash);
+  }, [location]);
+
+  // Owned by AppLayout — called by ScanQrButton → BottomNav → here
+  // Using navigateRef means no useEffect cleanup can ever cancel this timeout
+  function handleQrResult(result) {
+    console.log('[QR:RECEIVED_BY_LAYOUT] token:', result.token, 'promo:', result.promo, 'geohunt:', result.geohunt);
+    const qs = new URLSearchParams({ token: result.token });
+    if (result.promo)   qs.set('promo',   '1');
+    if (result.geohunt) qs.set('geohunt', '1');
+    const target = `/checkin?${qs.toString()}`;
+    console.log('[QR:NAVIGATE_SCHEDULED] target:', target, '| in 400ms');
+    setTimeout(() => {
+      console.log('[QR:NAVIGATE_EXEC] navigate() calling with:', target, '| current pathname:', window.location.pathname);
+      navigateRef.current(target);
+    }, 400);
+  }
+
+  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -614,18 +664,18 @@ function AppLayout() {
         height: isSAPage ? 'auto' : undefined,
       }}>
         <Routes>
-          <Route path="/"           element={<Home />} />
-          <Route path="/checkin"    element={<Checkin key={location.search} />} />
-          <Route path="/balance"    element={<Balance />} />
-          <Route path="/withdraw"   element={<Withdraw />} />
-          <Route path="/game"       element={<Game />} />
-          <Route path="/admin"      element={<Admin />} />
+          <Route path="/"                element={<Home />} />
+          <Route path="/checkin"         element={<Checkin />} />
+          <Route path="/balance"         element={<Balance />} />
+          <Route path="/withdraw"        element={<Withdraw />} />
+          <Route path="/game"            element={<Game />} />
+          <Route path="/admin"           element={<Admin />} />
           <Route path="/superadmin"      element={<SuperAdmin />} />
           <Route path="/legal"           element={<Legal />} />
           <Route path="/channel-reward"  element={<ChannelSub />} />
         </Routes>
       </div>
-      <BottomNav />
+      <BottomNav onQrResult={handleQrResult} />
     </div>
   );
 }
