@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
 import { C, E } from './lib/design';
@@ -377,12 +377,13 @@ function parseScanResult(raw) {
 }
 
 function ScanQrButton({ onToast }) {
-  const navigate  = useNavigate();
+  const navigate   = useNavigate();
   const [scanning, setScanning] = useState(false);
+  const scanRef    = useRef(false);
   const { t } = useLanguage();
 
   function handleScan() {
-    if (scanning) return;
+    if (scanRef.current) return;
     if (!tg?.isVersionAtLeast?.('6.4')) {
       onToast(t('scan.update_tg'));
       return;
@@ -391,21 +392,31 @@ function ScanQrButton({ onToast }) {
       onToast(t('scan.unavailable'));
       return;
     }
+    scanRef.current = true;
     setScanning(true);
-    tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
-      const result = parseScanResult(scannedText);
-      if (result) {
-        tg.closeScanQrPopup();
-        setScanning(false);
-        const qs = new URLSearchParams({ token: result.token });
-        if (result.promo)   qs.set('promo',   '1');
-        if (result.geohunt) qs.set('geohunt', '1');
-        navigate(`/checkin?${qs.toString()}`);
-        return true;
-      }
-      return false;
-    });
-    setTimeout(() => setScanning(false), 30000);
+    try {
+      tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
+        const result = parseScanResult(scannedText);
+        if (result) {
+          tg.closeScanQrPopup();
+          scanRef.current = false;
+          setScanning(false);
+          const qs = new URLSearchParams({ token: result.token });
+          if (result.promo)   qs.set('promo',   '1');
+          if (result.geohunt) qs.set('geohunt', '1');
+          // navigate() вызывается из внешнего SDK-колбека.
+          // setTimeout позволяет попапу закрыться и React обработать обновления.
+          const target = `/checkin?${qs.toString()}`;
+          setTimeout(() => navigate(target), 400);
+          return true;
+        }
+        return false;
+      });
+    } catch (e) {
+      scanRef.current = false;
+      setScanning(false);
+    }
+    setTimeout(() => { scanRef.current = false; setScanning(false); }, 30000);
   }
 
   return (
@@ -584,7 +595,8 @@ function BottomNav() {
 }
 
 function AppLayout() {
-  const { pathname } = useLocation();
+  const location  = useLocation();
+  const { pathname } = location;
   const hasNav  = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
   const isSAPage = pathname === '/superadmin';
 
@@ -603,7 +615,7 @@ function AppLayout() {
       }}>
         <Routes>
           <Route path="/"           element={<Home />} />
-          <Route path="/checkin"    element={<Checkin />} />
+          <Route path="/checkin"    element={<Checkin key={location.search} />} />
           <Route path="/balance"    element={<Balance />} />
           <Route path="/withdraw"   element={<Withdraw />} />
           <Route path="/game"       element={<Game />} />
@@ -650,9 +662,9 @@ export default function App() {
       {!onboarded ? (
         <Onboarding onDone={handleOnboardDone} />
       ) : (
-        <BrowserRouter>
+        <HashRouter>
           <AppLayout />
-        </BrowserRouter>
+        </HashRouter>
       )}
     </LanguageProvider>
   );
