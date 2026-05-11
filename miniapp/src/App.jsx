@@ -34,7 +34,10 @@ function _pushLog(type, args) {
   const entry = { type, msg, t: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) };
   _logBuffer.push(entry);
   if (_logBuffer.length > 120) _logBuffer.shift();
-  _logListeners.forEach(fn => fn(entry));
+  // Notify listeners asynchronously — never during a React render cycle.
+  // Calling setState synchronously here (e.g. from console.log inside render)
+  // triggers React error #300 (invalid hook call / setState during render).
+  setTimeout(() => _logListeners.forEach(fn => fn(entry)), 0);
 }
 const _origLog   = console.log.bind(console);
 const _origWarn  = console.warn.bind(console);
