@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Component, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
@@ -146,6 +146,54 @@ function DebugPanel() {
       )}
     </div>
   );
+}
+
+// ─── Error boundary — catches render-phase crashes, shows stack in DebugPanel ──
+class AppErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null, stack: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    this.setState({ stack: info?.componentStack || '' });
+    console.error('[ERROR_BOUNDARY] caught:', error?.message);
+    console.error('[ERROR_BOUNDARY] stack:', info?.componentStack || '');
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{
+          minHeight: '100vh', background: '#090B10', color: '#f87171',
+          padding: '32px 20px', fontFamily: 'monospace', fontSize: 13,
+          overflowY: 'auto',
+        }}>
+          <div style={{ color: '#C6F135', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
+            React render error — check DebugPanel for stack
+          </div>
+          <div style={{ color: '#fbbf24', marginBottom: 12 }}>
+            {String(this.state.error?.message || this.state.error)}
+          </div>
+          <pre style={{ color: '#d1fae5', fontSize: 11, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+            {this.state.stack}
+          </pre>
+          <button
+            onClick={() => this.setState({ error: null, stack: null })}
+            style={{
+              marginTop: 24, background: '#C6F135', color: '#090B10',
+              border: 'none', padding: '12px 28px', borderRadius: 10,
+              fontWeight: 700, fontSize: 14, cursor: 'pointer',
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ─── Browser gate (shown when not running inside Telegram Mini App) ───────────
@@ -634,13 +682,17 @@ function BottomNav({ onQrResult }) {
       : { to: '/admin',      Icon: StoreIcon, label: t('nav.business')   },
   ];
 
-  if (pathname === '/checkin' || pathname === '/withdraw' || pathname === '/legal' || pathname === '/channel-reward') return null;
-  if (IS_SUPER_ADMIN && pathname === '/admin') return null;
+  // Computed before hooks — used by useLayoutEffect below
+  const shouldHide =
+    pathname === '/checkin' || pathname === '/withdraw' ||
+    pathname === '/legal'   || pathname === '/channel-reward' ||
+    (IS_SUPER_ADMIN && pathname === '/admin');
 
-  const activeIdx = NAV_ITEMS.findIndex(item =>
+  const activeIdx = shouldHide ? -1 : NAV_ITEMS.findIndex(item =>
     item && (item.to === '/' ? pathname === '/' : pathname.startsWith(item.to))
   );
 
+  // MUST stay before any early return — React requires hooks in identical order every render
   useLayoutEffect(() => {
     if (!navRef.current || activeIdx < 0) return;
     const tab = navRef.current.querySelector(`[data-tab="${activeIdx}"]`);
@@ -649,6 +701,9 @@ function BottomNav({ onQrResult }) {
     const tabRect = tab.getBoundingClientRect();
     setIndicatorX(tabRect.left - navRect.left + tabRect.width / 2 - 12);
   }, [pathname]);
+
+  // Early return only after all hooks have been called
+  if (shouldHide) return null;
 
   function showToast(msg) {
     setToast(msg);
@@ -828,13 +883,15 @@ export default function App() {
       {!ready && <SplashScreen fading={fading} />}
 
       {/* App: render immediately in background so routes & data load during splash */}
-      {!onboarded ? (
-        <Onboarding onDone={handleOnboardDone} />
-      ) : (
-        <BrowserRouter>
-          <AppLayout />
-        </BrowserRouter>
-      )}
+      <AppErrorBoundary>
+        {!onboarded ? (
+          <Onboarding onDone={handleOnboardDone} />
+        ) : (
+          <BrowserRouter>
+            <AppLayout />
+          </BrowserRouter>
+        )}
+      </AppErrorBoundary>
 
       {/* Debug panel — always on top, survives route changes, visible on phone */}
       <DebugPanel />
