@@ -12,19 +12,41 @@ async function antifraud(req, res, next) {
       return res.status(401).json({ error: 'USER_NOT_AUTHENTICATED' });
     }
 
-    const { data: business, error: businessError } = await supabase
+    // Try business-level QR token first, then campaign-level.
+    // Both point to a business for the cooldown check.
+    let businessId;
+
+    const { data: business, error: bizErr } = await supabase
       .from('businesses')
       .select('id')
       .eq('qr_token', qrToken)
       .maybeSingle();
 
-    if (businessError) {
-      console.error('antifraud business lookup error', businessError);
+    if (bizErr) {
+      console.error('antifraud business lookup error', bizErr);
       return res.status(500).json({ error: 'INTERNAL_ERROR' });
     }
 
-    if (!business) {
-      return res.status(400).json({ error: 'INVALID_QR_TOKEN' });
+    if (business) {
+      businessId = business.id;
+    } else {
+      // Campaign-level QR token
+      const { data: campaign, error: campErr } = await supabase
+        .from('campaigns')
+        .select('business_id')
+        .eq('qr_token', qrToken)
+        .maybeSingle();
+
+      if (campErr) {
+        console.error('antifraud campaign lookup error', campErr);
+        return res.status(500).json({ error: 'INTERNAL_ERROR' });
+      }
+
+      if (!campaign) {
+        return res.status(400).json({ error: 'INVALID_QR_TOKEN' });
+      }
+
+      businessId = campaign.business_id;
     }
 
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -33,7 +55,7 @@ async function antifraud(req, res, next) {
       .from('visits')
       .select('id')
       .eq('user_id', req.user.id)
-      .eq('business_id', business.id)
+      .eq('business_id', businessId)
       .gte('created_at', dayAgo)
       .limit(1);
 

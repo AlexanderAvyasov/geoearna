@@ -87,20 +87,6 @@ router.post('/api/platform-promo/claim', validateTma, async (req, res) => {
     .maybeSingle();
   if (existing) return res.status(400).json({ error: 'ALREADY_CLAIMED' });
 
-  // Verify Telegram channel subscription via Bot API
-  try {
-    const { bot } = require('../../bot/index');
-    const member = await bot.api.getChatMember(promo.channel_id, Number(tgId));
-    const subscribedStatuses = ['member', 'administrator', 'creator'];
-    if (!subscribedStatuses.includes(member.status)) {
-      return res.status(403).json({ error: 'NOT_SUBSCRIBED', channelUsername: promo.channel_username });
-    }
-  } catch (err) {
-    console.error('[platform-promo/claim] getChatMember', err.message);
-    // If the bot can't check (e.g. bot not in channel), fail closed
-    return res.status(500).json({ error: 'SUBSCRIPTION_CHECK_FAILED' });
-  }
-
   // Award GEO
   const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
     p_user_id: userId,

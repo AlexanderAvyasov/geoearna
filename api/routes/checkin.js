@@ -41,7 +41,12 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
       `💰 Баланс: *${result.totalBalance.toLocaleString('ru-RU')} GEO*`
     ).catch(() => {});
 
-    return res.json({ reward: result.reward, totalBalance: result.totalBalance });
+    return res.json({
+      reward:        result.reward,
+      totalBalance:  result.totalBalance,
+      streakInfo:    result.streakInfo,
+      newPlaceBonus: result.newPlaceBonus,
+    });
   } catch (error) {
     const code = error && error.code ? error.code : 'INTERNAL_ERROR';
     const clientErrors = ['TOO_FAR', 'INVALID_PARAMS', 'INVALID_QR_TOKEN', 'NO_ACTIVE_CAMPAIGN', 'BUSINESS_INSUFFICIENT_FUNDS', 'PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'];

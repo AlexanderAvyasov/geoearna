@@ -18,6 +18,57 @@ import ChannelSub from './pages/ChannelSub';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
+// ─── Browser gate (shown when not running inside Telegram Mini App) ───────────
+function BrowserGate() {
+  return (
+    <div style={{
+      minHeight: '100vh', background: C.bg,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '40px 28px', textAlign: 'center',
+    }}>
+      {/* Logo */}
+      <div style={{
+        width: 96, height: 96, borderRadius: 28,
+        background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
+        border: '1.5px solid rgba(198,241,53,0.25)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 32,
+        boxShadow: '0 0 40px rgba(198,241,53,0.12)',
+      }}>
+        <MapPin size={44} color={C.geo} strokeWidth={1.75} />
+      </div>
+
+      <div style={{ fontSize: 30, fontWeight: 800, color: C.t1, letterSpacing: -0.8, marginBottom: 6 }}>
+        Geo<span style={{ color: C.geo }}>Earn</span>
+      </div>
+
+      <div style={{ fontSize: 15, color: C.t3, lineHeight: 1.7, marginBottom: 36, maxWidth: 280 }}>
+        Это приложение работает только внутри <strong style={{ color: C.t2 }}>Telegram</strong>.<br />
+        Открой бота и отсканируй QR-код прямо там.
+      </div>
+
+      <a
+        href="https://t.me/geoearnbot"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          background: C.geo, color: C.bg,
+          textDecoration: 'none',
+          padding: '16px 36px', borderRadius: 16,
+          fontWeight: 800, fontSize: 17, letterSpacing: 0.2,
+          boxShadow: '0 6px 28px rgba(198,241,53,0.30)',
+        }}
+      >
+        Открыть @geoearnbot
+      </a>
+
+      <div style={{ marginTop: 20, fontSize: 13, color: C.t3 }}>
+        или найди <strong style={{ color: C.t2 }}>@geoearnbot</strong> в поиске Telegram
+      </div>
+    </div>
+  );
+}
+
 export const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
@@ -566,6 +617,18 @@ function AppLayout() {
 
 export default function App() {
   useTelegram();
+
+  // If running in a regular browser (not Telegram Mini App) — show gate screen
+  const isInTelegram = Boolean(window.Telegram?.WebApp?.platform) || import.meta.env.DEV;
+  if (!isInTelegram) {
+    return (
+      <LanguageProvider>
+        <style>{GLOBAL_CSS}</style>
+        <BrowserGate />
+      </LanguageProvider>
+    );
+  }
+
   const { ready, fading } = useAppReady();
   const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem(ONBOARD_KEY));
