@@ -4,12 +4,14 @@ const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+
 // GET /api/platform-promo/list  — list all active platform promos (no auth needed)
 router.get('/api/platform-promo/list', async (req, res) => {
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('platform_promotions')
-    .select('id, title, description, reward_amount, channel_username, max_claims, claims_count, ends_at')
+    .select('id, title, description, reward_amount, channel_username, max_claims, claims_count, ends_at, token')
     .eq('active', true)
     .or(`starts_at.is.null,starts_at.lte.${now}`)
     .or(`ends_at.is.null,ends_at.gt.${now}`)
@@ -138,7 +140,7 @@ router.post('/api/platform-promo/claim', validateTma, async (req, res) => {
 
 // ── SuperAdmin: list all platform promos ──────────────────────────────────────
 router.get('/api/sa/platform-promos', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { data, error } = await supabase
     .from('platform_promotions')
     .select('*')
@@ -149,7 +151,7 @@ router.get('/api/sa/platform-promos', validateTma, async (req, res) => {
 
 // ── SuperAdmin: create platform promo ────────────────────────────────────────
 router.post('/api/sa/platform-promos', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { title, description, reward_amount, channel_username, channel_id, max_claims, ends_at } = req.body;
   if (!title || !reward_amount || !channel_username || !channel_id) {
     return res.status(400).json({ error: 'INVALID_PARAMS' });
@@ -166,7 +168,7 @@ router.post('/api/sa/platform-promos', validateTma, async (req, res) => {
 
 // ── SuperAdmin: toggle active ──────────────────────────────────────────────
 router.patch('/api/sa/platform-promos/:id', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { active } = req.body;
   const { data, error } = await supabase.from('platform_promotions')
     .update({ active })

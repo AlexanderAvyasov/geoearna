@@ -304,14 +304,22 @@ function useAppReady() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function parseToken(raw) {
+function parseScanResult(raw) {
   if (!raw) return null;
   try {
     const url = new URL(raw);
     const t = url.searchParams.get('token');
-    if (t) return t;
+    if (t) {
+      return {
+        token:   t,
+        promo:   url.searchParams.get('promo')   === '1',
+        geohunt: url.searchParams.get('geohunt') === '1',
+      };
+    }
   } catch { /* not a URL */ }
-  if (/^[A-Za-z0-9_\-]{8,60}$/.test(raw.trim())) return raw.trim();
+  if (/^[A-Za-z0-9_\-]{8,60}$/.test(raw.trim())) {
+    return { token: raw.trim(), promo: false, geohunt: false };
+  }
   return null;
 }
 
@@ -332,11 +340,14 @@ function ScanQrButton({ onToast }) {
     }
     setScanning(true);
     tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
-      const token = parseToken(scannedText);
-      if (token) {
+      const result = parseScanResult(scannedText);
+      if (result) {
         tg.closeScanQrPopup();
         setScanning(false);
-        navigate(`/checkin?token=${encodeURIComponent(token)}`);
+        const qs = new URLSearchParams({ token: result.token });
+        if (result.promo)   qs.set('promo',   '1');
+        if (result.geohunt) qs.set('geohunt', '1');
+        navigate(`/checkin?${qs.toString()}`);
         return true;
       }
       return false;

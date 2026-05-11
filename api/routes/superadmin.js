@@ -384,11 +384,13 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       { count: totalBiz },
       { count: bizZero },
       { count: activeCamps },
+      { data: geoIssuedRow },
+      { data: approvedWds },
     ] = await Promise.all([
-      supabase.from('visits').select('user_id, business_id').gte('created_at', todayStart),
-      supabase.from('visits').select('user_id').gte('created_at', yesterdayStart).lt('created_at', todayStart),
-      supabase.from('visits').select('user_id').gte('created_at', monthStart),
-      supabase.from('visits').select('user_id').gte('created_at', lastMonStart).lt('created_at', monthStart),
+      supabase.from('visits').select('user_id, business_id').gte('created_at', todayStart).limit(5000),
+      supabase.from('visits').select('user_id').gte('created_at', yesterdayStart).lt('created_at', todayStart).limit(5000),
+      supabase.from('visits').select('user_id').gte('created_at', monthStart).limit(10000),
+      supabase.from('visits').select('user_id').gte('created_at', lastMonStart).lt('created_at', monthStart).limit(10000),
       supabase.from('visits').select('*', { count: 'exact', head: true }).gte('created_at', todayStart),
       supabase.from('withdrawals').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('withdrawals').select('amount').eq('status', 'pending'),
@@ -396,6 +398,8 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       supabase.from('businesses').select('*', { count: 'exact', head: true }),
       supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('balance', 0),
       supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('visits').select('rewarded.sum()').single(),
+      supabase.from('withdrawals').select('amount').eq('status', 'approved').limit(5000),
     ]);
 
     const dau     = new Set((todayViz   || []).map(v => v.user_id)).size;
@@ -411,7 +415,9 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       bizPerUser[v.user_id].add(v.business_id);
     });
     const fraudSuspectsCount = Object.values(bizPerUser).filter(s => s.size > 3).length;
-    const pendingGeo = (pendingAmts || []).reduce((s, w) => s + (w.amount || 0), 0);
+    const pendingGeo     = (pendingAmts  || []).reduce((s, w) => s + (w.amount || 0), 0);
+    const totalGeoIssued = geoIssuedRow?.rewarded || 0;
+    const approvedGeo    = (approvedWds  || []).reduce((s, w) => s + (w.amount || 0), 0);
 
     return res.json({
       dau, dauTrend,
@@ -425,6 +431,8 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       activeCamps:        activeCamps || 0,
       fraudSuspectsCount,
       geoRate:            getGeoRate(),
+      totalGeoIssued,
+      approvedGeo,
     });
   } catch (err) {
     console.error('superadmin/overview', err);

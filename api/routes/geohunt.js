@@ -4,6 +4,8 @@ const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+
 // GET /api/geohunt/info?token=  — public: get code info before claiming
 router.get('/api/geohunt/info', async (req, res) => {
   const { token } = req.query;
@@ -114,7 +116,7 @@ router.post('/api/geohunt/claim', validateTma, async (req, res) => {
 
 // ── SuperAdmin: list all hunts ────────────────────────────────────────────────
 router.get('/api/sa/geohunts', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { data, error } = await supabase
     .from('geohunts')
     .select('*')
@@ -125,7 +127,7 @@ router.get('/api/sa/geohunts', validateTma, async (req, res) => {
 
 // ── SuperAdmin: create hunt + bulk-generate codes ─────────────────────────────
 router.post('/api/sa/geohunts', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { title, description, reward_per_code, starts_at, ends_at, code_count } = req.body;
   if (!title || !reward_per_code || !code_count || code_count < 1 || code_count > 500) {
     return res.status(400).json({ error: 'INVALID_PARAMS' });
@@ -154,7 +156,7 @@ router.post('/api/sa/geohunts', validateTma, async (req, res) => {
 
 // ── SuperAdmin: toggle hunt active ──────────────────────────────────────────
 router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { active } = req.body;
   const { data, error } = await supabase.from('geohunts')
     .update({ active })
@@ -166,7 +168,7 @@ router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
 
 // ── SuperAdmin: get codes for a hunt ────────────────────────────────────────
 router.get('/api/sa/geohunts/:id/codes', validateTma, async (req, res) => {
-  if (!req.user.is_super_admin) return res.status(403).json({ error: 'FORBIDDEN' });
+  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const { data, error } = await supabase
     .from('geohunt_codes')
     .select('id, token, point_label, used_by, used_at, created_at')

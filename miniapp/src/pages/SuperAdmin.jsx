@@ -161,12 +161,14 @@ function StatCard({ Icon, label, value, sub, color, trend, alert }) {
 function OverviewTab() {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
+  const [err,     setErr]     = useState('');
 
   function load() {
     setLoading(true);
+    setErr('');
     saFetch('/api/superadmin/overview')
       .then(d => setData(d))
-      .catch(() => {})
+      .catch(e => setErr(e.message || 'Ошибка загрузки'))
       .finally(() => setLoading(false));
   }
   useEffect(load, []);
@@ -175,6 +177,21 @@ function OverviewTab() {
 
   return (
     <div>
+      {/* Error banner */}
+      {!loading && err && (
+        <div style={{
+          background: C.redFt, border: `1.5px solid ${C.red}30`,
+          borderRadius: 14, padding: '12px 16px', marginBottom: 16,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={18} color={C.red} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: 13, color: C.red, fontWeight: 600 }}>
+            Ошибка: {err}
+          </div>
+          <Btn variant="ghost" size="sm" onClick={load}>Повторить</Btn>
+        </div>
+      )}
+
       {/* Platform wallet hero */}
       <div style={{
         background: G.gold, borderRadius: 20, padding: '22px 20px',
