@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
-  Store, ChevronRight, Tv2, Crosshair, ExternalLink,
+  Store, ChevronRight, Tv2, Crosshair, ExternalLink, Gift, Shield, Gem, Zap,
 } from 'lucide-react';
 import { API_BASE } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -440,6 +440,78 @@ function GeoHuntCard({ hunt, index }) {
   );
 }
 
+// ── Promo QR rarity config ────────────────────────────────────────────────────
+const PROMO_RARITY = {
+  common:    { label: 'Common',    color: '#9CA3AF', bg: 'rgba(156,163,175,0.08)', border: 'rgba(156,163,175,0.25)', Icon: Shield },
+  rare:      { label: 'Rare',      color: '#60A5FA', bg: 'rgba(96,165,250,0.08)',  border: 'rgba(96,165,250,0.25)',  Icon: Star   },
+  epic:      { label: 'Epic',      color: '#C084FC', bg: 'rgba(192,132,252,0.08)', border: 'rgba(192,132,252,0.25)', Icon: Gem    },
+  legendary: { label: 'Legendary', color: '#FBBF24', bg: 'rgba(251,191,36,0.08)',  border: 'rgba(251,191,36,0.25)',  Icon: Zap    },
+};
+
+// ── Promo QR card ─────────────────────────────────────────────────────────────
+function PromoQrCard({ promo, index }) {
+  const [pressed, setPressed] = useState(false);
+  const rr = PROMO_RARITY[promo.rarity] || PROMO_RARITY.common;
+  const remaining = promo.max_claims - promo.claims_count;
+
+  return (
+    <div
+      onMouseDown={() => setPressed(true)} onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
+      style={{
+        ...cardBase,
+        padding: '14px 16px', marginBottom: 8,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        border: `0.5px solid ${rr.border}`,
+        background: `linear-gradient(135deg, ${rr.bg} 0%, #161B24 50%)`,
+        ...pressable(pressed),
+        animation: `fadeUp 0.32s ${E.smooth} both`,
+        animationDelay: `${index * 0.05}s`,
+        userSelect: 'none', WebkitUserSelect: 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0, paddingRight: 14 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 5 }}>
+          <div style={{ fontWeight: 600, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+            {promo.title}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            background: rr.bg, color: rr.color,
+            borderRadius: 6, padding: '2px 7px',
+            border: `0.5px solid ${rr.border}`,
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}>
+            <rr.Icon size={9} color={rr.color} />
+            {rr.label}
+          </span>
+          {remaining > 0 && (
+            <span style={{ fontSize: 12, color: C.t3 }}>
+              {remaining} шт. осталось
+            </span>
+          )}
+        </div>
+      </div>
+      <div style={{ flexShrink: 0, textAlign: 'right' }}>
+        <div style={{
+          background: rr.bg, border: `0.5px solid ${rr.border}`,
+          color: rr.color, borderRadius: 12, padding: '8px 12px',
+          fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
+        }}>
+          +{formatGeo(promo.reward_amount)} GEO
+        </div>
+        <div style={{ fontSize: 11, color: C.t3, marginTop: 5, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 3 }}>
+          Сканировать QR <ChevronRight size={10} color={C.t3} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function openMaps(lat, lng) {
   const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   if (window.Telegram?.WebApp?.openLink) {
@@ -453,14 +525,15 @@ function openMaps(lat, lng) {
 export default function Home() {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [campaigns,    setCampaigns]    = useState([]);
+  const [campaigns,      setCampaigns]      = useState([]);
   const [platformPromos, setPlatformPromos] = useState([]);
-  const [geohunts,     setGeohunts]     = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [promoLoading, setPromoLoading] = useState(true);
-  const [error,        setError]        = useState('');
-  const [selected,     setSelected]     = useState(null);
-  const [userPos,      setUserPos]      = useState(null);
+  const [promoQrs,       setPromoQrs]       = useState([]);
+  const [geohunts,       setGeohunts]       = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [promoLoading,   setPromoLoading]   = useState(true);
+  const [error,          setError]          = useState('');
+  const [selected,       setSelected]       = useState(null);
+  const [userPos,        setUserPos]        = useState(null);
 
   const loadCampaigns = () => {
     setLoading(true);
@@ -486,6 +559,13 @@ export default function Home() {
     fetch(`${API_BASE}/api/geohunts/active`)
       .then(r => r.ok ? r.json() : { hunts: [] })
       .then(d => setGeohunts(d.hunts || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/promos/active`)
+      .then(r => r.ok ? r.json() : { promos: [] })
+      .then(d => setPromoQrs(d.promos || []))
       .catch(() => {});
   }, []);
 
@@ -587,6 +667,30 @@ export default function Home() {
             </div>
             {geohunts.map((h, i) => (
               <GeoHuntCard key={h.id} hunt={h} index={i} />
+            ))}
+          </div>
+        )}
+
+        {/* ── Promo QR section ── */}
+        {promoQrs.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Gift size={11} color={C.purpleL} strokeWidth={2} />
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.purpleL, textTransform: 'uppercase', letterSpacing: 1.2 }}>
+                  Promo QR
+                </div>
+              </div>
+              <div style={{
+                fontSize: 11, color: C.purpleL, fontWeight: 700,
+                background: 'rgba(160,80,255,0.10)', borderRadius: 8, padding: '3px 9px',
+                border: '0.5px solid rgba(160,80,255,0.25)',
+              }}>
+                {promoQrs.length}
+              </div>
+            </div>
+            {promoQrs.map((p, i) => (
+              <PromoQrCard key={p.id} promo={p} index={i} />
             ))}
           </div>
         )}

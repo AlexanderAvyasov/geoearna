@@ -21,134 +21,8 @@ const IS_SUPER_ADMIN = user?.id === 930826522;
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 
-// ─── Global log capture (module-level, persists across renders) ──────────────
-const _logBuffer = [];
-const _logListeners = new Set();
-function _pushLog(type, args) {
-  const msg = args.map(a => {
-    if (a === null) return 'null';
-    if (a === undefined) return 'undefined';
-    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
-    return String(a);
-  }).join(' ');
-  const entry = { type, msg, t: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) };
-  _logBuffer.push(entry);
-  if (_logBuffer.length > 120) _logBuffer.shift();
-  // Notify listeners asynchronously — never during a React render cycle.
-  // Calling setState synchronously here (e.g. from console.log inside render)
-  // triggers React error #300 (invalid hook call / setState during render).
-  setTimeout(() => _logListeners.forEach(fn => fn(entry)), 0);
-}
-const _origLog   = console.log.bind(console);
-const _origWarn  = console.warn.bind(console);
-const _origError = console.error.bind(console);
-console.log   = (...a) => { _origLog(...a);   _pushLog('log',   a); };
-console.warn  = (...a) => { _origWarn(...a);  _pushLog('warn',  a); };
-console.error = (...a) => { _origError(...a); _pushLog('error', a); };
 
-window.onerror = (msg, src, line, col, err) => {
-  console.error('[GLOBAL:ERROR]', msg, `${src}:${line}:${col}`, err?.stack || '');
-};
-window.addEventListener('unhandledrejection', e => {
-  console.error('[GLOBAL:UNHANDLED_REJECTION]', e.reason?.message || String(e.reason), e.reason?.stack || '');
-});
-
-// ─── On-screen debug panel ────────────────────────────────────────────────────
-function DebugPanel() {
-  const [logs,  setLogs]  = useState([..._logBuffer]);
-  const [open,  setOpen]  = useState(false);
-  const [copied, setCopied] = useState(false);
-  const bottomRef = useRef(null);
-
-  useEffect(() => {
-    function onEntry() { setLogs([..._logBuffer]); }
-    _logListeners.add(onEntry);
-    return () => _logListeners.delete(onEntry);
-  }, []);
-
-  useEffect(() => {
-    if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs, open]);
-
-  function copyAll() {
-    const text = _logBuffer.map(l => `[${l.t}][${l.type}] ${l.msg}`).join('\n');
-    navigator.clipboard?.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }
-
-  return (
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 99999,
-      fontFamily: 'monospace', fontSize: 11,
-      pointerEvents: 'none',
-    }}>
-      {/* Toggle button */}
-      <div
-        onClick={() => setOpen(v => !v)}
-        style={{
-          position: 'absolute', bottom: open ? 'calc(55vh + 2px)' : 2, right: 8,
-          background: open ? '#C6F135' : 'rgba(0,0,0,0.75)',
-          color: open ? '#000' : '#C6F135',
-          border: '1px solid #C6F135',
-          borderRadius: 8, padding: '4px 10px',
-          fontSize: 11, fontWeight: 700, cursor: 'pointer',
-          pointerEvents: 'all', userSelect: 'none',
-          transition: 'bottom 0.2s',
-          zIndex: 100001,
-        }}
-      >
-        {open ? '✕ LOGS' : `▲ LOGS (${_logBuffer.length})`}
-      </div>
-
-      {open && (
-        <div style={{
-          height: '55vh', background: 'rgba(0,0,0,0.95)',
-          borderTop: '1.5px solid #C6F135',
-          display: 'flex', flexDirection: 'column',
-          pointerEvents: 'all',
-        }}>
-          {/* Header */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '4px 10px', borderBottom: '1px solid rgba(198,241,53,0.2)',
-            flexShrink: 0,
-          }}>
-            <span style={{ color: '#C6F135', fontWeight: 700 }}>DEBUG LOGS ({logs.length})</span>
-            <button
-              onClick={copyAll}
-              style={{
-                background: copied ? '#4ade80' : 'rgba(198,241,53,0.15)',
-                color: copied ? '#000' : '#C6F135',
-                border: '1px solid #C6F135', borderRadius: 5,
-                padding: '2px 8px', fontSize: 10, cursor: 'pointer',
-              }}
-            >
-              {copied ? '✓ copied' : 'copy all'}
-            </button>
-          </div>
-          {/* Log entries */}
-          <div style={{ overflowY: 'auto', flex: 1, padding: '4px 8px' }}>
-            {logs.length === 0 && <div style={{ color: '#555', marginTop: 8 }}>пусто…</div>}
-            {logs.map((l, i) => (
-              <div key={i} style={{
-                color: l.type === 'error' ? '#f87171' : l.type === 'warn' ? '#fbbf24' : '#d1fae5',
-                marginBottom: 2, lineHeight: 1.35, wordBreak: 'break-all',
-              }}>
-                <span style={{ color: '#555', marginRight: 5 }}>{l.t}</span>
-                {l.msg}
-              </div>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Error boundary — catches render-phase crashes, shows stack in DebugPanel ──
+// ─── Error boundary — catches render-phase crashes ───────────────────────────
 class AppErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -171,7 +45,7 @@ class AppErrorBoundary extends Component {
           overflowY: 'auto',
         }}>
           <div style={{ color: '#C6F135', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
-            React render error — check DebugPanel for stack
+            React render error
           </div>
           <div style={{ color: '#fbbf24', marginBottom: 12 }}>
             {String(this.state.error?.message || this.state.error)}
@@ -893,8 +767,6 @@ export default function App() {
         )}
       </AppErrorBoundary>
 
-      {/* Debug panel — always on top, survives route changes, visible on phone */}
-      <DebugPanel />
     </LanguageProvider>
   );
 }

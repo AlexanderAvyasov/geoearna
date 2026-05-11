@@ -7,6 +7,20 @@ const router = express.Router();
 
 const DAILY_CLAIM_LIMIT = 3;
 
+// Public: list all active promo campaigns (shown on home screen)
+router.get('/api/promos/active', async (_req, res) => {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('promo_campaigns')
+    .select('id, title, description, reward_amount, rarity, max_claims, claims_count, expires_at')
+    .eq('active', true)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error('[promos/active]', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  return res.json({ promos: data || [] });
+});
+
 // Public: get promo campaign info (no auth)
 router.get('/api/promo/info', async (req, res) => {
   const { token } = req.query;

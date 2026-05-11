@@ -326,14 +326,25 @@ export default function Checkin() {
         body: JSON.stringify({ token }),
       });
       const data = await r.json().catch(() => ({}));
+      console.log('[CHECKIN:DO_GEOHUNT] status:', r.status, '| data:', JSON.stringify(data));
       if (!r.ok) {
-        const GEOHUNT_CLAIM_ERRORS = {
-          CODE_USED:              { Icon: XCircle,     titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
-          ALREADY_CLAIMED_BY_YOU: { Icon: CheckCircle, titleKey: 'promo.ALREADY_CLAIMED.title', textKey: 'promo.ALREADY_CLAIMED.text' },
-          HUNT_INACTIVE:          { Icon: PauseCircle, titleKey: 'promo.PROMO_INACTIVE.title',  textKey: 'promo.PROMO_INACTIVE.text' },
-          HUNT_EXPIRED:           { Icon: Clock,       titleKey: 'promo.PROMO_EXPIRED.title',   textKey: 'promo.PROMO_EXPIRED.text' },
-        };
         const code = data?.error || 'UNKNOWN';
+        // ALREADY_CLAIMED_BY_YOU means the request succeeded before but the
+        // response was lost (e.g. mobile network drop). Show success with the
+        // stored reward so the user knows GEO was credited.
+        if (code === 'ALREADY_CLAIMED_BY_YOU') {
+          setReward(data.reward ?? huntInfo?.reward ?? 0);
+          setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle || prev?.huntTitle }));
+          setStatus('success');
+          tg?.HapticFeedback?.notificationOccurred('success');
+          return;
+        }
+        const GEOHUNT_CLAIM_ERRORS = {
+          CODE_USED:     { Icon: XCircle,     titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
+          HUNT_INACTIVE: { Icon: PauseCircle, titleKey: 'promo.PROMO_INACTIVE.title',  textKey: 'promo.PROMO_INACTIVE.text' },
+          HUNT_EXPIRED:  { Icon: Clock,       titleKey: 'promo.PROMO_EXPIRED.title',   textKey: 'promo.PROMO_EXPIRED.text' },
+          USER_BANNED:   { Icon: Ban,         titleKey: 'promo.USER_BANNED.title',     textKey: 'promo.USER_BANNED.text'   },
+        };
         setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
         setStatus('error');
       } else {
@@ -346,7 +357,9 @@ export default function Checkin() {
         setTimeout(() => setShowWave(false), 900);
         tg?.HapticFeedback?.notificationOccurred('success');
       }
-    } catch {
+    } catch (e) {
+      console.error('[CHECKIN:DO_GEOHUNT:CATCH]', e?.message || String(e));
+      sent.current = false; // allow retry
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
       setStatus('error');
     }
