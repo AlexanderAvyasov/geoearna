@@ -49,9 +49,15 @@ try {
 
 app.use(cors({
   origin(origin, cb) {
+    if (!origin) return cb(null, true); // no Origin header (server-to-server, bot)
+
+    // Native Telegram iOS/Android webview sends Origin: null (opaque origin).
+    // Mirroring it back as ACAO: null is blocked by all modern browsers — they
+    // allow the preflight through but then block JS access to the response.
+    // Result: server burns the code but client gets a network error. Use * instead.
+    if (origin === 'null') return cb(null, '*');
+
     if (
-      !origin ||              // no Origin header (server-to-server, bot)
-      origin === 'null' ||   // native Telegram iOS/Android webview opaque origin
       origin === 'https://web.telegram.org' ||
       (WEBAPP_ORIGIN && origin === WEBAPP_ORIGIN) ||
       !WEBAPP_ORIGIN          // WEBAPP_URL not configured — allow all origins
