@@ -3,7 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { MapPin, Activity, ScanLine, Wallet, User as UserIcon, Shield, Loader2, Home as HomeIcon, Star, Store as StoreIcon } from 'lucide-react';
 import { C, E } from './lib/design';
-import { waitForInitData, API_BASE } from './lib/api';
+import { waitForInitData, API_BASE, apiFetch } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import Home       from './pages/Home';
 import Checkin    from './pages/Checkin';
@@ -809,6 +809,101 @@ function BottomNav({ onQrResult }) {
   );
 }
 
+// Module-level stats cache — avoids re-fetch on every route change
+let _hdrCache = null;
+
+function GlobalHeader() {
+  const [stats, setStats] = useState(_hdrCache);
+  const mono = { fontFamily: "'Share Tech Mono', monospace" };
+
+  useEffect(() => {
+    if (_hdrCache) return;
+    Promise.all([
+      apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch('/api/game').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([me, game]) => {
+      const s = {
+        balance:    me?.user?.balance ?? 0,
+        level:      game?.level ?? 1,
+        streak:     game?.streak?.current_streak ?? 0,
+        tasksDone:  (game?.tasks || []).filter(t => t.claimed).length,
+        tasksTotal: (game?.tasks || []).length,
+      };
+      _hdrCache = s;
+      setStats(s);
+    });
+  }, []);
+
+  return (
+    <div style={{
+      background: 'rgba(6,8,14,0.98)',
+      borderBottom: '1px solid rgba(0,200,255,0.14)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+      padding: '0 16px',
+      position: 'sticky', top: 0, zIndex: 50,
+    }}>
+      {/* Brand row */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        height: 36, borderBottom: '1px solid rgba(0,200,255,0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.2)',
+            borderRadius: 3, padding: '2px 8px',
+          }}>
+            <div style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: C.green, boxShadow: `0 0 6px ${C.green}`,
+              animation: 'hudPulse 2s ease-in-out infinite',
+            }} />
+            <span style={{ ...mono, fontSize: 10, color: C.geo, letterSpacing: 2 }}>GEO-EARN</span>
+            <span style={{ fontSize: 8, color: C.t2, letterSpacing: 1 }}>· LIVE</span>
+          </div>
+          {stats && (
+            <span style={{
+              ...mono, fontSize: 9, color: C.geo,
+              background: 'rgba(0,200,255,0.06)', border: '1px solid rgba(0,200,255,0.15)',
+              borderRadius: 2, padding: '2px 6px',
+            }}>L{stats.level}</span>
+          )}
+        </div>
+        {stats ? (
+          <span style={{ ...mono, fontSize: 9, color: C.gold, letterSpacing: 1 }}>
+            ★ {stats.tasksDone} TASKS
+          </span>
+        ) : (
+          <div className="sk" style={{ height: 12, width: 60, borderRadius: 2 }} />
+        )}
+      </div>
+
+      {/* Stats row */}
+      <div style={{ display: 'flex', height: 30, alignItems: 'center' }}>
+        {stats ? [
+          { label: 'BALANCE', val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
+          { label: 'STREAK',  val: `${String(stats.streak).padStart(2, '0')}d` },
+          { label: 'TASKS',   val: `${stats.tasksDone}/${stats.tasksTotal}` },
+        ].map((item, i) => (
+          <div key={i} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', gap: 0,
+            paddingLeft: i === 0 ? 0 : 10,
+            borderLeft: i > 0 ? '1px solid rgba(0,200,255,0.08)' : 'none',
+          }}>
+            <span style={{ ...mono, fontSize: 6, color: C.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>{item.label}</span>
+            <span style={{ ...mono, fontSize: 11, color: i === 0 ? C.geo : C.t1, letterSpacing: 0.3 }}>{item.val}</span>
+          </div>
+        )) : (
+          <div style={{ display: 'flex', gap: 8, paddingLeft: 0 }}>
+            {[70, 45, 50].map((w, i) => <div key={i} className="sk" style={{ height: 16, width: w, borderRadius: 2 }} />)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AppLayout() {
   const location   = useLocation();
   const navigate   = useNavigate();
@@ -845,15 +940,16 @@ function AppLayout() {
     <div style={{
       minHeight: '100vh',
       background: C.bg,
-      fontFamily: "'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontFamily: "'Rajdhani', 'Barlow Condensed', -apple-system, sans-serif",
       color: C.t1,
       WebkitTapHighlightColor: 'transparent',
     }}>
       <div style={{
         maxWidth: 480, margin: '0 auto',
-        paddingBottom: hasNav ? 80 : 0,
+        paddingBottom: hasNav ? 68 : 0,
         height: isSAPage ? 'auto' : undefined,
       }}>
+        {hasNav && <GlobalHeader />}
         <Routes>
           <Route path="/"                element={<Home />} />
           <Route path="/checkin"         element={<Checkin />} />

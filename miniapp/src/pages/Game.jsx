@@ -141,6 +141,8 @@ function ProfileCard({ data }) {
   );
 }
 
+const MONO_G = { fontFamily: "'Share Tech Mono', monospace" };
+
 function TaskCard({ task, onClaim, claiming }) {
   const req   = task.requirement || {};
   const total = req.distinct_businesses || req.distinct_categories || req.streak_days || req.checkin_count || req.referral_activated || req.withdrawal_count || 1;
@@ -151,52 +153,58 @@ function TaskCard({ task, onClaim, claiming }) {
 
   return (
     <div style={{
-      ...cardBase,
-      border: `0.5px solid ${done ? 'rgba(74,222,128,0.12)' : canClaim ? C.geoGl : C.b1}`,
-      padding: '14px 16px', marginBottom: 8,
-      opacity: done ? 0.5 : 1,
+      padding: '11px 0',
+      borderBottom: '1px solid rgba(0,200,255,0.07)',
+      opacity: done ? 0.45 : 1,
       transition: 'opacity 0.2s',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 18, height: 18, borderRadius: 2, flexShrink: 0,
+          background: done ? `${C.green}18` : canClaim ? C.geoDim : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${done ? C.greenGl : canClaim ? C.geoGl : C.b1}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {done
+            ? <CheckCircle2 size={10} color={C.green} strokeWidth={2.5} />
+            : canClaim
+              ? <div style={{ width: 6, height: 6, borderRadius: 1, background: C.geo }} />
+              : <div style={{ width: 6, height: 6, borderRadius: 1, background: C.t3, opacity: 0.4 }} />
+          }
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 14, color: done ? C.t2 : C.t1, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {done && <CheckCircle2 size={14} color={C.green} strokeWidth={2.5} />}
+          <div style={{ fontSize: 13, fontWeight: 600, color: done ? C.t2 : C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {task.title}
           </div>
-          <div style={{ display: 'flex', gap: 8, fontSize: 12, color: C.t3, marginBottom: (canClaim || total > 1) && !done ? 8 : 0 }}>
-            <span style={{ color: C.geo, fontWeight: 700 }}>+{task.geo_reward} GEO</span>
-            <span>·</span>
-            <span style={{ color: C.gold, fontWeight: 700 }}>+{task.xp_reward} XP</span>
+          <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
+            <span style={{ ...MONO_G, fontSize: 9, color: C.geo }}>+{task.geo_reward} GEO</span>
+            <span style={{ ...MONO_G, fontSize: 8, color: C.t3 }}>·</span>
+            <span style={{ ...MONO_G, fontSize: 9, color: C.gold }}>+{task.xp_reward} XP</span>
+            {!done && total > 1 && (
+              <span style={{ ...MONO_G, fontSize: 9, color: C.t3 }}>{prog}/{total}</span>
+            )}
           </div>
-
           {!done && total > 1 && (
-            <div>
-              <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', marginBottom: 4 }}>
-                <div style={{
-                  height: '100%', width: `${Math.round(pct * 100)}%`,
-                  background: canClaim ? C.green : C.geo,
-                  borderRadius: 99, transition: 'width 0.5s ease',
-                }} />
-              </div>
-              <div style={{ fontSize: 11, color: C.t3 }}>{prog} / {total}</div>
+            <div style={{ height: 2, background: 'rgba(0,200,255,0.08)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
+              <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: canClaim ? C.green : C.geo, borderRadius: 99, transition: 'width 0.5s ease' }} />
             </div>
           )}
         </div>
-
         {canClaim && (
           <button
             onClick={() => onClaim(task.key)}
             disabled={!!claiming}
             style={{
               background: C.geo, color: C.bg, border: 'none',
-              borderRadius: 11, padding: '8px 14px',
-              fontSize: 12, fontWeight: 700, cursor: claiming ? 'not-allowed' : 'pointer',
+              borderRadius: 3, padding: '6px 10px',
+              fontFamily: "'Share Tech Mono', monospace",
+              fontSize: 9, letterSpacing: 1, cursor: claiming ? 'not-allowed' : 'pointer',
               flexShrink: 0, opacity: claiming ? 0.7 : 1,
-              display: 'flex', alignItems: 'center', gap: 5,
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
           >
-            {claiming && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />}
-            Забрать
+            {claiming && <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />}
+            CLAIM
           </button>
         )}
       </div>
@@ -432,37 +440,60 @@ export default function Game() {
     }
   }
 
+  const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+  const lv = data?.level || 1;
+  const cfg = LV[lv] || LV[1];
+  const streak = data?.streak?.current_streak || 0;
+  const xp = data?.xp || 0;
+  const pct = data ? xpPct(xp, lv) : 0;
+
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.35s ease both' }}>
-      {/* Header */}
+    <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.3s ease both' }}>
+
+      {/* ── Sticky header ── */}
       <div style={{
-        background: C.bg,
-        padding: '44px 16px 0',
-        borderBottom: `0.5px solid ${C.b1}`,
-        position: 'sticky', top: 0, zIndex: 10,
+        background: 'rgba(6,8,14,0.98)',
+        borderBottom: '1px solid rgba(0,200,255,0.14)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        position: 'sticky', top: 66, zIndex: 10,
+        padding: '0 16px',
       }}>
-        <div style={{ ...SYNE, fontWeight: 700, fontSize: 20, color: C.t1, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Star size={18} color={C.geo} strokeWidth={2} />
-          Прогресс
+        {/* Level + XP bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, paddingBottom: 8, borderBottom: '1px solid rgba(0,200,255,0.06)' }}>
+          <span style={{ ...MONO, fontSize: 9, color: cfg.color, background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, borderRadius: 2, padding: '2px 6px' }}>
+            L{lv}
+          </span>
+          <div style={{ flex: 1, height: 3, background: 'rgba(0,200,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
+            {!loading && (
+              <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: cfg.color, borderRadius: 99, transition: 'width 0.8s ease' }} />
+            )}
+          </div>
+          <span style={{ ...MONO, fontSize: 9, color: C.t3 }}>
+            {xp.toLocaleString('ru-RU')}{cfg.next ? `/${cfg.next.toLocaleString('ru-RU')}` : ''}
+          </span>
+          <span style={{ ...MONO, fontSize: 9, color: streak > 0 ? C.orange : C.t3, background: streak > 0 ? 'rgba(255,122,48,0.1)' : 'transparent', border: streak > 0 ? '1px solid rgba(255,122,48,0.3)' : 'none', borderRadius: 2, padding: '2px 6px' }}>
+            {String(streak).padStart(2, '0')}d
+          </span>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0 }}>
+        <div style={{ display: 'flex' }}>
           {TABS.map(({ key, label, Icon }) => {
             const active = tab === key;
             return (
               <button key={key} onClick={() => setTab(key)} style={{
                 flex: 1, background: 'none', border: 'none',
-                paddingBottom: 12, paddingTop: 4,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                padding: '9px 0 8px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                 cursor: 'pointer',
                 borderBottom: `2px solid ${active ? C.geo : 'transparent'}`,
                 transition: 'border-color 0.18s',
                 WebkitTapHighlightColor: 'transparent',
               }}>
-                <Icon size={15} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: active ? C.geo : C.t3, letterSpacing: 0.4, textTransform: 'uppercase' }}>
-                  {label}
+                <Icon size={12} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
+                <span style={{ ...MONO, fontSize: 8, color: active ? C.geo : C.t3, letterSpacing: 1.5 }}>
+                  {label.toUpperCase()}
                 </span>
               </button>
             );
@@ -470,18 +501,17 @@ export default function Game() {
         </div>
       </div>
 
-      <div style={{ padding: '14px 16px 32px' }}>
+      <div style={{ padding: '12px 16px 32px' }}>
         {loading
           ? <Skeleton />
           : !data
             ? (
-              <div style={{ textAlign: 'center', paddingTop: 60, color: C.t3, fontSize: 14 }}>
-                Не удалось загрузить данные
+              <div style={{ textAlign: 'center', paddingTop: 48 }}>
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>LOAD ERROR</div>
               </div>
             )
             : (
               <>
-                <ProfileCard data={data} />
                 {tab === 'tasks'        && <TasksTab tasks={data.tasks} onClaim={handleClaim} claiming={claiming} />}
                 {tab === 'achievements' && <AchievementsTab achievements={data.achievements} />}
                 {tab === 'referral'     && <ReferralTab referral={data.referral} />}
@@ -492,16 +522,16 @@ export default function Game() {
 
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 90, left: '50%',
+          position: 'fixed', bottom: 80, left: '50%',
           transform: 'translate(-50%, 0)',
-          background: toast.isError ? C.redFt : C.geoDim,
+          background: toast.isError ? 'rgba(255,56,96,0.12)' : 'rgba(0,200,255,0.10)',
           backdropFilter: 'blur(20px)',
           color: toast.isError ? C.red : C.geo,
-          borderRadius: 12,
-          padding: '11px 22px', fontSize: 14, fontWeight: 700,
-          zIndex: 500, whiteSpace: 'nowrap',
+          borderRadius: 3, border: `1px solid ${toast.isError ? C.redGl : C.geoGl}`,
+          padding: '9px 18px', zIndex: 500, whiteSpace: 'nowrap',
+          fontFamily: "'Share Tech Mono', monospace",
+          fontSize: 11, letterSpacing: 1,
           animation: 'toastIn 0.25s ease',
-          border: `0.5px solid ${toast.isError ? C.redGl : C.geoGl}`,
         }}>
           {toast.msg}
         </div>

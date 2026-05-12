@@ -115,199 +115,176 @@ export default function Balance() {
   const geoBalance     = user?.balance ?? 0;
   const totalEarnedGeo = activity.reduce((s, v) => s + (v.amount || 0), 0);
 
+  const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+
   if (error) return (
-    <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-      <AlertCircle size={48} color={C.red} strokeWidth={1.5} />
-      <div style={{ color: C.red, fontWeight: 600 }}>{error}</div>
+    <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+      <AlertCircle size={32} color={C.red} strokeWidth={1.5} />
+      <div style={{ ...MONO, fontSize: 10, color: C.red, letterSpacing: 1 }}>ОШИБКА ЗАГРУЗКИ</div>
     </div>
   );
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s ease both' }}>
-      {/* Hero */}
-      <div style={{ padding: '44px 22px 28px', position: 'relative' }}>
-        <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Wallet size={12} color={C.geo} strokeWidth={2} />
-          GEO Wallet
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
+
+      {/* ── Vault header ── */}
+      <div style={{ padding: '16px 16px 0', borderBottom: '1px solid rgba(0,200,255,0.10)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <span style={{ ...MONO, fontSize: 8, color: C.t2, letterSpacing: 2 }}>THE VAULT — GEO WALLET</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, boxShadow: `0 0 5px ${C.green}` }} />
+            <span style={{ ...MONO, fontSize: 8, color: C.green, letterSpacing: 1 }}>SYNCED</span>
+          </div>
         </div>
 
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '20px 0' }}>
-            <Loader2 size={32} color={C.geo} style={{ animation: 'spin 1s linear infinite', opacity: 0.7 }} />
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 6 }}>
-              <SlotCounter
-                value={geoBalance}
-                loading={loading}
-                style={{ ...BC, fontSize: 52, fontWeight: 700, letterSpacing: -2, lineHeight: 1, color: C.t1 }}
-              />
-              <div style={{ fontSize: 20, fontWeight: 600, color: C.t3, marginBottom: 6 }}>GEO</div>
-            </div>
-            <div style={{ fontSize: 16, color: C.t3, fontWeight: 500 }}>
-              ≈ {formatUzs(geoToUzs(geoBalance, geoRate))} UZS
-            </div>
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
-              borderRadius: 20, padding: '4px 12px', marginTop: 12,
-              fontSize: 12, color: C.geo, fontWeight: 600,
-            }}>
-              <TrendingUp size={11} color={C.geo} />
-              1 GEO = {geoRate} UZS
-            </div>
-          </>
-        )}
-
-        {/* Stats */}
-        {!loading && (
-          <div style={{ display: 'flex', marginTop: 24, paddingTop: 20, borderTop: `0.5px solid ${C.b1}` }}>
-            {[
-              { label: t('balance.visits'), val: activity.length },
-              { label: t('balance.earned'), val: `${formatGeo(totalEarnedGeo)} GEO` },
-            ].map((item, i) => (
-              <div key={i} style={{
-                flex: 1,
-                paddingRight: i === 0 ? 18 : 0,
-                borderRight: i === 0 ? `0.5px solid ${C.b1}` : 'none',
-                paddingLeft: i === 1 ? 18 : 0,
-              }}>
-                <div style={{ fontSize: 10, color: C.t3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 1 }}>{item.label}</div>
-                <div style={{ ...BC, fontSize: 20, fontWeight: 700, color: C.t1 }}>{item.val}</div>
+        <div style={{ padding: '12px 0 16px' }}>
+          <div style={{ ...MONO, fontSize: 9, color: C.t3, letterSpacing: 1.5, marginBottom: 6 }}>TOTAL BALANCE</div>
+          {loading ? (
+            <div className="sk" style={{ height: 44, width: 160, borderRadius: 3 }} />
+          ) : (
+            <>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <SlotCounter
+                  value={geoBalance}
+                  loading={loading}
+                  style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 44, fontWeight: 400, letterSpacing: -1, lineHeight: 1, color: C.t1 }}
+                />
+                <span style={{ ...MONO, fontSize: 16, color: C.geo }}>GEO</span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Divider */}
-      <div style={{ height: '0.5px', background: C.b1, marginBottom: 0 }} />
-
-      {/* Content */}
-      <div style={{ padding: '16px 16px 32px' }}>
-        {/* Withdraw CTA */}
-        <Link to="/withdraw" style={{
-          display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 10,
-          background: C.geo,
-          color: C.bg, textDecoration: 'none',
-          borderRadius: 14, padding: '15px 20px',
-          fontWeight: 700, fontSize: 16,
-          marginBottom: 16,
-          animation: 'fadeUp 0.35s ease both',
-          position: 'relative', overflow: 'hidden',
-          letterSpacing: 0.5,
-        }}>
-          <CreditCard size={18} color={C.bg} strokeWidth={2} />
-          {t('balance.withdraw_cta')}
-        </Link>
-
-        {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 14, background: C.card, borderRadius: 12, padding: 4 }}>
-          {[
-            { key: 'visits',      label: t('balance.tab.activity') },
-            { key: 'withdrawals', label: t('balance.tab.withdrawals'), badge: withdrawals.filter(w => w.status === 'pending').length },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                flex: 1, padding: '8px 4px', borderRadius: 9,
-                border: 'none',
-                background: activeTab === tab.key ? C.cardHi : 'transparent',
-                color: activeTab === tab.key ? C.t1 : C.t3,
-                fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                transition: 'all 0.18s',
-                outline: 'none',
-                fontFamily: "'Barlow Condensed', sans-serif",
-                letterSpacing: 0.4,
-              }}
-            >
-              {tab.label}
-              {tab.badge > 0 && (
-                <span style={{
-                  background: C.gold, color: C.bg,
-                  borderRadius: 8, fontSize: 10, fontWeight: 800,
-                  padding: '1px 5px', lineHeight: 1.4,
-                }}>
-                  {tab.badge}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <span style={{ ...MONO, fontSize: 11, color: C.t2 }}>
+                  ≈ {formatUzs(geoToUzs(geoBalance, geoRate))} UZS
                 </span>
-              )}
-            </button>
+                <span style={{ ...MONO, fontSize: 9, color: C.t3, background: 'rgba(0,200,255,0.06)', border: '1px solid rgba(0,200,255,0.12)', borderRadius: 2, padding: '1px 5px' }}>
+                  1 GEO = {geoRate} UZS
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 3 action buttons */}
+        <div style={{ display: 'flex', gap: 8, paddingBottom: 14 }}>
+          {[
+            { label: 'SEND',    Icon: CreditCard,    to: '/withdraw', primary: true },
+            { label: 'HISTORY', Icon: TrendingUp,    tab: 'withdrawals' },
+            { label: 'RATE',    Icon: TrendingUp,    info: `${geoRate} UZS` },
+          ].map(({ label, Icon, to, tab, primary, info }) => (
+            to ? (
+              <Link key={label} to={to} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                background: primary ? C.geo : 'rgba(0,200,255,0.06)',
+                color: primary ? C.bg : C.geo,
+                border: primary ? 'none' : '1px solid rgba(0,200,255,0.22)',
+                borderRadius: 4, padding: '10px 4px',
+                textDecoration: 'none',
+                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: 9, letterSpacing: 1.5,
+              }}>
+                <Icon size={14} strokeWidth={1.75} />
+                {label}
+              </Link>
+            ) : (
+              <button key={label} onClick={() => tab && setActiveTab(tab)} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                background: 'rgba(0,200,255,0.06)',
+                color: C.geo, border: '1px solid rgba(0,200,255,0.22)',
+                borderRadius: 4, padding: '10px 4px', cursor: 'pointer',
+                fontFamily: "'Share Tech Mono', monospace",
+                fontSize: 9, letterSpacing: 1.5,
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+                <Icon size={14} strokeWidth={1.75} />
+                {info || label}
+              </button>
+            )
           ))}
         </div>
+      </div>
 
-        {/* Activity */}
+      {/* ── Tab switcher ── */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,200,255,0.10)' }}>
+        {[
+          { key: 'visits',      label: 'LEDGER' },
+          { key: 'withdrawals', label: 'WITHDRAWALS', badge: withdrawals.filter(w => w.status === 'pending').length },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+            flex: 1, background: 'none', border: 'none', cursor: 'pointer',
+            padding: '10px 0',
+            borderBottom: `2px solid ${activeTab === tab.key ? C.geo : 'transparent'}`,
+            fontFamily: "'Share Tech Mono', monospace",
+            fontSize: 9, letterSpacing: 1.5,
+            color: activeTab === tab.key ? C.geo : C.t3,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            transition: 'border-color 0.18s, color 0.18s',
+            WebkitTapHighlightColor: 'transparent',
+          }}>
+            {tab.label}
+            {tab.badge > 0 && (
+              <span style={{ background: C.gold, color: C.bg, borderRadius: 2, fontSize: 8, fontWeight: 700, padding: '1px 4px' }}>
+                {tab.badge}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Content ── */}
+      <div style={{ padding: '0 16px 32px' }}>
+
+        {/* Activity / Ledger */}
         {activeTab === 'visits' && (
           <>
             {loading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-                <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+              <div style={{ paddingTop: 8 }}>
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)' }}>
+                    <div className="sk" style={{ height: 10, width: 18, borderRadius: 2 }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="sk" style={{ height: 12, width: '50%', borderRadius: 2, marginBottom: 5 }} />
+                      <div className="sk" style={{ height: 9, width: '30%', borderRadius: 2 }} />
+                    </div>
+                    <div className="sk" style={{ height: 14, width: 50, borderRadius: 2 }} />
+                  </div>
+                ))}
               </div>
             )}
 
             {!loading && activity.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-                <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...BC, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.visits.title')}</div>
-                <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-                  {t('balance.empty.visits.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
-                </div>
+              <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>NO TRANSACTIONS</div>
               </div>
             )}
 
             {!loading && activity.map((item, i) => {
-              const { Icon, color, bg, border, tag } = activityMeta(item);
+              const { Icon, color, tag } = activityMeta(item);
               return (
                 <div key={item.id} style={{
-                  ...cardBase,
-                  border: `0.5px solid ${C.b1}`,
-                  padding: '14px 16px', marginBottom: 8,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  animation: `fadeUp 0.32s ${E.smooth} both`,
-                  animationDelay: `${i * 0.04}s`,
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+                  animation: `fadeUp 0.28s ${E.smooth} both`,
+                  animationDelay: `${i * 0.03}s`,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 12 }}>
-                    <div style={{
-                      flexShrink: 0, width: 34, height: 34, borderRadius: 9,
-                      background: bg, border: `0.5px solid ${border}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Icon size={16} color={color} strokeWidth={1.75} />
+                  <span style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, flexShrink: 0, background: `${color}14`, borderRadius: 3, border: `1px solid ${color}30` }}>
+                    <Icon size={11} color={color} strokeWidth={1.75} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.title}
                     </div>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
-                          {item.title}
-                        </div>
-                        <span style={{
-                          fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
-                          color, background: bg, border: `0.5px solid ${border}`,
-                          borderRadius: 4, padding: '1px 5px', flexShrink: 0,
-                        }}>
-                          {tag}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Calendar size={10} color={C.t3} />
-                        {formatDate(item.created_at)}
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <span style={{ ...MONO, fontSize: 7, color, background: `${color}14`, borderRadius: 2, padding: '1px 4px', border: `1px solid ${color}30` }}>{tag}</span>
+                      <span style={{ ...MONO, fontSize: 8, color: C.t3 }}>{formatDate(item.created_at)}</span>
                     </div>
                   </div>
                   <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                    <div style={{
-                      color, fontWeight: 800, fontSize: 14,
-                      background: bg, borderRadius: 9, padding: '5px 10px',
-                      border: `0.5px solid ${border}`,
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                      letterSpacing: 0.3,
-                    }}>
-                      +{formatGeo(item.amount)} GEO
+                    <div style={{ ...MONO, fontSize: 13, color: item.amount > 0 ? C.geo : C.red }}>
+                      {item.amount > 0 ? '+' : ''}{formatGeo(item.amount)}
                     </div>
-                    <div style={{ fontSize: 11, color: C.t3, marginTop: 4 }}>
-                      ≈ {formatUzs(geoToUzs(item.amount, geoRate))} UZS
-                    </div>
+                    <div style={{ ...MONO, fontSize: 7, color: C.t3, marginTop: 2 }}>GEO</div>
                   </div>
                 </div>
               );
@@ -319,18 +296,23 @@ export default function Balance() {
         {activeTab === 'withdrawals' && (
           <>
             {loading && (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: '48px 0' }}>
-                <Loader2 size={28} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+              <div style={{ paddingTop: 8 }}>
+                {[1, 2].map(i => (
+                  <div key={i} style={{ display: 'flex', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)' }}>
+                    <div className="sk" style={{ height: 10, width: 18, borderRadius: 2 }} />
+                    <div style={{ flex: 1 }}>
+                      <div className="sk" style={{ height: 12, width: '40%', borderRadius: 2, marginBottom: 5 }} />
+                      <div className="sk" style={{ height: 9, width: '55%', borderRadius: 2 }} />
+                    </div>
+                    <div className="sk" style={{ height: 14, width: 50, borderRadius: 2 }} />
+                  </div>
+                ))}
               </div>
             )}
 
             {!loading && withdrawals.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '56px 16px' }}>
-                <ArrowDownCircle size={52} color={C.t3} strokeWidth={1.25} style={{ margin: '0 auto 16px', display: 'block', opacity: 0.25 }} />
-                <div style={{ ...BC, fontWeight: 700, fontSize: 18, marginBottom: 8, color: C.t1 }}>{t('balance.empty.wd.title')}</div>
-                <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.65 }}>
-                  {t('balance.empty.wd.text')}
-                </div>
+              <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>NO WITHDRAWALS</div>
               </div>
             )}
 
@@ -340,42 +322,27 @@ export default function Balance() {
               const st = { ...stIcons, label: stLabel };
               return (
                 <div key={w.id} style={{
-                  ...cardBase,
-                  border: `0.5px solid ${C.b1}`,
-                  padding: '14px 16px', marginBottom: 8,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  animation: `fadeUp 0.32s ${E.smooth} both`,
-                  animationDelay: `${i * 0.04}s`,
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+                  animation: `fadeUp 0.28s ${E.smooth} both`,
+                  animationDelay: `${i * 0.03}s`,
                 }}>
-                  <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                    <div style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      background: `${st.color}18`, borderRadius: 8,
-                      padding: '3px 8px', marginBottom: 5,
-                    }}>
-                      <st.Icon size={12} color={st.color} strokeWidth={2.5} />
-                      <span style={{ fontSize: 11, fontWeight: 700, color: st.color }}>{st.label}</span>
+                  <span style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                      <st.Icon size={11} color={st.color} strokeWidth={2} />
+                      <span style={{ ...MONO, fontSize: 9, color: st.color, letterSpacing: 1 }}>{st.label.toUpperCase()}</span>
                     </div>
-                    <div style={{ fontSize: 12, color: C.t3, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Calendar size={11} color={C.t3} />
-                      {formatDate(w.created_at)}
-                    </div>
-                    {w.phone && (
-                      <div style={{ fontSize: 11, color: C.t3, marginTop: 3 }}>{w.phone}</div>
-                    )}
+                    <span style={{ ...MONO, fontSize: 8, color: C.t3 }}>{formatDate(w.created_at)}</span>
+                    {w.phone && <span style={{ ...MONO, fontSize: 8, color: C.t3, marginLeft: 8 }}>{w.phone}</span>}
                   </div>
                   <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                    <div style={{
-                      color: w.status === 'rejected' ? C.t3 : C.t1,
-                      fontWeight: 700, fontSize: 15,
-                      textDecoration: w.status === 'rejected' ? 'line-through' : 'none',
-                      fontFamily: "'Barlow Condensed', sans-serif",
-                    }}>
-                      -{formatGeo(w.amount)} GEO
+                    <div style={{ ...MONO, fontSize: 13, color: w.status === 'rejected' ? C.t3 : C.red, textDecoration: w.status === 'rejected' ? 'line-through' : 'none' }}>
+                      -{formatGeo(w.amount)}
                     </div>
-                    <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
-                      ≈ {formatUzs(geoToUzs(w.amount, geoRate))} UZS
-                    </div>
+                    <div style={{ ...MONO, fontSize: 7, color: C.t3, marginTop: 2 }}>GEO</div>
                   </div>
                 </div>
               );
