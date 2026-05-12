@@ -396,8 +396,8 @@ export default function Checkin() {
 
   // ── Loading spinner color ────────────────────────────────────────────────────
 
-  const spinColor = RC ? RC.color : '#C6F135';
-  const spinBg    = RC ? RC.glow  : 'rgba(198,241,53,0.08)';
+  const spinColor = RC ? RC.color : '#00C8FF';
+  const spinBg    = RC ? RC.glow  : 'rgba(0,200,255,0.08)';
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -415,7 +415,7 @@ export default function Checkin() {
       {showWave && (
         <div style={{
           position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 198,
-          background: `linear-gradient(0deg, rgba(198,241,53,0.18) 0%, rgba(198,241,53,0.06) 60%, transparent 100%)`,
+          background: `linear-gradient(0deg, rgba(0,200,255,0.18) 0%, rgba(0,200,255,0.06) 60%, transparent 100%)`,
           animation: 'waveRise 0.85s ease-out both',
         }} />
       )}
@@ -582,7 +582,7 @@ export default function Checkin() {
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '18px', borderRadius: 16,
-                border: `1px solid ${pinError ? C.red : pin.length >= 4 ? 'rgba(198,241,53,0.45)' : C.b2}`,
+                border: `1px solid ${pinError ? C.red : pin.length >= 4 ? 'rgba(0,200,255,0.45)' : C.b2}`,
                 background: C.surf, color: C.t1,
                 fontSize: 28, fontWeight: 700, textAlign: 'center', letterSpacing: 10,
                 outline: 'none', transition: 'border-color 0.15s', marginBottom: 12,
@@ -602,7 +602,7 @@ export default function Checkin() {
             )}
             <button type="submit" disabled={pin.length < 4} style={{
               width: '100%',
-              background: pin.length >= 4 ? '#C6F135' : C.cardHi,
+              background: pin.length >= 4 ? '#00C8FF' : C.cardHi,
               color: pin.length >= 4 ? '#090B10' : C.t3,
               border: `1px solid ${pin.length >= 4 ? 'transparent' : C.b2}`,
               padding: '15px', borderRadius: 13,
@@ -624,9 +624,9 @@ export default function Checkin() {
       {/* SUCCESS */}
       {status === 'success' && (() => {
         // Derive accent based on mode
-        const accentColor = isGeohunt ? C.gold : isPromo && RC ? RC.color : '#C6F135';
-        const accentBg    = isGeohunt ? C.goldFt : isPromo && RC ? RC.bg : 'rgba(198,241,53,0.08)';
-        const accentBorder= isGeohunt ? C.goldGl  : isPromo && RC ? RC.color + '30' : 'rgba(198,241,53,0.20)';
+        const accentColor = isGeohunt ? C.gold : isPromo && RC ? RC.color : '#00C8FF';
+        const accentBg    = isGeohunt ? C.goldFt : isPromo && RC ? RC.bg : 'rgba(0,200,255,0.08)';
+        const accentBorder= isGeohunt ? C.goldGl  : isPromo && RC ? RC.color + '30' : 'rgba(0,200,255,0.20)';
         const accentGrad  = isGeohunt
           ? 'linear-gradient(135deg,#B45309,#FBBF24)'
           : isPromo && RC ? RC.grad : G.emerald;

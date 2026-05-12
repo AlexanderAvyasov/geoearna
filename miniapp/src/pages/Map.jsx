@@ -59,8 +59,8 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           )}
 
           <div style={{
-            background: 'linear-gradient(135deg, rgba(198,241,53,0.10) 0%, rgba(198,241,53,0.05) 100%)',
-            border: '1.5px solid rgba(198,241,53,0.20)',
+            background: 'linear-gradient(135deg, rgba(0,200,255,0.10) 0%, rgba(0,200,255,0.05) 100%)',
+            border: '1.5px solid rgba(0,200,255,0.20)',
             borderRadius: 18, padding: '20px',
             textAlign: 'center', marginBottom: 14,
           }}>
@@ -162,10 +162,10 @@ export default function MapPage() {
           preferCanvas: true,
         });
 
-        // OpenStreetMap tiles — reliable globally, no API key needed
-        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // CartoDB Dark Matter — no API key needed
+        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom: 19,
-          subdomains: 'abc',
+          subdomains: 'abcd',
         });
 
         // Detect if tiles actually load; fall back gracefully
@@ -213,11 +213,12 @@ export default function MapPage() {
     if (userMarkerRef.current) { userMarkerRef.current.remove(); }
 
     const icon = L.divIcon({
-      html: `<div style="position:relative;width:16px;height:16px;">
-        <div style="position:absolute;inset:-12px;border-radius:50%;background:rgba(198,241,53,0.18);animation:userPing 2s ease-out infinite;"></div>
-        <div style="width:16px;height:16px;border-radius:50%;background:#C6F135;border:2.5px solid #090B10;"></div>
+      html: `<div style="position:relative;width:14px;height:14px;">
+        <div style="position:absolute;inset:-10px;border-radius:50%;background:rgba(0,200,255,0.15);animation:radarPing 2s ease-out infinite;"></div>
+        <div style="position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(0,200,255,0.4);animation:radarPing 2s ease-out 0.5s infinite;"></div>
+        <div style="width:14px;height:14px;border-radius:50%;background:#00C8FF;border:2px solid #06080E;box-shadow:0 0 8px rgba(0,200,255,0.8);"></div>
       </div>`,
-      className: '', iconSize: [16, 16], iconAnchor: [8, 8],
+      className: '', iconSize: [14, 14], iconAnchor: [7, 7],
     });
 
     userMarkerRef.current = L.marker([userPos.lat, userPos.lng], { icon, zIndexOffset: 1000 }).addTo(map);
@@ -237,15 +238,23 @@ export default function MapPage() {
       const delay = idx * 60;
       const icon = L.divIcon({
         html: `<div style="
-          display:inline-block;
-          transform:translate(-50%,-100%) scale(1);
-          background:#C6F135;
-          color:#090B10;padding:5px 11px;border-radius:20px;
-          font-size:13px;font-weight:800;white-space:nowrap;
-          border:1.5px solid rgba(198,241,53,0.3);
+          position:relative;
+          display:flex;align-items:center;justify-content:center;
+          transform:translate(-50%,-50%);
           pointer-events:none;
           animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both;
-        ">+${formatGeo(c.reward_amount)} GEO</div>`,
+        ">
+          <div style="position:absolute;width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,200,255,0.5);animation:radarPing 2.5s ease-out ${delay}ms infinite;"></div>
+          <div style="
+            background:rgba(6,8,14,0.92);
+            color:#00C8FF;padding:4px 9px;border-radius:2px;
+            font-size:12px;font-weight:700;white-space:nowrap;
+            border:1px solid rgba(0,200,255,0.45);
+            box-shadow:0 0 10px rgba(0,200,255,0.25);
+            font-family:'Rajdhani','Barlow Condensed',sans-serif;
+            letter-spacing:0.5px;
+          ">+${formatGeo(c.reward_amount)} GEO</div>
+        </div>`,
         className: '',
         iconSize: [0, 0],
         iconAnchor: [0, 0],
@@ -338,7 +347,7 @@ export default function MapPage() {
           {userPos && (
             <button onClick={() => mapRef.current?.setView([userPos.lat, userPos.lng], 15)} style={{
               width: 36, height: 36, borderRadius: 10,
-              border: `1px solid rgba(198,241,53,0.25)`,
+              border: `1px solid rgba(0,200,255,0.25)`,
               background: C.card, backdropFilter: 'blur(8px)',
               boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
               cursor: 'pointer',
@@ -447,9 +456,9 @@ export default function MapPage() {
                   </div>
                 </div>
                 <div style={{
-                  background: 'rgba(198,241,53,0.10)',
-                  border: '0.5px solid rgba(198,241,53,0.20)',
-                  color: '#C6F135', borderRadius: 10, padding: '8px 12px',
+                  background: 'rgba(0,200,255,0.10)',
+                  border: '0.5px solid rgba(0,200,255,0.20)',
+                  color: '#00C8FF', borderRadius: 10, padding: '8px 12px',
                   fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
                   +{formatGeo(c.reward_amount)} GEO

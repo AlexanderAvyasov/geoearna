@@ -1,7 +1,7 @@
 import { Component, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
-import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
+import { MapPin, Activity, ScanLine, Wallet, User as UserIcon, Shield, Loader2, Home as HomeIcon, Star, Store as StoreIcon } from 'lucide-react';
 import { C, E } from './lib/design';
 import { waitForInitData, API_BASE } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -88,7 +88,7 @@ function DebugOverlay() {
         style={{
           position: 'fixed', bottom: 88, right: 12, zIndex: 9100,
           width: 34, height: 34, borderRadius: '50%',
-          background: open ? 'rgba(239,68,68,0.85)' : 'rgba(198,241,53,0.85)',
+          background: open ? 'rgba(239,68,68,0.85)' : 'rgba(0,200,255,0.85)',
           border: 'none', cursor: 'pointer',
           fontSize: 13, fontWeight: 900, color: '#090B10',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -102,7 +102,7 @@ function DebugOverlay() {
         <div style={{
           position: 'fixed', bottom: 130, left: 8, right: 8, zIndex: 9099,
           background: 'rgba(5,8,14,0.97)',
-          border: '1px solid rgba(198,241,53,0.25)',
+          border: '1px solid rgba(0,200,255,0.25)',
           borderRadius: 14,
           maxHeight: '60vh', overflowY: 'auto',
           padding: '10px 12px',
@@ -110,11 +110,11 @@ function DebugOverlay() {
           lineHeight: 1.5,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ color: '#C6F135', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
+            <span style={{ color: '#00C8FF', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button
                 onClick={handleCopy}
-                style={{ ...btnBase, color: copied ? '#C6F135' : '#9ca3af', background: copied ? 'rgba(198,241,53,0.1)' : 'none' }}
+                style={{ ...btnBase, color: copied ? '#00C8FF' : '#9ca3af', background: copied ? 'rgba(0,200,255,0.1)' : 'none' }}
               >
                 {copied ? 'скопировано' : 'копировать все'}
               </button>
@@ -158,11 +158,11 @@ class AppErrorBoundary extends Component {
     if (this.state.error) {
       return (
         <div style={{
-          minHeight: '100vh', background: '#090B10', color: '#f87171',
+          minHeight: '100vh', background: '#06080E', color: '#FF3860',
           padding: '32px 20px', fontFamily: 'monospace', fontSize: 13,
           overflowY: 'auto',
         }}>
-          <div style={{ color: '#C6F135', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
+          <div style={{ color: '#00C8FF', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
             React render error
           </div>
           <div style={{ color: '#fbbf24', marginBottom: 12 }}>
@@ -174,8 +174,8 @@ class AppErrorBoundary extends Component {
           <button
             onClick={() => this.setState({ error: null, stack: null })}
             style={{
-              marginTop: 24, background: '#C6F135', color: '#090B10',
-              border: 'none', padding: '12px 28px', borderRadius: 10,
+              marginTop: 24, background: '#00C8FF', color: '#06080E',
+              border: 'none', padding: '12px 28px', borderRadius: 4,
               fontWeight: 700, fontSize: 14, cursor: 'pointer',
             }}
           >
@@ -200,11 +200,11 @@ function BrowserGate() {
       {/* Logo */}
       <div style={{
         width: 96, height: 96, borderRadius: 28,
-        background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
-        border: '1.5px solid rgba(198,241,53,0.25)',
+        background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
+        border: '1px solid rgba(0,200,255,0.25)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 32,
-        boxShadow: '0 0 40px rgba(198,241,53,0.12)',
+        boxShadow: '0 0 40px rgba(0,200,255,0.12)',
       }}>
         <MapPin size={44} color={C.geo} strokeWidth={1.75} />
       </div>
@@ -224,9 +224,9 @@ function BrowserGate() {
           display: 'inline-flex', alignItems: 'center', gap: 10,
           background: C.geo, color: C.bg,
           textDecoration: 'none',
-          padding: '16px 36px', borderRadius: 16,
-          fontWeight: 800, fontSize: 17, letterSpacing: 0.2,
-          boxShadow: '0 6px 28px rgba(198,241,53,0.30)',
+          padding: '14px 36px', borderRadius: 4,
+          fontWeight: 700, fontSize: 16, letterSpacing: 1,
+          boxShadow: '0 6px 28px rgba(0,200,255,0.30)',
         }}
       >
         Открыть @geoearnbot
@@ -240,15 +240,26 @@ function BrowserGate() {
 }
 
 export const GLOBAL_CSS = `
+  :root {
+    --geo: #00C8FF;
+    --bg: #06080E;
+    --surf: #0A0D16;
+    --card: #0E1222;
+  }
+
   *, *::before, *::after { box-sizing: border-box; }
   html, body, #root {
     margin: 0; padding: 0;
     background: ${C.bg};
     color: ${C.t1};
-    font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Rajdhani', 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
+  }
+  body {
+    background-image: radial-gradient(rgba(0,200,255,0.045) 1px, transparent 1px);
+    background-size: 28px 28px;
   }
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
@@ -265,10 +276,23 @@ export const GLOBAL_CSS = `
     0%, 100% { opacity: .4; transform: scale(1); }
     50%       { opacity: .8; transform: scale(1.05); }
   }
+  @keyframes hudPulse {
+    0%, 100% { opacity: 0.5; }
+    50%       { opacity: 1; }
+  }
+  @keyframes radarPing {
+    0%   { transform: scale(0.6); opacity: 0.8; }
+    100% { transform: scale(2.4); opacity: 0; }
+  }
+  @keyframes shimmer {
+    0%   { opacity: 0.5; }
+    50%  { opacity: 0.9; }
+    100% { opacity: 0.5; }
+  }
   @keyframes scanRing {
-    0%   { box-shadow: 0 0 0 0   rgba(198,241,53,.6); }
-    60%  { box-shadow: 0 0 0 14px rgba(198,241,53,0); }
-    100% { box-shadow: 0 0 0 0   rgba(198,241,53,0); }
+    0%   { box-shadow: 0 0 0 0   rgba(0,200,255,.6); }
+    60%  { box-shadow: 0 0 0 14px rgba(0,200,255,0); }
+    100% { box-shadow: 0 0 0 0   rgba(0,200,255,0); }
   }
   @keyframes coinBurst {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
@@ -303,8 +327,8 @@ export const GLOBAL_CSS = `
     50%       { transform: scale(1.7); opacity: 0; }
   }
   @keyframes successGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(198,241,53,.4); }
-    50%       { box-shadow: 0 0 0 22px rgba(198,241,53,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,255,.4); }
+    50%       { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
   }
   @keyframes toastIn {
     from { transform: translate(-50%, 10px); opacity: 0; }
@@ -361,14 +385,15 @@ export const GLOBAL_CSS = `
     100% { transform: translate(-50%,-100%) scale(1); opacity: 1; }
   }
   @keyframes markerPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(198,241,53,0.55); }
-    50%       { box-shadow: 0 0 0 8px rgba(198,241,53,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,255,0.55); }
+    50%       { box-shadow: 0 0 0 8px rgba(0,200,255,0); }
   }
 
-  /* ── Skeleton — static dark block only, no sweep ── */
+  /* ── Skeleton shimmer ── */
   .sk {
-    background: rgba(255,255,255,0.055);
+    background: rgba(0,200,255,0.05);
     flex-shrink: 0;
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 
   @keyframes splashLogoIn {
@@ -385,9 +410,9 @@ export const GLOBAL_CSS = `
     40%            { transform: scale(1);    opacity: 1; }
   }
   @keyframes splashRing {
-    0%   { box-shadow: 0 0 0 0   rgba(198,241,53,0.45); }
-    70%  { box-shadow: 0 0 0 22px rgba(198,241,53,0); }
-    100% { box-shadow: 0 0 0 0   rgba(198,241,53,0); }
+    0%   { box-shadow: 0 0 0 0   rgba(0,200,255,0.45); }
+    70%  { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
+    100% { box-shadow: 0 0 0 0   rgba(0,200,255,0); }
   }
   @keyframes splashFadeOut {
     0%   { opacity: 1; }
@@ -411,9 +436,9 @@ const SPLASH_CSS = `
     40%            { transform: scale(1);    opacity: 1; }
   }
   @keyframes _sRing {
-    0%   { box-shadow: 0 0 0 0    rgba(198,241,53,0.45); }
-    70%  { box-shadow: 0 0 0 22px rgba(198,241,53,0); }
-    100% { box-shadow: 0 0 0 0    rgba(198,241,53,0); }
+    0%   { box-shadow: 0 0 0 0    rgba(0,200,255,0.45); }
+    70%  { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
+    100% { box-shadow: 0 0 0 0    rgba(0,200,255,0); }
   }
   @keyframes _sFadeOut {
     0%   { opacity: 1; }
@@ -440,7 +465,7 @@ function SplashScreen({ fading }) {
           position: 'absolute', top: '28%', left: '50%',
           transform: 'translateX(-50%)',
           width: 280, height: 280, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(198,241,53,0.07) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -449,8 +474,8 @@ function SplashScreen({ fading }) {
           position: 'relative',
           width: 88, height: 88,
           borderRadius: 28,
-          background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
-          border: '1.5px solid rgba(198,241,53,0.25)',
+          background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
+          border: '1px solid rgba(0,200,255,0.25)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: '_sLogoIn 0.65s cubic-bezier(0.32,0.72,0,1) both, _sRing 2.4s ease-in-out 0.7s infinite',
           marginBottom: 24,
@@ -665,13 +690,13 @@ function BottomNav({ onQrResult }) {
   const [indicatorX, setIndicatorX] = useState(null);
 
   const NAV_ITEMS = [
-    { to: '/',        Icon: HomeIcon,  label: t('nav.home')     },
-    { to: '/game',    Icon: Star,      label: t('nav.game')     },
+    { to: '/',        Icon: MapPin,    label: t('nav.home')     },
+    { to: '/game',    Icon: Activity,  label: t('nav.game')     },
     null,
     { to: '/balance', Icon: Wallet,    label: t('nav.balance')  },
     IS_SUPER_ADMIN
-      ? { to: '/superadmin', Icon: Shield,    label: 'SA'                }
-      : { to: '/admin',      Icon: StoreIcon, label: t('nav.business')   },
+      ? { to: '/superadmin', Icon: Shield,   label: 'SA'                }
+      : { to: '/admin',      Icon: UserIcon, label: t('nav.business')   },
   ];
 
   // Computed before hooks — used by useLayoutEffect below
@@ -706,14 +731,14 @@ function BottomNav({ onQrResult }) {
     <>
       <nav ref={navRef} style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(9,11,16,0.97)',
+        background: 'rgba(6,8,14,0.97)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '0.5px solid rgba(255,255,255,0.07)',
+        borderTop: '1px solid rgba(0,200,255,0.14)',
         display: 'flex', alignItems: 'flex-end',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         zIndex: 100,
-        height: 72,
+        height: 60,
       }}>
         {/* Sliding indicator */}
         {indicatorX !== null && (

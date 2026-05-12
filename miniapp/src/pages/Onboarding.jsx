@@ -32,8 +32,8 @@ function LangPhase({ onDone }) {
       {/* Logo mark */}
       <div style={{
         width: 72, height: 72, borderRadius: 22,
-        background: 'linear-gradient(145deg, #1A2010 0%, #111708 100%)',
-        border: '1.5px solid rgba(198,241,53,0.25)',
+        background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
+        border: '1px solid rgba(0,200,255,0.25)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 32,
         animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',

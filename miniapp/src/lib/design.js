@@ -1,67 +1,66 @@
-// GeoEarn Design System v3 — Restrained Luxury
-// Linear × Revolut × Raycast
+// GeoEarn Design System v4 — Field Operations HUD
 
 export const C = {
   // Backgrounds
-  bg:     '#090B10',
-  surf:   '#0F1318',
-  card:   '#161B24',
-  cardHi: '#1E2530',
+  bg:     '#06080E',
+  surf:   '#0A0D16',
+  card:   '#0E1222',
+  cardHi: '#121830',
 
-  // Borders
-  b0: 'rgba(255,255,255,0.04)',
-  b1: 'rgba(255,255,255,0.07)',
-  b2: 'rgba(255,255,255,0.12)',
+  // Borders — cyan-tinted
+  b0: 'rgba(0,200,255,0.06)',
+  b1: 'rgba(0,200,255,0.12)',
+  b2: 'rgba(0,200,255,0.22)',
 
-  // GEO accent — yellow-green
-  geo:    '#C6F135',
-  geoDim: 'rgba(198,241,53,0.10)',
-  geoGl:  'rgba(198,241,53,0.20)',
+  // GEO accent — cyan HUD
+  geo:    '#00C8FF',
+  geoDim: 'rgba(0,200,255,0.10)',
+  geoGl:  'rgba(0,200,255,0.20)',
 
   // Success green
-  green:   '#4ADE80',
-  greenFt: 'rgba(74,222,128,0.10)',
-  greenGl: 'rgba(74,222,128,0.20)',
+  green:   '#00FF88',
+  greenFt: 'rgba(0,255,136,0.10)',
+  greenGl: 'rgba(0,255,136,0.20)',
 
   // Achievements / rewards
-  gold:   '#F5A623',
-  goldFt: 'rgba(245,166,35,0.10)',
-  goldGl: 'rgba(245,166,35,0.20)',
+  gold:   '#FFB800',
+  goldFt: 'rgba(255,184,0,0.10)',
+  goldGl: 'rgba(255,184,0,0.20)',
 
   // Errors
-  red:   '#F87171',
-  redFt: 'rgba(248,113,113,0.10)',
-  redGl: 'rgba(248,113,113,0.20)',
+  red:   '#FF3860',
+  redFt: 'rgba(255,56,96,0.10)',
+  redGl: 'rgba(255,56,96,0.20)',
 
   // Streak / warnings
-  orange: '#FB923C',
+  orange: '#FF7A30',
 
   // Text
-  t1: '#F0F2F7',
-  t2: '#8892A8',
-  t3: '#4A5168',
-  t4: 'rgba(240,242,247,0.06)',
+  t1: '#E8F4FF',
+  t2: '#4A7A9B',
+  t3: '#1E3A52',
+  t4: 'rgba(232,244,255,0.06)',
 
-  // Legacy aliases — for pages not yet migrated to new tokens
-  purple:   '#C6F135',
-  purpleL:  '#C6F135',
-  purpleD:  '#A8D420',
-  purpleFt: 'rgba(198,241,53,0.10)',
-  purpleGl: 'rgba(198,241,53,0.20)',
-  indigo:   '#C6F135',
-  indigoFt: 'rgba(198,241,53,0.10)',
-  indigoGl: 'rgba(198,241,53,0.20)',
-  emerald:   '#4ADE80',
-  emeraldD:  '#22C55E',
-  emeraldFt: 'rgba(74,222,128,0.10)',
-  emeraldGl: 'rgba(74,222,128,0.20)',
-  goldD:     '#D97706',
-  blue:      '#C6F135',
-  blueGl:    'rgba(198,241,53,0.20)',
-  blueFt:    'rgba(198,241,53,0.10)',
+  // Legacy aliases — kept for pages not yet migrated
+  purple:   '#00C8FF',
+  purpleL:  '#00C8FF',
+  purpleD:  '#0099CC',
+  purpleFt: 'rgba(0,200,255,0.10)',
+  purpleGl: 'rgba(0,200,255,0.20)',
+  indigo:   '#00C8FF',
+  indigoFt: 'rgba(0,200,255,0.10)',
+  indigoGl: 'rgba(0,200,255,0.20)',
+  emerald:   '#00FF88',
+  emeraldD:  '#00CC6A',
+  emeraldFt: 'rgba(0,255,136,0.10)',
+  emeraldGl: 'rgba(0,255,136,0.20)',
+  goldD:     '#CC9200',
+  blue:      '#00C8FF',
+  blueGl:    'rgba(0,200,255,0.20)',
+  blueFt:    'rgba(0,200,255,0.10)',
 };
 
-// Legacy gradient shims — flat colors for pages not yet redesigned
+// Legacy gradient shims
 export const G = {
   page:       C.bg,
   hero:       C.bg,
@@ -80,24 +79,25 @@ export const E = {
   smooth: 'cubic-bezier(0.4,0,0.2,1)',
 };
 
-export function sk(h, w = '100%', r = 8) {
+export function sk(h, w = '100%', r = 4) {
   return {
     height: h, width: w, borderRadius: r, flexShrink: 0,
     position: 'relative', overflow: 'hidden',
-    background: 'rgba(255,255,255,0.055)',
+    background: 'rgba(0,200,255,0.05)',
+    animation: 'shimmer 1.6s ease-in-out infinite',
   };
 }
 
 export const cardBase = {
-  background: '#161B24',
-  border: '0.5px solid rgba(255,255,255,0.07)',
-  borderRadius: 20,
+  background: '#0E1222',
+  border: '1px solid rgba(0,200,255,0.12)',
+  borderRadius: 4,
 };
 
 export const glassCard = {
-  background: 'rgba(15,19,24,0.97)',
-  border: '0.5px solid rgba(255,255,255,0.08)',
-  borderRadius: 24,
+  background: 'rgba(10,13,22,0.97)',
+  border: '1px solid rgba(0,200,255,0.14)',
+  borderRadius: 4,
   backdropFilter: 'blur(24px)',
   WebkitBackdropFilter: 'blur(24px)',
 };
@@ -105,13 +105,13 @@ export const glassCard = {
 export function inputStyle(focused = false, error = false) {
   return {
     width: '100%', boxSizing: 'border-box',
-    padding: '14px 16px', borderRadius: 14,
-    border: `1px solid ${error ? '#F87171' : focused ? 'rgba(198,241,53,0.45)' : 'rgba(255,255,255,0.08)'}`,
-    background: 'rgba(255,255,255,0.04)',
-    color: '#F0F2F7', fontSize: 16, outline: 'none',
+    padding: '14px 16px', borderRadius: 4,
+    border: `1px solid ${error ? '#FF3860' : focused ? 'rgba(0,200,255,0.5)' : 'rgba(0,200,255,0.14)'}`,
+    background: 'rgba(0,200,255,0.04)',
+    color: '#E8F4FF', fontSize: 16, outline: 'none',
     transition: 'border-color 0.2s',
     WebkitAppearance: 'none',
-    fontFamily: "'Barlow Condensed', -apple-system, sans-serif",
+    fontFamily: "'Rajdhani', 'Barlow Condensed', -apple-system, sans-serif",
   };
 }
 
