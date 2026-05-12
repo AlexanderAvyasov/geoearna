@@ -132,7 +132,7 @@ router.get('/api/geohunt/claim', initDataFromQuery, validateTma, async (req, res
       return res.status(500).json({ error: 'INTERNAL_ERROR' });
     }
 
-    await supabase.rpc('increment_geohunt_claimed', { p_hunt_id: hunt.id }).catch(() => {});
+    try { await supabase.rpc('increment_geohunt_claimed', { p_hunt_id: hunt.id }); } catch (_) {}
 
     const { data: updated } = await supabase.from('users').select('balance').eq('id', userId).single();
 
@@ -215,7 +215,7 @@ router.post('/api/geohunt/claim', validateTma, async (req, res) => {
     }
 
     // Update hunt claimed_codes counter
-    await supabase.rpc('increment_geohunt_claimed', { p_hunt_id: hunt.id }).catch(() => {});
+    try { await supabase.rpc('increment_geohunt_claimed', { p_hunt_id: hunt.id }); } catch (_) {}
 
     const { data: updated } = await supabase.from('users').select('balance').eq('id', userId).single();
 
