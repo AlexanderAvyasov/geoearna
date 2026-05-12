@@ -21,6 +21,92 @@ const IS_SUPER_ADMIN = user?.id === 930826522;
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 
+// ─── On-screen debug log (QR troubleshooting) ────────────────────────────────
+const _dbuf = [];
+const _dlisteners = new Set();
+function _dpush(type, ...args) {
+  const msg = args.map(a => {
+    try { return typeof a === 'object' ? JSON.stringify(a) : String(a); } catch { return String(a); }
+  }).join(' ');
+  _dbuf.unshift({ ts: Date.now(), type, msg: msg.slice(0, 300) });
+  if (_dbuf.length > 60) _dbuf.length = 60;
+  _dlisteners.forEach(fn => fn([..._dbuf]));
+}
+const _clog = console.log.bind(console);
+const _cerr = console.error.bind(console);
+const _cwarn = console.warn.bind(console);
+console.log   = (...a) => { _clog(...a);   _dpush('log',   ...a); };
+console.error = (...a) => { _cerr(...a);   _dpush('error', ...a); };
+console.warn  = (...a) => { _cwarn(...a);  _dpush('warn',  ...a); };
+
+function DebugOverlay() {
+  const [logs,    setLogs]    = useState([..._dbuf]);
+  const [open,    setOpen]    = useState(false);
+
+  useEffect(() => {
+    _dlisteners.add(setLogs);
+    // Log Telegram environment on first render
+    const tgw = window.Telegram?.WebApp;
+    _dpush('log', `[TG] present:${!!tgw} ver:${tgw?.version||'?'} platform:${tgw?.platform||'?'}`);
+    _dpush('log', `[TG] initData:${tgw?.initData ? 'ok('+tgw.initData.length+'ch)' : 'EMPTY'}`);
+    _dpush('log', `[TG] showScanQrPopup:${typeof tgw?.showScanQrPopup}`);
+    _dpush('log', `[TG] isVersionAtLeast_6.4:${tgw?.isVersionAtLeast?.('6.4')}`);
+    _dpush('log', `[TG] closeScanQrPopup:${typeof tgw?.closeScanQrPopup}`);
+    return () => _dlisteners.delete(setLogs);
+  }, []);
+
+  const colors = { log: '#d1fae5', warn: '#fbbf24', error: '#f87171' };
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          position: 'fixed', bottom: 88, right: 12, zIndex: 9100,
+          width: 34, height: 34, borderRadius: '50%',
+          background: open ? 'rgba(239,68,68,0.85)' : 'rgba(198,241,53,0.85)',
+          border: 'none', cursor: 'pointer',
+          fontSize: 13, fontWeight: 900, color: '#090B10',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+        }}
+      >
+        {open ? '✕' : '🐛'}
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'fixed', bottom: 130, left: 8, right: 8, zIndex: 9099,
+          background: 'rgba(5,8,14,0.97)',
+          border: '1px solid rgba(198,241,53,0.25)',
+          borderRadius: 14,
+          maxHeight: '60vh', overflowY: 'auto',
+          padding: '10px 12px',
+          fontFamily: 'monospace', fontSize: 10.5,
+          lineHeight: 1.5,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ color: '#C6F135', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
+            <button
+              onClick={() => { _dbuf.length = 0; setLogs([]); }}
+              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 10, cursor: 'pointer' }}
+            >очистить</button>
+          </div>
+          {logs.length === 0 && <div style={{ color: '#4b5563' }}>Нет логов</div>}
+          {logs.map((e, i) => (
+            <div key={i} style={{ color: colors[e.type] || '#d1fae5', marginBottom: 2, wordBreak: 'break-all' }}>
+              <span style={{ color: '#6b7280', marginRight: 5 }}>
+                {new Date(e.ts).toISOString().slice(11, 22)}
+              </span>
+              {e.msg}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 
 // ─── Error boundary — catches render-phase crashes ───────────────────────────
 class AppErrorBoundary extends Component {
@@ -766,6 +852,9 @@ export default function App() {
           </BrowserRouter>
         )}
       </AppErrorBoundary>
+
+      {/* Debug overlay — tap 🐛 button (bottom-right) to view logs */}
+      <DebugOverlay />
 
     </LanguageProvider>
   );
