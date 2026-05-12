@@ -62,7 +62,87 @@ router.get('/api/geohunt/info', async (req, res) => {
   });
 });
 
-// POST /api/geohunt/claim  — authenticated: burn code + award GEO
+// Promote initdata from query param to header so validateTma works unchanged.
+// Used by GET /api/geohunt/claim to avoid CORS preflight (simple GET request).
+function initDataFromQuery(req, _res, next) {
+  if (!req.headers['initdata'] && req.query.initdata) {
+    req.headers['initdata'] = decodeURIComponent(req.query.initdata);
+  }
+  next();
+}
+
+// GET /api/geohunt/claim?token=&initdata=  — authenticated, no CORS preflight
+router.get('/api/geohunt/claim', initDataFromQuery, validateTma, async (req, res) => {
+  const { token } = req.query;
+  const userId    = req.user.id;
+
+  if (!token || typeof token !== 'string' || token.length > 100) {
+    return res.status(400).json({ error: 'INVALID_PARAMS' });
+  }
+
+  // Ban check
+  const { data: userRow } = await supabase.from('users').select('banned_at').eq('id', userId).single();
+  if (userRow?.banned_at) return res.status(403).json({ error: 'USER_BANNED' });
+
+  const { data: code, error: codeErr } = await supabase
+    .from('geohunt_codes')
+    .select('id, token, used_by, hunt_id')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (codeErr) { console.error('[geohunt/claim GET] fetch code', codeErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (!code) return res.status(404).json({ error: 'NOT_FOUND' });
+
+  const { data: hunt, error: huntErr } = await supabase
+    .from('geohunts')
+    .select('id, title, reward_per_code, active, starts_at, ends_at')
+    .eq('id', code.hunt_id)
+    .maybeSingle();
+
+  if (huntErr) { console.error('[geohunt/claim GET] fetch hunt', huntErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (!hunt || !hunt.active) return res.status(400).json({ error: 'HUNT_INACTIVE' });
+
+  const now = new Date();
+  if (hunt.starts_at && new Date(hunt.starts_at) > now) return res.status(400).json({ error: 'HUNT_NOT_STARTED' });
+  if (hunt.ends_at   && new Date(hunt.ends_at)   < now) return res.status(400).json({ error: 'HUNT_EXPIRED' });
+
+  if (code.used_by) {
+    return res.status(400).json({ error: code.used_by === userId ? 'ALREADY_CLAIMED_BY_YOU' : 'CODE_USED' });
+  }
+
+  const { data: burned, error: burnErr } = await supabase
+    .from('geohunt_codes')
+    .update({ used_by: userId, used_at: now.toISOString() })
+    .eq('id', code.id)
+    .is('used_by', null)
+    .select('id')
+    .maybeSingle();
+
+  if (burnErr) { console.error('[geohunt/claim GET] burn', burnErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (!burned) return res.status(400).json({ error: 'CODE_USED' });
+
+  const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
+    p_user_id: userId,
+    p_amount:  hunt.reward_per_code,
+  });
+  if (geoErr) {
+    await supabase.from('geohunt_codes').update({ used_by: null, used_at: null }).eq('id', code.id);
+    console.error('[geohunt/claim GET] apply_checkin_bonus', geoErr);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+
+  await supabase.rpc('increment_geohunt_claimed', { p_hunt_id: hunt.id }).catch(() => {});
+
+  const { data: updated } = await supabase.from('users').select('balance').eq('id', userId).single();
+
+  return res.json({
+    reward:       hunt.reward_per_code,
+    totalBalance: updated?.balance || 0,
+    huntTitle:    hunt.title,
+  });
+});
+
+// POST /api/geohunt/claim  — authenticated: burn code + award GEO (kept for backwards compat)
 router.post('/api/geohunt/claim', validateTma, async (req, res) => {
   const { token } = req.body;
   const userId    = req.user.id;

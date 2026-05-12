@@ -8,7 +8,7 @@ import {
 import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
 import RippleButton from '../lib/RippleButton';
-import { apiFetch, API_BASE } from '../lib/api';
+import { apiFetch, API_BASE, waitForInitData } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -346,47 +346,40 @@ export default function Checkin() {
       USER_BANNED:   { Icon: Ban,         titleKey: 'promo.USER_BANNED.title',     textKey: 'promo.USER_BANNED.text'   },
     };
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      if (attempt > 1) {
-        console.log(`[CHECKIN:DO_GEOHUNT] retry ${attempt}/3 — waiting 1s`);
-        await new Promise(r => setTimeout(r, 1000));
-      }
-      try {
-        const r = await apiFetch('/api/geohunt/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token }),
-        });
-        const data = await r.json().catch(() => ({}));
-        console.log('[CHECKIN:DO_GEOHUNT] attempt:', attempt, '| status:', r.status, '| data:', JSON.stringify(data));
-        if (!r.ok) {
-          const code = data?.error || 'UNKNOWN';
-          // ALREADY_CLAIMED_BY_YOU: request succeeded earlier but response was lost.
-          if (code === 'ALREADY_CLAIMED_BY_YOU') {
-            setReward(data.reward ?? huntInfo?.reward ?? 0);
-            setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle || prev?.huntTitle }));
-            setStatus('success');
-            tg?.HapticFeedback?.notificationOccurred('success');
-            return;
-          }
-          setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
-          setStatus('error');
+    // Use GET with query params — avoids CORS preflight entirely (no custom headers).
+    // initData goes in the query string; server reads it from req.query.initdata.
+    try {
+      const initData = await waitForInitData(5000);
+      const qs = new URLSearchParams({ token });
+      if (initData) qs.set('initdata', initData);
+      console.log('[CHECKIN:DO_GEOHUNT] GET claim | initData:', initData ? `ok(${initData.length}ch)` : 'EMPTY');
+      const r = await fetch(`${API_BASE}/api/geohunt/claim?${qs.toString()}`);
+      const data = await r.json().catch(() => ({}));
+      console.log('[CHECKIN:DO_GEOHUNT] status:', r.status, '| data:', JSON.stringify(data));
+      if (!r.ok) {
+        const code = data?.error || 'UNKNOWN';
+        if (code === 'ALREADY_CLAIMED_BY_YOU') {
+          setReward(data.reward ?? huntInfo?.reward ?? 0);
+          setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle || prev?.huntTitle }));
+          setStatus('success');
+          tg?.HapticFeedback?.notificationOccurred('success');
           return;
         }
-        setReward(data.reward);
-        setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle }));
-        setStatus('success');
-        setShowBurst(true);
-        setShowWave(true);
-        setTimeout(() => setShowBurst(false), 1400);
-        setTimeout(() => setShowWave(false), 900);
-        tg?.HapticFeedback?.notificationOccurred('success');
+        setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
+        setStatus('error');
         return;
-      } catch (e) {
-        console.error(`[CHECKIN:DO_GEOHUNT:CATCH] attempt ${attempt}/3 | name:${e?.name} | msg:${e?.message || String(e)}`);
-        if (attempt >= 3) break;
-        // Network error — retry. Server errors (4xx/5xx) return a Response, not a throw.
       }
+      setReward(data.reward);
+      setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle }));
+      setStatus('success');
+      setShowBurst(true);
+      setShowWave(true);
+      setTimeout(() => setShowBurst(false), 1400);
+      setTimeout(() => setShowWave(false), 900);
+      tg?.HapticFeedback?.notificationOccurred('success');
+      return;
+    } catch (e) {
+      console.error(`[CHECKIN:DO_GEOHUNT:CATCH] name:${e?.name} | msg:${e?.message || String(e)}`);
     }
 
     sent.current = false;
