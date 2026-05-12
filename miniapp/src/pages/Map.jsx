@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Navigation, Lock, ShoppingBag, Star, Loader2, AlertCircle, Crosshair } from 'lucide-react';
+import { MapPin, Navigation, Lock, ShoppingBag, Star, Loader2, AlertCircle, Crosshair, Gift } from 'lucide-react';
 import { API_BASE, apiFetch } from '../lib/api';
 import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -11,6 +11,12 @@ import { useLanguage } from '../contexts/LanguageContext';
 const MONO = { fontFamily: "'Share Tech Mono', monospace" };
 const TASK_ICON = { visit: MapPin, purchase: ShoppingBag, review: Star };
 const CAT_LABEL  = { visit: 'FOOD', purchase: 'SHOP', review: 'REVIEW' };
+const RARITY = {
+  common:    { label: 'COMMON',    color: '#9CA3AF' },
+  rare:      { label: 'RARE',      color: '#60A5FA' },
+  epic:      { label: 'EPIC',      color: '#C084FC' },
+  legendary: { label: 'LEGENDARY', color: '#FBBF24' },
+};
 
 function matchPct(c) {
   if (c.dist === undefined) return 82;
@@ -123,6 +129,7 @@ export default function MapPage() {
   const userMarkerRef = useRef(null);
 
   const [campaigns, setCampaigns] = useState([]);
+  const [promoQrs,  setPromoQrs]  = useState([]);
   const [userPos,   setUserPos]   = useState(null);
   const [selected,  setSelected]  = useState(null);
   const [loading,   setLoading]   = useState(true);
@@ -156,6 +163,14 @@ export default function MapPage() {
       .catch(() => {})
       .finally(() => { clearTimeout(bail); setLoading(false); });
     return () => { ctrl.abort(); clearTimeout(bail); };
+  }, []);
+
+  // Promo QR fetch
+  useEffect(() => {
+    fetch(`${API_BASE}/api/promos/active`)
+      .then(r => r.ok ? r.json() : { promos: [] })
+      .then(d => setPromoQrs(d.promos || []))
+      .catch(() => {});
   }, []);
 
   // Geolocation
@@ -484,12 +499,9 @@ export default function MapPage() {
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                {/* Row number */}
                 <div style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
                   {String(i + 1).padStart(2, '0')}
                 </div>
-
-                {/* Task icon */}
                 <div style={{
                   width: 20, height: 20, borderRadius: 2, flexShrink: 0,
                   background: 'rgba(0,200,255,0.07)', border: '1px solid rgba(0,200,255,0.14)',
@@ -497,8 +509,6 @@ export default function MapPage() {
                 }}>
                   <TIcon size={11} color={C.t3} strokeWidth={2} />
                 </div>
-
-                {/* Name + meta */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 14,
@@ -512,19 +522,79 @@ export default function MapPage() {
                     {c.requires_pin && <span style={{ color: C.gold }}> · PIN</span>}
                   </div>
                 </div>
-
-                {/* Amount + match */}
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ ...MONO, fontSize: 13, color: C.geo }}>
-                    +{formatGeo(c.reward_amount)}
-                  </div>
-                  <div style={{ ...MONO, fontSize: 8, color: C.green }}>
-                    MATCH {pct}%
-                  </div>
+                  <div style={{ ...MONO, fontSize: 13, color: C.geo }}>+{formatGeo(c.reward_amount)}</div>
+                  <div style={{ ...MONO, fontSize: 8, color: C.green }}>MATCH {pct}%</div>
                 </div>
               </div>
             );
           })}
+
+          {/* Promo QR section */}
+          {!loading && promoQrs.length > 0 && (
+            <>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '12px 0 8px',
+                borderBottom: '1px solid rgba(0,200,255,0.08)',
+                marginTop: nearby.length > 0 ? 4 : 0,
+              }}>
+                <div style={{ width: 2, height: 10, background: C.geo, borderRadius: 1, flexShrink: 0 }} />
+                <Gift size={10} color={C.geo} strokeWidth={2} />
+                <span style={{ ...MONO, fontSize: 9, color: C.geo, letterSpacing: 2 }}>PROMO QR</span>
+                <span style={{
+                  ...MONO, fontSize: 8, color: C.geo,
+                  background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.2)',
+                  borderRadius: 2, padding: '1px 5px', marginLeft: 'auto',
+                }}>{String(promoQrs.length).padStart(2, '0')}</span>
+              </div>
+
+              {promoQrs.map((p, i) => {
+                const rr = RARITY[p.rarity] || RARITY.common;
+                const remaining = p.max_claims - p.claims_count;
+                return (
+                  <div key={p.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '11px 0',
+                    borderBottom: '1px solid rgba(0,200,255,0.06)',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                    <div style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
+                      {String(i + 1).padStart(2, '0')}
+                    </div>
+                    <div style={{
+                      width: 20, height: 20, borderRadius: 2, flexShrink: 0,
+                      background: `${rr.color}12`, border: `1px solid ${rr.color}30`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Gift size={11} color={rr.color} strokeWidth={2} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 14,
+                        color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        marginBottom: 2,
+                      }}>
+                        {p.title}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ ...MONO, fontSize: 8, color: rr.color, background: `${rr.color}12`, borderRadius: 2, padding: '1px 4px', border: `1px solid ${rr.color}30` }}>
+                          {rr.label}
+                        </span>
+                        {remaining > 0 && (
+                          <span style={{ ...MONO, fontSize: 8, color: C.t3 }}>{remaining} left</span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ ...MONO, fontSize: 13, color: rr.color }}>+{formatGeo(p.reward_amount)}</div>
+                      <div style={{ ...MONO, fontSize: 8, color: C.t3 }}>GEO</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
         </div>
       </div>
 
