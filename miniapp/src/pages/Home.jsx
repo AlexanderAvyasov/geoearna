@@ -553,7 +553,7 @@ export default function Home() {
             ПО РАССТОЯНИЮ
           </button>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/map')}
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               background: 'transparent', color: C.geo,

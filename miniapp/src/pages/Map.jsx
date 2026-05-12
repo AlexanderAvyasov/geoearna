@@ -1,23 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapPin, Navigation, Lock, Store, Map as MapIcon, Crosshair, ShoppingBag, Star, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
-import { API_BASE } from '../lib/api';
+import { MapPin, Navigation, Lock, ShoppingBag, Star, Loader2, AlertCircle, Crosshair } from 'lucide-react';
+import { API_BASE, apiFetch } from '../lib/api';
 import { getGeoPos } from '../lib/geoPos';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
-import { C, cardBase } from '../lib/design';
+import { C } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
-import { pluralize } from '../lib/i18n';
 
+const MONO = { fontFamily: "'Share Tech Mono', monospace" };
 const TASK_ICON = { visit: MapPin, purchase: ShoppingBag, review: Star };
+const CAT_LABEL  = { visit: 'FOOD', purchase: 'SHOP', review: 'REVIEW' };
+
+function matchPct(c) {
+  if (c.dist === undefined) return 82;
+  return Math.max(55, Math.min(99, Math.round(99 - c.dist / 80)));
+}
 
 function CampaignSheet({ campaign, userPos, onClose }) {
   const { t } = useLanguage();
   const dist = userPos && campaign.lat && campaign.lng
     ? haversineMeters(userPos, { lat: +campaign.lat, lng: +campaign.lng })
     : null;
-
   const TaskIcon = TASK_ICON[campaign.task_type] || MapPin;
 
   return (
@@ -32,74 +36,79 @@ function CampaignSheet({ campaign, userPos, onClose }) {
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: C.surf,
-        borderRadius: '28px 28px 0 0',
-        border: `1px solid rgba(255,255,255,0.08)`,
+        borderRadius: '4px 4px 0 0',
+        border: `1px solid rgba(0,200,255,0.15)`,
         borderBottom: 'none',
         padding: '0 0 44px', zIndex: 501,
         maxWidth: 480, margin: '0 auto',
         animation: 'slideUp 0.35s cubic-bezier(0.175,0.885,0.32,1.275)',
         boxShadow: '0 -12px 60px rgba(0,0,0,0.8)',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 22px' }} />
-        <div style={{ padding: '0 22px' }}>
-          <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 4, color: C.t1, letterSpacing: -0.4 }}>
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          {/* Sheet header */}
+          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.5, marginBottom: 6 }}>◆ TARGET DETAIL</div>
+          <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 4, color: C.t1, letterSpacing: 0.2 }}>
             {campaign.business_name}
           </div>
           {campaign.address && (
-            <div style={{ fontSize: 14, color: C.t3, marginBottom: dist !== null ? 4 : 20, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <MapPin size={13} color={C.t3} />
+            <div style={{ fontSize: 13, color: C.t3, marginBottom: dist !== null ? 4 : 16, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <MapPin size={11} color={C.t3} />
               {campaign.address}
             </div>
           )}
           {dist !== null && (
-            <div style={{ fontSize: 13, color: C.geo, fontWeight: 700, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Navigation size={13} color={C.geo} />
+            <div style={{ ...MONO, fontSize: 10, color: C.geo, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Navigation size={11} color={C.geo} />
               {formatDistance(dist)} {t('home.from_you')}
             </div>
           )}
 
+          {/* Reward box */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(0,200,255,0.10) 0%, rgba(0,200,255,0.05) 100%)',
-            border: '1.5px solid rgba(0,200,255,0.20)',
-            borderRadius: 18, padding: '20px',
-            textAlign: 'center', marginBottom: 14,
+            background: 'linear-gradient(135deg, rgba(0,200,255,0.08) 0%, rgba(0,200,255,0.04) 100%)',
+            border: '1px solid rgba(0,200,255,0.20)',
+            borderRadius: 4, padding: '16px',
+            textAlign: 'center', marginBottom: 10,
           }}>
-            <div style={{ fontSize: 11, color: C.t3, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6 }}>{t('home.reward')}</div>
-            <div style={{ fontSize: 44, fontWeight: 900, letterSpacing: -1, color: C.t1 }}>
+            <div style={{ ...MONO, fontSize: 9, color: C.t3, marginBottom: 4, letterSpacing: 1.5 }}>REWARD</div>
+            <div style={{ ...MONO, fontSize: 40, color: C.t1 }}>
               +{formatGeo(campaign.reward_amount)}
-              <span style={{ fontSize: 18, fontWeight: 600, color: C.geo, marginLeft: 6 }}>GEO</span>
+              <span style={{ fontSize: 16, color: C.geo, marginLeft: 6 }}>GEO</span>
             </div>
           </div>
 
-          <div style={{ ...cardBase, border: `1px solid ${C.b0}`, borderRadius: 14, padding: '12px 14px', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>{t('home.task_type')}</div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: C.t1, display: 'flex', alignItems: 'center', gap: 7 }}>
-              <TaskIcon size={16} color={C.geo} strokeWidth={2} />
-              {t('task.' + (campaign.task_type || 'visit'))}
+          {/* Task type */}
+          <div style={{
+            background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.b1}`,
+            borderRadius: 4, padding: '10px 12px', marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <TaskIcon size={14} color={C.geo} strokeWidth={2} />
+            <div style={{ ...MONO, fontSize: 10, color: C.t2, letterSpacing: 0.5 }}>
+              {CAT_LABEL[campaign.task_type] || 'VISIT'}
             </div>
           </div>
 
           {campaign.requires_pin && (
             <div style={{
-              background: C.goldFt, border: `1.5px solid rgba(245,158,11,0.2)`,
-              borderRadius: 14, padding: '12px 14px', marginBottom: 10,
-              display: 'flex', gap: 10, alignItems: 'center',
+              background: 'rgba(255,184,0,0.06)', border: `1px solid rgba(255,184,0,0.18)`,
+              borderRadius: 4, padding: '10px 12px', marginBottom: 8,
+              display: 'flex', gap: 8, alignItems: 'center',
             }}>
-              <Lock size={16} color={C.gold} strokeWidth={2} />
-              <span style={{ fontSize: 13, color: C.gold, fontWeight: 600 }}>
-                {t('map.requires_pin')}
-              </span>
+              <Lock size={13} color={C.gold} strokeWidth={2} />
+              <span style={{ ...MONO, fontSize: 9, color: C.gold, letterSpacing: 0.5 }}>{t('map.requires_pin')}</span>
             </div>
           )}
 
           <button onClick={onClose} style={{
             width: '100%', marginTop: 8,
-            background: C.card, border: `1px solid ${C.b1}`,
-            borderRadius: 16, padding: '15px',
-            fontSize: 16, fontWeight: 700,
-            color: C.t2, cursor: 'pointer',
+            background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.b2}`,
+            borderRadius: 4, padding: '14px',
+            ...MONO, fontSize: 11, color: C.t2, cursor: 'pointer',
+            letterSpacing: 1,
           }}>
-            {t('home.close')}
+            CLOSE
           </button>
         </div>
       </div>
@@ -108,45 +117,56 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 }
 
 export default function MapPage() {
-  const { t, lang } = useLanguage();
-  const navigate      = useNavigate();
   const containerRef  = useRef(null);
   const mapRef        = useRef(null);
   const markersRef    = useRef([]);
   const userMarkerRef = useRef(null);
 
-  const [campaigns,  setCampaigns]  = useState([]);
-  const [userPos,    setUserPos]    = useState(null);
-  const [selected,   setSelected]   = useState(null);
-  const [loading,    setLoading]    = useState(true);
-  const [mapReady,   setMapReady]   = useState(false);
-  const [tileError,  setTileError]  = useState(false);
+  const [campaigns, setCampaigns] = useState([]);
+  const [userPos,   setUserPos]   = useState(null);
+  const [selected,  setSelected]  = useState(null);
+  const [loading,   setLoading]   = useState(true);
+  const [mapReady,  setMapReady]  = useState(false);
+  const [tileError, setTileError] = useState(false);
+  const [stats,     setStats]     = useState(null);
 
-  // Campaigns fetch — public endpoint, no initData wait needed
+  // Fetch user stats for HUD header
+  useEffect(() => {
+    Promise.all([
+      apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch('/api/game').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([me, game]) => {
+      setStats({
+        balance: me?.user?.balance ?? 0,
+        level:   game?.level ?? 1,
+        xp:      game?.xp ?? 0,
+        xpNext:  game?.xp_next ?? 2400,
+        streak:  game?.streak?.current_streak ?? 0,
+      });
+    });
+  }, []);
+
+  // Campaigns fetch
   useEffect(() => {
     const ctrl = new AbortController();
     const bail = setTimeout(() => { ctrl.abort(); setLoading(false); }, 6000);
-
     fetch(`${API_BASE}/api/campaigns`, { signal: ctrl.signal })
       .then(r => r.ok ? r.json() : [])
       .then(data => setCampaigns(Array.isArray(data) ? data : []))
       .catch(() => {})
       .finally(() => { clearTimeout(bail); setLoading(false); });
-
     return () => { ctrl.abort(); clearTimeout(bail); };
   }, []);
 
-  // Geolocation (non-blocking)
+  // Geolocation
   useEffect(() => {
     getGeoPos().then(p => setUserPos(p)).catch(() => {});
   }, []);
 
-  // Leaflet init — waits for container to have actual pixel size
+  // Leaflet init
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-
-    // Clear any stale Leaflet binding from prior mount
     if (el._leaflet_id) { delete el._leaflet_id; }
 
     let map;
@@ -162,37 +182,26 @@ export default function MapPage() {
           preferCanvas: true,
         });
 
-        // CartoDB Dark Matter — no API key needed
         const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          maxZoom: 19,
-          subdomains: 'abcd',
+          maxZoom: 19, subdomains: 'abcd',
         });
-
-        // Detect if tiles actually load; fall back gracefully
         let tileLoaded = false;
         osmLayer.on('tileload', () => { tileLoaded = true; setTileError(false); });
         osmLayer.on('tileerror', () => { if (!tileLoaded) setTileError(true); });
         osmLayer.addTo(map);
-
         mapRef.current = map;
 
-        // Multiple invalidateSize calls to handle async container expansion
         [100, 300, 600].forEach(ms => {
-          const t = setTimeout(() => {
-            try { map.invalidateSize(); } catch {}
-          }, ms);
+          const t = setTimeout(() => { try { map.invalidateSize(); } catch {} }, ms);
           timers.push(t);
         });
-
         setMapReady(true);
       } catch (e) {
         console.error('[Map] init error:', e);
       }
     }
 
-    // Use rAF to ensure the DOM element has rendered with its CSS dimensions
     const raf = requestAnimationFrame(() => {
-      // Small delay so flex layout has settled
       const t = setTimeout(init, 50);
       timers.push(t);
     });
@@ -229,7 +238,6 @@ export default function MapPage() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-
     markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
@@ -248,16 +256,14 @@ export default function MapPage() {
           <div style="
             background:rgba(6,8,14,0.92);
             color:#00C8FF;padding:4px 9px;border-radius:2px;
-            font-size:12px;font-weight:700;white-space:nowrap;
+            font-size:11px;font-weight:700;white-space:nowrap;
             border:1px solid rgba(0,200,255,0.45);
             box-shadow:0 0 10px rgba(0,200,255,0.25);
-            font-family:'Rajdhani','Barlow Condensed',sans-serif;
+            font-family:'Share Tech Mono',monospace;
             letter-spacing:0.5px;
           ">+${formatGeo(c.reward_amount)} GEO</div>
         </div>`,
-        className: '',
-        iconSize: [0, 0],
-        iconAnchor: [0, 0],
+        className: '', iconSize: [0, 0], iconAnchor: [0, 0],
       });
 
       const marker = L.marker([+c.lat, +c.lng], { icon }).addTo(map);
@@ -274,140 +280,193 @@ export default function MapPage() {
       .sort((a, b) => a.dist - b.dist);
   })();
 
+  const xpPct = stats ? Math.min(100, Math.round((stats.xp / stats.xpNext) * 100)) : 0;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', overflow: 'hidden', background: C.bg }}>
 
-      {/* Header */}
+      {/* HUD Stats row */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '12px 16px',
+        display: 'flex',
         background: C.surf,
-        borderBottom: `1px solid ${C.b1}`,
+        borderBottom: '1px solid rgba(0,200,255,0.12)',
         flexShrink: 0,
-        zIndex: 20,
       }}>
-        <button onClick={() => navigate('/')} style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: C.geo, padding: '4px 8px 4px 0',
-          display: 'flex', alignItems: 'center',
-          WebkitTapHighlightColor: 'transparent',
-        }}>
-          <ArrowLeft size={22} color={C.geo} strokeWidth={2} />
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-          <MapIcon size={18} color={C.geo} strokeWidth={1.75} />
-          <span style={{ fontWeight: 700, fontSize: 18, color: C.t1 }}>{t('map.title')}</span>
-        </div>
-        {!loading && (
-          <div style={{
-            fontSize: 12, color: C.t2, fontWeight: 600,
-            background: C.b0,
-            borderRadius: 10, padding: '3px 10px',
-          }}>
-            {pluralize(lang, nearby.length, t('map.place.one'), t('map.place.few'), t('map.place.many'))}
+        {/* BALANCE */}
+        <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid rgba(0,200,255,0.07)' }}>
+          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.2, marginBottom: 4 }}>BALANCE</div>
+          <div style={{ ...MONO, fontSize: 14, color: C.geo }}>
+            {stats ? Math.floor(stats.balance) : '—'}
+            <span style={{ fontSize: 8, color: C.t3, marginLeft: 3 }}>GEO</span>
           </div>
-        )}
+        </div>
+        {/* LEVEL XP */}
+        <div style={{ flex: 1.6, padding: '10px 12px', borderRight: '1px solid rgba(0,200,255,0.07)' }}>
+          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.2, marginBottom: 4 }}>
+            LEVEL {stats ? String(stats.level).padStart(2, '0') : '--'}
+          </div>
+          <div style={{ height: 2, background: 'rgba(0,200,255,0.10)', borderRadius: 1, marginBottom: 3 }}>
+            <div style={{ height: '100%', width: `${xpPct}%`, background: C.geo, borderRadius: 1, transition: 'width 0.6s ease' }} />
+          </div>
+          <div style={{ ...MONO, fontSize: 8, color: C.t3 }}>
+            {stats ? `${stats.xp}/${stats.xpNext} XP` : '—/— XP'}
+          </div>
+        </div>
+        {/* STREAK */}
+        <div style={{ flex: 1, padding: '10px 12px' }}>
+          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.2, marginBottom: 4 }}>STREAK</div>
+          <div style={{ ...MONO, fontSize: 14, color: C.green }}>
+            {stats ? `${stats.streak}D` : '—'}
+          </div>
+        </div>
       </div>
 
       {/* Map container */}
       <div style={{ position: 'relative', flexShrink: 0, height: '46vh', minHeight: 220 }}>
         <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
 
-        {/* Tile error banner */}
-        {tileError && (
+        {/* Radar grid overlay */}
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none',
+          backgroundImage: 'linear-gradient(rgba(0,200,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.035) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }} />
+
+        {/* LAT — top left */}
+        {userPos && (
           <div style={{
-            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 15, background: 'rgba(248,113,113,0.15)',
-            border: '1px solid rgba(248,113,113,0.3)',
-            borderRadius: 10, padding: '5px 12px',
-            fontSize: 12, color: C.red, fontWeight: 600,
-            display: 'flex', alignItems: 'center', gap: 5,
-            whiteSpace: 'nowrap',
+            position: 'absolute', top: 8, left: 8, zIndex: 10, pointerEvents: 'none',
+            ...MONO, fontSize: 9, color: C.geo,
+            background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
+            border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
           }}>
-            <AlertCircle size={13} color={C.red} />
-            Карты недоступны
+            LAT {userPos.lat.toFixed(3)}°N
           </div>
         )}
 
-        {/* Map controls */}
-        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* LON — top right (above zoom controls) */}
+        {userPos && (
+          <div style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
+            ...MONO, fontSize: 9, color: C.geo,
+            background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
+            border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
+          }}>
+            LON {userPos.lng.toFixed(3)}°E
+          </div>
+        )}
+
+        {/* GPS-LOCK — bottom left */}
+        <div style={{
+          position: 'absolute', bottom: 8, left: 8, zIndex: 10, pointerEvents: 'none',
+          ...MONO, fontSize: 9, color: userPos ? C.green : C.t3,
+          background: 'rgba(6,8,14,0.80)', padding: '3px 8px',
+          border: `1px solid ${userPos ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 2,
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}>
+          <span style={{
+            width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+            background: userPos ? C.green : C.t3,
+            display: 'inline-block',
+            boxShadow: userPos ? '0 0 4px rgba(0,255,136,0.7)' : 'none',
+          }} />
+          {userPos ? 'GPS-LOCK 99%' : 'GPS SEARCH…'}
+        </div>
+
+        {/* Compass + range — bottom right */}
+        <div style={{
+          position: 'absolute', bottom: 8, right: 8, zIndex: 10, pointerEvents: 'none',
+          background: 'rgba(6,8,14,0.80)', padding: '4px 8px',
+          border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+        }}>
+          <div style={{ ...MONO, fontSize: 12, color: C.t1, lineHeight: 1 }}>N</div>
+          <div style={{ ...MONO, fontSize: 7, color: C.t3 }}>R: 2.0KM</div>
+        </div>
+
+        {/* Zoom + locate controls (shifted below LON label) */}
+        <div style={{ position: 'absolute', top: 34, right: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
           {['+', '−'].map((sym, i) => (
             <button key={sym} onClick={() => {
               const map = mapRef.current;
               if (map) i === 0 ? map.zoomIn() : map.zoomOut();
             }} style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 28, height: 28, borderRadius: 2,
               border: `1px solid ${C.b2}`,
-              background: C.card, backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
-              fontSize: 18, fontWeight: 700, cursor: 'pointer', color: C.t1,
+              background: 'rgba(6,8,14,0.88)',
+              ...MONO, fontSize: 15, cursor: 'pointer', color: C.t1,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>{sym}</button>
           ))}
           {userPos && (
             <button onClick={() => mapRef.current?.setView([userPos.lat, userPos.lng], 15)} style={{
-              width: 36, height: 36, borderRadius: 10,
+              width: 28, height: 28, borderRadius: 2,
               border: `1px solid rgba(0,200,255,0.25)`,
-              background: C.card, backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              background: 'rgba(6,8,14,0.88)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Crosshair size={18} color={C.geo} strokeWidth={2} />
+              <Crosshair size={13} color={C.geo} strokeWidth={2} />
             </button>
           )}
         </div>
 
-        {/* Campaign count badge */}
-        {!loading && nearby.length > 0 && (
+        {/* Tile error */}
+        {tileError && (
           <div style={{
-            position: 'absolute', top: 12, left: 12, zIndex: 10,
-            background: C.card, backdropFilter: 'blur(8px)',
-            border: `1px solid ${C.b1}`,
-            borderRadius: 20, padding: '6px 12px',
-            fontSize: 13, fontWeight: 700, color: C.t1,
-            display: 'flex', alignItems: 'center', gap: 6,
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 15, background: 'rgba(255,56,96,0.10)',
+            border: '1px solid rgba(255,56,96,0.25)',
+            borderRadius: 2, padding: '4px 10px',
+            ...MONO, fontSize: 9, color: C.red,
+            display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
           }}>
-            <Store size={13} color={C.t3} strokeWidth={2} />
-            {pluralize(lang, nearby.length, t('map.camp.one'), t('map.camp.few'), t('map.camp.many'))}
+            <AlertCircle size={11} color={C.red} />
+            TILES OFFLINE
           </div>
         )}
       </div>
 
-      {/* Campaign list */}
-      <div style={{ flex: 1, overflowY: 'auto', background: C.bg, paddingBottom: 88 }}>
-        <div style={{ padding: '14px 16px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {userPos ? t('map.nearby') : t('map.all_venues')}
+      {/* Nearby targets list */}
+      <div style={{ flex: 1, overflowY: 'auto', background: C.bg, paddingBottom: 68 }}>
+        {/* Section header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '9px 16px',
+          borderBottom: '1px solid rgba(0,200,255,0.08)',
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ ...MONO, fontSize: 8, color: C.geo, letterSpacing: 1.5 }}>◆ NEARBY TARGETS</span>
+            <span style={{ ...MONO, fontSize: 8, color: C.b2 }}>———</span>
           </div>
-          {!userPos && !loading && (
-            <div style={{ fontSize: 12, color: C.orange, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <MapPin size={12} color={C.orange} />
-              {t('map.geo_unavailable')}
-            </div>
-          )}
+          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {!loading && <span>■ {String(nearby.length).padStart(2, '0')} LOCKED</span>}
+            <span style={{ color: userPos ? C.green : C.gold }}>
+              {userPos ? '· SYNC' : '· GPS !'}
+            </span>
+          </div>
         </div>
 
         <div style={{ padding: '0 16px' }}>
           {loading && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 0', gap: 14 }}>
-              <Loader2 size={32} color={C.geo} style={{ animation: 'spin 1s linear infinite' }} />
-              <div style={{ fontSize: 13, color: C.t2, fontWeight: 600 }}>Загрузка акций…</div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 0', gap: 12 }}>
+              <Loader2 size={22} color={C.geo} style={{ animation: 'spin 1s linear infinite' }} />
+              <div style={{ ...MONO, fontSize: 9, color: C.t3, letterSpacing: 1.2 }}>SCANNING TARGETS…</div>
             </div>
           )}
 
           {!loading && nearby.length === 0 && (
             <div style={{ textAlign: 'center', padding: '40px 16px' }}>
-              <MapPin size={52} color={C.t3} strokeWidth={1.25} style={{ opacity: 0.4, marginBottom: 14 }} />
-              <div style={{ fontWeight: 700, fontSize: 17, marginBottom: 8, color: C.t1 }}>{t('map.empty.title')}</div>
-              <div style={{ color: C.t3, fontSize: 14, lineHeight: 1.6 }}>
-                {t('map.empty.text').split('\n').map((l, i) => <span key={i}>{l}{i === 0 && <br />}</span>)}
-              </div>
+              <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 1.2, marginBottom: 6 }}>NO TARGETS DETECTED</div>
+              <div style={{ ...MONO, fontSize: 9, color: C.t3, opacity: 0.45 }}>EXPAND RANGE OR CHECK LATER</div>
             </div>
           )}
 
           {!loading && nearby.map((c, i) => {
             const TIcon = TASK_ICON[c.task_type] || MapPin;
+            const cat   = CAT_LABEL[c.task_type] || 'FOOD';
+            const pct   = matchPct(c);
             return (
               <div
                 key={c.id}
@@ -418,50 +477,50 @@ export default function MapPage() {
                   }
                 }}
                 style={{
-                  ...cardBase,
-                  border: `1px solid ${C.b1}`,
-                  padding: '14px 16px', marginBottom: 8,
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '11px 0',
+                  borderBottom: '1px solid rgba(0,200,255,0.06)',
                   cursor: 'pointer',
-                  animation: `fadeUp 0.36s ${i * 0.06}s cubic-bezier(0.32,0.72,0,1) both`,
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: C.t1 }}>
+                {/* Row number */}
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+
+                {/* Task icon */}
+                <div style={{
+                  width: 20, height: 20, borderRadius: 2, flexShrink: 0,
+                  background: 'rgba(0,200,255,0.07)', border: '1px solid rgba(0,200,255,0.14)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <TIcon size={11} color={C.t3} strokeWidth={2} />
+                </div>
+
+                {/* Name + meta */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 14,
+                    color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    marginBottom: 2,
+                  }}>
                     {c.business_name}
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {c.dist !== undefined && (
-                      <span style={{ fontSize: 12, color: C.geo, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <Navigation size={11} color={C.geo} />
-                        {formatDistance(c.dist)}
-                      </span>
-                    )}
-                    {c.requires_pin && (
-                      <span style={{ fontSize: 11, color: C.gold, fontWeight: 600,
-                        background: C.goldFt, borderRadius: 5, padding: '2px 6px',
-                        display: 'flex', alignItems: 'center', gap: 3,
-                      }}>
-                        <Lock size={9} color={C.gold} />
-                        PIN
-                      </span>
-                    )}
-                    {c.task_type && c.task_type !== 'visit' && (
-                      <span style={{ fontSize: 11, color: C.t3, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
-                        <TIcon size={11} color={C.t3} />
-                        {t('task.' + c.task_type)}
-                      </span>
-                    )}
+                  <div style={{ ...MONO, fontSize: 9, color: C.t3 }}>
+                    {c.dist !== undefined ? formatDistance(c.dist) : '—'} · {cat}
+                    {c.requires_pin && <span style={{ color: C.gold }}> · PIN</span>}
                   </div>
                 </div>
-                <div style={{
-                  background: 'rgba(0,200,255,0.10)',
-                  border: '0.5px solid rgba(0,200,255,0.20)',
-                  color: '#00C8FF', borderRadius: 10, padding: '8px 12px',
-                  fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0,
-                }}>
-                  +{formatGeo(c.reward_amount)} GEO
+
+                {/* Amount + match */}
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ ...MONO, fontSize: 13, color: C.geo }}>
+                    +{formatGeo(c.reward_amount)}
+                  </div>
+                  <div style={{ ...MONO, fontSize: 8, color: C.green }}>
+                    MATCH {pct}%
+                  </div>
                 </div>
               </div>
             );

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MapPin, Wallet, CreditCard, User, Store, Check } from 'lucide-react';
+import { MapPin, Wallet, CreditCard, User, Store, Check, ChevronDown } from 'lucide-react';
 import { C, E } from '../lib/design';
 import { LegalSheet } from './Legal';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -16,11 +16,14 @@ const SLIDE_META = [
 function LangPhase({ onDone }) {
   const { lang: currentLang, setLang, t } = useLanguage();
   const [selected, setSelected] = useState(currentLang);
+  const [open, setOpen] = useState(false);
 
   function confirm() {
     setLang(selected);
     onDone();
   }
+
+  const selectedInfo = LANGS[selected];
 
   return (
     <div style={{
@@ -50,47 +53,82 @@ function LangPhase({ onDone }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 340, animation: 'fadeUp 0.5s 0.18s ease both' }}>
-        {Object.entries(LANGS).map(([code, info]) => {
-          const isActive = selected === code;
-          return (
-            <button
-              key={code}
-              onClick={() => setSelected(code)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 16,
-                background: isActive ? C.geoDim : 'rgba(255,255,255,0.02)',
-                border: `0.5px solid ${isActive ? C.geoGl : C.b1}`,
-                borderRadius: 16, padding: '16px 18px',
-                cursor: 'pointer', textAlign: 'left',
-                transition: `all 0.18s ${E.smooth}`,
-                WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <span style={{ fontSize: 28, lineHeight: 1 }}>{info.flag}</span>
-              <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: isActive ? C.t1 : C.t2 }}>
-                {info.label}
-              </span>
-              {isActive && (
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: C.geo,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  animation: 'pop 0.3s cubic-bezier(0.175,0.885,0.32,1.275)',
-                }}>
-                  <Check size={12} color={C.bg} strokeWidth={3} />
-                </div>
-              )}
-            </button>
-          );
-        })}
+      {/* Custom dropdown */}
+      <div style={{ position: 'relative', width: '100%', maxWidth: 340, animation: 'fadeUp 0.5s 0.18s ease both' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{
+            width: '100%',
+            display: 'flex', alignItems: 'center',
+            background: C.geoDim,
+            border: `0.5px solid ${open ? C.geo : C.geoGl}`,
+            borderRadius: open ? '14px 14px 0 0' : 14,
+            padding: '16px 18px',
+            cursor: 'pointer', textAlign: 'left',
+            transition: `all 0.18s ${E.smooth}`,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color: C.t1 }}>
+            {selectedInfo.label}
+          </span>
+          <ChevronDown
+            size={18} color={C.geo} strokeWidth={2}
+            style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease', flexShrink: 0 }}
+          />
+        </button>
+
+        {open && (
+          <div style={{
+            position: 'absolute', left: 0, right: 0, zIndex: 10,
+            background: C.surf,
+            border: `0.5px solid ${C.geo}`,
+            borderTop: `0.5px solid ${C.geoGl}`,
+            borderRadius: '0 0 14px 14px',
+            overflow: 'hidden',
+          }}>
+            {Object.entries(LANGS).map(([code, info]) => {
+              const isActive = selected === code;
+              return (
+                <button
+                  key={code}
+                  onClick={() => { setSelected(code); setOpen(false); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: isActive ? C.geoDim : 'transparent',
+                    border: 'none',
+                    borderTop: `0.5px solid ${C.b1}`,
+                    padding: '14px 18px',
+                    cursor: 'pointer', textAlign: 'left',
+                    transition: `background 0.15s ${E.smooth}`,
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <span style={{ flex: 1, fontSize: 15, fontWeight: 600, color: isActive ? C.t1 : C.t2 }}>
+                    {info.label}
+                  </span>
+                  {isActive && (
+                    <div style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: C.geo,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <Check size={11} color={C.bg} strokeWidth={3} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <button
         onClick={confirm}
         style={{
-          width: '100%', maxWidth: 340, marginTop: 28,
+          width: '100%', maxWidth: 340, marginTop: 20,
           background: C.geo, color: C.bg,
           border: 'none', borderRadius: 14,
           padding: '16px', fontSize: 16, fontWeight: 700,
