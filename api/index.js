@@ -37,34 +37,21 @@ app.use((req, res, next) => {
 });
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-// Telegram Mini Apps run in a webview; the Origin header may be:
-//   - the WEBAPP_URL origin (Telegram Web / desktop)
-//   - the string "null"  (native iOS/Android opaque webview origin)
-//   - absent entirely    (server-to-server / bot calls)
-// All three cases must be allowed; HMAC-signed initData is the real auth layer.
-let WEBAPP_ORIGIN = null;
-try {
-  if (process.env.WEBAPP_URL) WEBAPP_ORIGIN = new URL(process.env.WEBAPP_URL).origin;
-} catch (_) { /* malformed URL — leave null */ }
-
+// Telegram Mini Apps run in a webview with unpredictable Origin values:
+//   - the WEBAPP_URL origin   (Telegram Web / desktop)
+//   - the string "null"       (native iOS/Android opaque webview)
+//   - absent entirely         (server-to-server / bot calls)
+//
+// CORS is a browser-only mechanism and is NOT the security layer here.
+// Real auth = HMAC-signed initData verified in validateTma on every write endpoint.
+// Therefore: allow all origins. Blocking by origin would only break legitimate
+// Telegram clients whose origin we can't predict across versions and platforms.
 app.use(cors({
   origin(origin, cb) {
-    if (!origin) return cb(null, true); // no Origin header (server-to-server, bot)
-
-    // Native Telegram iOS/Android webview sends Origin: null (opaque origin).
-    // Mirroring it back as ACAO: null is blocked by all modern browsers — they
-    // allow the preflight through but then block JS access to the response.
-    // Result: server burns the code but client gets a network error. Use * instead.
+    // Opaque webview origin — browsers reject ACAO: null, use wildcard instead.
     if (origin === 'null') return cb(null, '*');
-
-    if (
-      origin === 'https://web.telegram.org' ||
-      (WEBAPP_ORIGIN && origin === WEBAPP_ORIGIN) ||
-      !WEBAPP_ORIGIN          // WEBAPP_URL not configured — allow all origins
-    ) {
-      return cb(null, true);
-    }
-    cb(new Error('CORS_NOT_ALLOWED'));
+    // All other origins (including absent) — reflect back or allow freely.
+    cb(null, true);
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'initData', 'initdata', 'x-operator-secret'],

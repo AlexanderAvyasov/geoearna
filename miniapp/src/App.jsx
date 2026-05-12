@@ -3,7 +3,7 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { Home as HomeIcon, Star, ScanLine, Wallet, Store as StoreIcon, Shield, Loader2, MapPin } from 'lucide-react';
 import { C, E } from './lib/design';
-import { waitForInitData } from './lib/api';
+import { waitForInitData, API_BASE } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import Home       from './pages/Home';
 import Checkin    from './pages/Checkin';
@@ -52,6 +52,7 @@ function DebugOverlay() {
     _dpush('log', `[TG] showScanQrPopup:${typeof tgw?.showScanQrPopup}`);
     _dpush('log', `[TG] isVersionAtLeast_6.4:${tgw?.isVersionAtLeast?.('6.4')}`);
     _dpush('log', `[TG] closeScanQrPopup:${typeof tgw?.closeScanQrPopup}`);
+    _dpush('log', `[NET] API_BASE:"${API_BASE}" | origin:${window.location.origin}`);
     return () => _dlisteners.delete(setLogs);
   }, []);
 
