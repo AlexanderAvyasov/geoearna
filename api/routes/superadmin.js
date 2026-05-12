@@ -913,6 +913,114 @@ router.get('/api/superadmin/promo-campaigns/:id/analytics', ...SA, async (req, r
   }
 });
 
+// ── Platform wallet history ───────────────────────────────────────────────────
+// Merges all platform_wallet credit/debit sources into a single chronological feed.
+// Credits: campaign commissions (platform_transactions)
+// Debits:  approved withdrawals, promo QR claims, geohunt claims
+
+router.get('/api/superadmin/platform-wallet/history', ...SA, async (req, res) => {
+  try {
+    const LIMIT = 50;
+
+    const [ptRes, wdRes, promoRes, ghCodesRes] = await Promise.all([
+      supabase.from('platform_transactions')
+        .select('id, amount, created_at, business_id')
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
+      supabase.from('withdrawals')
+        .select('id, amount, created_at, user_id')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
+      supabase.from('promo_claims')
+        .select('id, geo_awarded, claimed_at, promo_id, user_id')
+        .order('claimed_at', { ascending: false })
+        .limit(LIMIT),
+      supabase.from('geohunt_codes')
+        .select('id, used_at, hunt_id, used_by')
+        .not('used_at', 'is', null)
+        .order('used_at', { ascending: false })
+        .limit(LIMIT),
+    ]);
+
+    // Two-step lookups
+    const bizIds   = [...new Set((ptRes.data  || []).map(r => r.business_id).filter(Boolean))];
+    const userIds  = [...new Set([
+      ...(wdRes.data    || []).map(r => r.user_id),
+      ...(promoRes.data || []).map(r => r.user_id),
+      ...(ghCodesRes.data || []).map(r => r.used_by),
+    ].filter(Boolean))];
+    const promoIds = [...new Set((promoRes.data  || []).map(r => r.promo_id).filter(Boolean))];
+    const huntIds  = [...new Set((ghCodesRes.data || []).map(r => r.hunt_id).filter(Boolean))];
+
+    const [bizMap, userMap, promoMap, huntMap] = await Promise.all([
+      bizIds.length  ? supabase.from('businesses').select('id, name').in('id', bizIds).then(r => Object.fromEntries((r.data||[]).map(x=>[x.id,x])))   : {},
+      userIds.length ? supabase.from('users').select('id, telegram_id, username').in('id', userIds).then(r => Object.fromEntries((r.data||[]).map(x=>[x.id,x]))) : {},
+      promoIds.length? supabase.from('promo_campaigns').select('id, title').in('id', promoIds).then(r => Object.fromEntries((r.data||[]).map(x=>[x.id,x]))) : {},
+      huntIds.length ? supabase.from('geohunts').select('id, title, reward_per_code').in('id', huntIds).then(r => Object.fromEntries((r.data||[]).map(x=>[x.id,x]))) : {},
+    ]);
+
+    const items = [];
+
+    for (const tx of ptRes.data || []) {
+      const biz = bizMap[tx.business_id];
+      items.push({
+        id:         `pt_${tx.id}`,
+        type:       'commission',
+        direction:  'credit',
+        amount:     tx.amount,
+        label:      `Комиссия: ${biz?.name || `biz#${tx.business_id}`}`,
+        created_at: tx.created_at,
+      });
+    }
+
+    for (const wd of wdRes.data || []) {
+      const u = userMap[wd.user_id];
+      items.push({
+        id:         `wd_${wd.id}`,
+        type:       'withdrawal',
+        direction:  'debit',
+        amount:     wd.amount,
+        label:      `Вывод: ${u?.username ? '@' + u.username : u?.telegram_id || '—'}`,
+        created_at: wd.created_at,
+      });
+    }
+
+    for (const p of promoRes.data || []) {
+      const promo = promoMap[p.promo_id];
+      const u     = userMap[p.user_id];
+      items.push({
+        id:         `pc_${p.id}`,
+        type:       'promo',
+        direction:  'debit',
+        amount:     p.geo_awarded,
+        label:      `Promo QR: ${promo?.title || '—'}${u?.username ? ' · @' + u.username : ''}`,
+        created_at: p.claimed_at,
+      });
+    }
+
+    for (const g of ghCodesRes.data || []) {
+      const hunt = huntMap[g.hunt_id];
+      const u    = userMap[g.used_by];
+      items.push({
+        id:         `gh_${g.id}`,
+        type:       'geohunt',
+        direction:  'debit',
+        amount:     hunt?.reward_per_code || 0,
+        label:      `GeoHunt: ${hunt?.title || '—'}${u?.username ? ' · @' + u.username : ''}`,
+        created_at: g.used_at,
+      });
+    }
+
+    items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    return res.json({ history: items.slice(0, LIMIT) });
+  } catch (err) {
+    console.error('superadmin/platform-wallet/history', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 // ── Audit log ─────────────────────────────────────────────────────────────────
 
 router.get('/api/superadmin/audit-log', ...SA, async (req, res) => {

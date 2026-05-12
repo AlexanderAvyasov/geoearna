@@ -156,6 +156,103 @@ function StatCard({ Icon, label, value, sub, color, trend, alert }) {
   );
 }
 
+// ─── Wallet history section ───────────────────────────────────────────────────
+
+const WALLET_TX_STYLE = {
+  commission: { color: '#10B981', bg: '#10B98114', border: '#10B98130', sign: '+', Icon: Coins,           label: 'Комиссия'  },
+  withdrawal: { color: C.red,    bg: C.redFt,     border: `${C.red}30`, sign: '−', Icon: ArrowDownToLine, label: 'Вывод'     },
+  promo:      { color: '#3B82F6', bg: '#3B82F614', border: '#3B82F630', sign: '−', Icon: QrCode,          label: 'Promo QR'  },
+  geohunt:    { color: '#FF8C00', bg: '#FF8C0014', border: '#FF8C0030', sign: '−', Icon: Target,          label: 'GeoHunt'   },
+};
+
+function WalletHistorySection() {
+  const [history, setHistory] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [open,    setOpen]    = useState(false);
+
+  function load() {
+    setLoading(true);
+    saFetch('/api/superadmin/platform-wallet/history')
+      .then(d => setHistory(d.history || []))
+      .catch(() => setHistory([]))
+      .finally(() => setLoading(false));
+  }
+
+  function toggle() {
+    if (!open && history === null) load();
+    setOpen(o => !o);
+  }
+
+  return (
+    <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', borderRadius: 18, marginBottom: 16 }}>
+      <button
+        onClick={toggle}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+        }}
+      >
+        <SectionTitle icon={Activity} color={C.t3}>История операций кошелька</SectionTitle>
+        <ChevronRight size={14} color={C.t3} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          {loading && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0' }}>
+              <Loader2 size={22} color={C.t3} style={{ animation: 'spin 1s linear infinite' }} />
+            </div>
+          )}
+
+          {!loading && (history || []).length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px 0', fontSize: 13, color: C.t3 }}>
+              Операций пока нет
+            </div>
+          )}
+
+          {!loading && (history || []).map((tx, i) => {
+            const s = WALLET_TX_STYLE[tx.type] || WALLET_TX_STYLE.commission;
+            return (
+              <div key={tx.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '9px 0',
+                borderBottom: i < history.length - 1 ? `1px solid ${C.b0}` : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                  <div style={{
+                    width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                    background: s.bg, border: `1px solid ${s.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <s.Icon size={14} color={s.color} strokeWidth={1.75} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>
+                      {tx.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.t3, marginTop: 1 }}>{fmtDate(tx.created_at)}</div>
+                  </div>
+                </div>
+                <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: s.color, letterSpacing: -0.3 }}>
+                    {s.sign}{formatGeo(tx.amount)} GEO
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {!loading && (history || []).length > 0 && (
+            <Btn variant="ghost" size="sm" onClick={load} loading={loading} style={{ width: '100%', marginTop: 10 }}>
+              <RefreshCw size={12} /> Обновить
+            </Btn>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Tab: Overview ────────────────────────────────────────────────────────────
 
 function OverviewTab() {
@@ -272,6 +369,8 @@ function OverviewTab() {
           ))}
         </div>
       )}
+
+      <WalletHistorySection />
 
       <Btn variant="ghost" size="md" onClick={load} loading={loading} style={{ width: '100%' }}>
         <RefreshCw size={14} />
