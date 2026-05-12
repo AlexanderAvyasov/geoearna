@@ -8,7 +8,7 @@ import {
 import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
 import RippleButton from '../lib/RippleButton';
-import { apiFetch, API_BASE } from '../lib/api';
+import { apiFetch, API_BASE, waitForInitData } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -182,8 +182,18 @@ export default function Checkin() {
   useEffect(() => {
     console.log('[CHECKIN:GEOHUNT_EFFECT] isGeohunt:', isGeohunt, '| huntInfo:', !!huntInfo, '| sent:', sent.current, '| status:', status);
     if (!isGeohunt || !huntInfo || sent.current || status === 'error') return;
-    console.log('[CHECKIN:GEOHUNT_EFFECT] → calling doGeohunt()');
-    doGeohunt();
+    let cancelled = false;
+    console.log('[CHECKIN:GEOHUNT_EFFECT] → waiting for initData before doGeohunt()');
+    waitForInitData(5000).then(initData => {
+      console.log('[CHECKIN:GEOHUNT_EFFECT] initData:', initData ? `ok(${initData.length}ch)` : 'empty', '→ settling 400ms');
+      return new Promise(r => setTimeout(r, 400));
+    }).then(() => {
+      if (!cancelled && !sent.current) {
+        console.log('[CHECKIN:GEOHUNT_EFFECT] → calling doGeohunt()');
+        doGeohunt();
+      }
+    });
+    return () => { cancelled = true; };
   }, [huntInfo, isGeohunt]);
 
   // ── Auto-submit when ready (business + promo) ────────────────────────────────
