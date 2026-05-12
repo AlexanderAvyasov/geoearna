@@ -8,7 +8,7 @@ import {
 import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
 import RippleButton from '../lib/RippleButton';
-import { apiFetch, API_BASE, waitForInitData } from '../lib/api';
+import { apiFetch, API_BASE } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -177,32 +177,33 @@ export default function Checkin() {
       });
   }, [token, isPromo, isGeohunt]);
 
-  // ── GeoHunt: auto-submit as soon as info loads (no location needed) ──────────
+  // ── Auto-submit when ready (business + promo + geohunt) ─────────────────────
 
   useEffect(() => {
-    console.log('[CHECKIN:GEOHUNT_EFFECT] isGeohunt:', isGeohunt, '| huntInfo:', !!huntInfo, '| sent:', sent.current, '| status:', status);
-    if (!isGeohunt || !huntInfo || sent.current || status === 'error') return;
-    let cancelled = false;
-    console.log('[CHECKIN:GEOHUNT_EFFECT] → waiting for initData before doGeohunt()');
-    waitForInitData(5000).then(initData => {
-      console.log('[CHECKIN:GEOHUNT_EFFECT] initData:', initData ? `ok(${initData.length}ch)` : 'empty', '→ settling 400ms');
-      return new Promise(r => setTimeout(r, 400));
-    }).then(() => {
-      if (!cancelled && !sent.current) {
-        console.log('[CHECKIN:GEOHUNT_EFFECT] → calling doGeohunt()');
+    const info = isPromo ? promoInfo : isGeohunt ? huntInfo : businessInfo;
+    console.log('[CHECKIN:AUTOSUBMIT_EFFECT] isGeohunt:', isGeohunt, '| sent:', sent.current, '| status:', status, '| info:', !!info, '| locLoading:', locLoading, '| lat:', lat, '| lng:', lng, '| locError:', locError);
+    if (sent.current || status === 'error') return;
+    if (!info) return;
+
+    // GeoHunt: location not needed for claim validation — use location resolve as
+    // timing gate so the authenticated POST fires after CORS preflight has settled.
+    if (isGeohunt) {
+      if (locLoading && lat == null && lng == null && !locError) {
+        // Location still in-flight — bail out after 3s and proceed anyway
+        const bail = setTimeout(() => {
+          if (!sent.current) {
+            console.log('[CHECKIN:AUTOSUBMIT_EFFECT] geohunt: location timeout → doGeohunt()');
+            doGeohunt();
+          }
+        }, 3000);
+        return () => clearTimeout(bail);
+      }
+      if (!sent.current) {
+        console.log('[CHECKIN:AUTOSUBMIT_EFFECT] → calling doGeohunt()');
         doGeohunt();
       }
-    });
-    return () => { cancelled = true; };
-  }, [huntInfo, isGeohunt]);
-
-  // ── Auto-submit when ready (business + promo) ────────────────────────────────
-
-  useEffect(() => {
-    const info = isPromo ? promoInfo : businessInfo;
-    console.log('[CHECKIN:AUTOSUBMIT_EFFECT] isGeohunt:', isGeohunt, '| sent:', sent.current, '| status:', status, '| info:', !!info, '| locLoading:', locLoading, '| lat:', lat, '| lng:', lng, '| locError:', locError);
-    if (isGeohunt || sent.current || status === 'error') return;
-    if (!info) return;
+      return;
+    }
 
     if (locError) {
       setErrInfo({
@@ -238,7 +239,7 @@ export default function Checkin() {
       console.log('[CHECKIN:AUTOSUBMIT_EFFECT] → calling', isPromo ? 'doPromo()' : 'doCheckin(null)');
       isPromo ? doPromo() : doCheckin(null);
     }
-  }, [businessInfo, promoInfo, locLoading, locError, lat, lng]);
+  }, [businessInfo, promoInfo, huntInfo, locLoading, locError, lat, lng]);
 
   // ── Checkin (business) ──────────────────────────────────────────────────────
 
