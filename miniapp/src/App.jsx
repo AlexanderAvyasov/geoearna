@@ -6,6 +6,7 @@ import { C, E } from './lib/design';
 import { waitForInitData, API_BASE, apiFetch } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import Home       from './pages/Home';
+import Map        from './pages/Map';
 import Checkin    from './pages/Checkin';
 import Balance    from './pages/Balance';
 import Withdraw   from './pages/Withdraw';
@@ -933,8 +934,9 @@ function AppLayout() {
     }, 400);
   }
 
-  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
-  const isSAPage = pathname === '/superadmin';
+  const hasNav    = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
+  const hasHeader = hasNav && pathname !== '/map';
+  const isSAPage  = pathname === '/superadmin';
 
   return (
     <div style={{
@@ -949,9 +951,10 @@ function AppLayout() {
         paddingBottom: hasNav ? 68 : 0,
         height: isSAPage ? 'auto' : undefined,
       }}>
-        {hasNav && <GlobalHeader />}
+        {hasHeader && <GlobalHeader />}
         <Routes>
           <Route path="/"                element={<Home />} />
+          <Route path="/map"             element={<Map />} />
           <Route path="/checkin"         element={<Checkin />} />
           <Route path="/balance"         element={<Balance />} />
           <Route path="/withdraw"        element={<Withdraw />} />
