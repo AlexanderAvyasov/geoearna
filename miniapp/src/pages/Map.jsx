@@ -327,7 +327,7 @@ export default function MapPage() {
 
         {/* Radar grid overlay */}
         <div style={{
-          position: 'absolute', inset: 0, zIndex: 5, pointerEvents: 'none',
+          position: 'absolute', inset: 0, zIndex: 900, pointerEvents: 'none',
           backgroundImage: 'linear-gradient(rgba(0,200,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.035) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }} />
@@ -335,7 +335,7 @@ export default function MapPage() {
         {/* LAT — top left */}
         {userPos && (
           <div style={{
-            position: 'absolute', top: 8, left: 8, zIndex: 10, pointerEvents: 'none',
+            position: 'absolute', top: 8, left: 8, zIndex: 1000, pointerEvents: 'none',
             ...MONO, fontSize: 9, color: C.geo,
             background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
             border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
@@ -347,7 +347,7 @@ export default function MapPage() {
         {/* LON — top right (above zoom controls) */}
         {userPos && (
           <div style={{
-            position: 'absolute', top: 8, right: 8, zIndex: 10, pointerEvents: 'none',
+            position: 'absolute', top: 8, right: 8, zIndex: 1000, pointerEvents: 'none',
             ...MONO, fontSize: 9, color: C.geo,
             background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
             border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
@@ -358,7 +358,7 @@ export default function MapPage() {
 
         {/* GPS-LOCK — bottom left */}
         <div style={{
-          position: 'absolute', bottom: 8, left: 8, zIndex: 10, pointerEvents: 'none',
+          position: 'absolute', bottom: 8, left: 8, zIndex: 1000, pointerEvents: 'none',
           ...MONO, fontSize: 9, color: userPos ? C.green : C.t3,
           background: 'rgba(6,8,14,0.80)', padding: '3px 8px',
           border: `1px solid ${userPos ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 2,
@@ -375,7 +375,7 @@ export default function MapPage() {
 
         {/* Compass + range — bottom right */}
         <div style={{
-          position: 'absolute', bottom: 8, right: 8, zIndex: 10, pointerEvents: 'none',
+          position: 'absolute', bottom: 8, right: 8, zIndex: 1000, pointerEvents: 'none',
           background: 'rgba(6,8,14,0.80)', padding: '4px 8px',
           border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
@@ -385,7 +385,7 @@ export default function MapPage() {
         </div>
 
         {/* Zoom + locate controls (shifted below LON label) */}
-        <div style={{ position: 'absolute', top: 34, right: 8, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div style={{ position: 'absolute', top: 34, right: 8, zIndex: 1000, display: 'flex', flexDirection: 'column', gap: 3 }}>
           {['+', '−'].map((sym, i) => (
             <button key={sym} onClick={() => {
               const map = mapRef.current;
@@ -415,7 +415,7 @@ export default function MapPage() {
         {tileError && (
           <div style={{
             position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 15, background: 'rgba(255,56,96,0.10)',
+            zIndex: 1000, background: 'rgba(255,56,96,0.10)',
             border: '1px solid rgba(255,56,96,0.25)',
             borderRadius: 2, padding: '4px 10px',
             ...MONO, fontSize: 9, color: C.red,
