@@ -338,35 +338,41 @@ export default function Checkin() {
     if (sent.current) return;
     sent.current = true;
     setStatus('submitting');
-    try {
-      const r = await apiFetch('/api/geohunt/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
-      const data = await r.json().catch(() => ({}));
-      console.log('[CHECKIN:DO_GEOHUNT] status:', r.status, '| data:', JSON.stringify(data));
-      if (!r.ok) {
-        const code = data?.error || 'UNKNOWN';
-        // ALREADY_CLAIMED_BY_YOU means the request succeeded before but the
-        // response was lost (e.g. mobile network drop). Show success with the
-        // stored reward so the user knows GEO was credited.
-        if (code === 'ALREADY_CLAIMED_BY_YOU') {
-          setReward(data.reward ?? huntInfo?.reward ?? 0);
-          setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle || prev?.huntTitle }));
-          setStatus('success');
-          tg?.HapticFeedback?.notificationOccurred('success');
+
+    const GEOHUNT_CLAIM_ERRORS = {
+      CODE_USED:     { Icon: XCircle,     titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
+      HUNT_INACTIVE: { Icon: PauseCircle, titleKey: 'promo.PROMO_INACTIVE.title',  textKey: 'promo.PROMO_INACTIVE.text' },
+      HUNT_EXPIRED:  { Icon: Clock,       titleKey: 'promo.PROMO_EXPIRED.title',   textKey: 'promo.PROMO_EXPIRED.text' },
+      USER_BANNED:   { Icon: Ban,         titleKey: 'promo.USER_BANNED.title',     textKey: 'promo.USER_BANNED.text'   },
+    };
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      if (attempt > 1) {
+        console.log(`[CHECKIN:DO_GEOHUNT] retry ${attempt}/3 — waiting 1s`);
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      try {
+        const r = await apiFetch('/api/geohunt/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const data = await r.json().catch(() => ({}));
+        console.log('[CHECKIN:DO_GEOHUNT] attempt:', attempt, '| status:', r.status, '| data:', JSON.stringify(data));
+        if (!r.ok) {
+          const code = data?.error || 'UNKNOWN';
+          // ALREADY_CLAIMED_BY_YOU: request succeeded earlier but response was lost.
+          if (code === 'ALREADY_CLAIMED_BY_YOU') {
+            setReward(data.reward ?? huntInfo?.reward ?? 0);
+            setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle || prev?.huntTitle }));
+            setStatus('success');
+            tg?.HapticFeedback?.notificationOccurred('success');
+            return;
+          }
+          setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
+          setStatus('error');
           return;
         }
-        const GEOHUNT_CLAIM_ERRORS = {
-          CODE_USED:     { Icon: XCircle,     titleKey: 'promo.PROMO_EXHAUSTED.title', textKey: 'promo.PROMO_EXHAUSTED.text' },
-          HUNT_INACTIVE: { Icon: PauseCircle, titleKey: 'promo.PROMO_INACTIVE.title',  textKey: 'promo.PROMO_INACTIVE.text' },
-          HUNT_EXPIRED:  { Icon: Clock,       titleKey: 'promo.PROMO_EXPIRED.title',   textKey: 'promo.PROMO_EXPIRED.text' },
-          USER_BANNED:   { Icon: Ban,         titleKey: 'promo.USER_BANNED.title',     textKey: 'promo.USER_BANNED.text'   },
-        };
-        setErrInfo(GEOHUNT_CLAIM_ERRORS[code] || { Icon: XCircle, titleKey: 'err.UNKNOWN.title', textKey: 'err.UNKNOWN.text' });
-        setStatus('error');
-      } else {
         setReward(data.reward);
         setHuntInfo(prev => ({ ...prev, huntTitle: data.huntTitle }));
         setStatus('success');
@@ -375,13 +381,17 @@ export default function Checkin() {
         setTimeout(() => setShowBurst(false), 1400);
         setTimeout(() => setShowWave(false), 900);
         tg?.HapticFeedback?.notificationOccurred('success');
+        return;
+      } catch (e) {
+        console.error(`[CHECKIN:DO_GEOHUNT:CATCH] attempt ${attempt}/3 | name:${e?.name} | msg:${e?.message || String(e)}`);
+        if (attempt >= 3) break;
+        // Network error — retry. Server errors (4xx/5xx) return a Response, not a throw.
       }
-    } catch (e) {
-      console.error('[CHECKIN:DO_GEOHUNT:CATCH]', e?.message || String(e));
-      sent.current = false; // allow retry
-      setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
-      setStatus('error');
     }
+
+    sent.current = false;
+    setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
+    setStatus('error');
   }
 
   function handlePinSubmit(e) {
