@@ -168,8 +168,8 @@ export default function MapPage() {
   // Promo QR fetch
   useEffect(() => {
     fetch(`${API_BASE}/api/promos/active`)
-      .then(r => r.ok ? r.json() : { promos: [] })
-      .then(d => setPromoQrs(d.promos || []))
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setPromoQrs(Array.isArray(d) ? d : (d.promos || [])))
       .catch(() => {});
   }, []);
 
@@ -263,11 +263,9 @@ export default function MapPage() {
         html: `<div style="
           position:relative;
           display:flex;align-items:center;justify-content:center;
-          transform:translate(-50%,-50%);
-          pointer-events:none;
           animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both;
         ">
-          <div style="position:absolute;width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,200,255,0.5);animation:radarPing 2.5s ease-out ${delay}ms infinite;"></div>
+          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid rgba(0,200,255,0.5);animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
           <div style="
             background:rgba(6,8,14,0.92);
             color:#00C8FF;padding:4px 9px;border-radius:2px;
@@ -276,9 +274,12 @@ export default function MapPage() {
             box-shadow:0 0 10px rgba(0,200,255,0.25);
             font-family:'Share Tech Mono',monospace;
             letter-spacing:0.5px;
+            position:relative;z-index:1;
           ">+${formatGeo(c.reward_amount)} GEO</div>
         </div>`,
-        className: '', iconSize: [0, 0], iconAnchor: [0, 0],
+        className: '',
+        iconSize: [90, 30],
+        iconAnchor: [45, 15],
       });
 
       const marker = L.marker([+c.lat, +c.lng], { icon }).addTo(map);
