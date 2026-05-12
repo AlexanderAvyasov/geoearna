@@ -42,10 +42,10 @@ console.warn  = (...a) => { _cwarn(...a);  _dpush('warn',  ...a); };
 function DebugOverlay() {
   const [logs,    setLogs]    = useState([..._dbuf]);
   const [open,    setOpen]    = useState(false);
+  const [copied,  setCopied]  = useState(false);
 
   useEffect(() => {
     _dlisteners.add(setLogs);
-    // Log Telegram environment on first render
     const tgw = window.Telegram?.WebApp;
     _dpush('log', `[TG] present:${!!tgw} ver:${tgw?.version||'?'} platform:${tgw?.platform||'?'}`);
     _dpush('log', `[TG] initData:${tgw?.initData ? 'ok('+tgw.initData.length+'ch)' : 'EMPTY'}`);
@@ -56,7 +56,30 @@ function DebugOverlay() {
     return () => _dlisteners.delete(setLogs);
   }, []);
 
+  function handleCopy() {
+    const text = [...logs].reverse().map(e =>
+      `${new Date(e.ts).toISOString().slice(11, 22)} [${e.type}] ${e.msg}`
+    ).join('\n');
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {
+      // fallback for webviews without clipboard API
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   const colors = { log: '#d1fae5', warn: '#fbbf24', error: '#f87171' };
+  const btnBase = { background: 'none', border: 'none', fontSize: 10, cursor: 'pointer', padding: '2px 6px', borderRadius: 5 };
 
   return (
     <>
@@ -86,12 +109,20 @@ function DebugOverlay() {
           fontFamily: 'monospace', fontSize: 10.5,
           lineHeight: 1.5,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <span style={{ color: '#C6F135', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
-            <button
-              onClick={() => { _dbuf.length = 0; setLogs([]); }}
-              style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: 10, cursor: 'pointer' }}
-            >очистить</button>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={handleCopy}
+                style={{ ...btnBase, color: copied ? '#C6F135' : '#9ca3af', background: copied ? 'rgba(198,241,53,0.1)' : 'none' }}
+              >
+                {copied ? 'скопировано' : 'копировать все'}
+              </button>
+              <button
+                onClick={() => { _dbuf.length = 0; setLogs([]); }}
+                style={{ ...btnBase, color: '#6b7280' }}
+              >очистить</button>
+            </div>
           </div>
           {logs.length === 0 && <div style={{ color: '#4b5563' }}>Нет логов</div>}
           {logs.map((e, i) => (
