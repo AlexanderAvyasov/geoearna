@@ -241,7 +241,11 @@ export default function Checkin() {
       const r = await apiFetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrToken: token, lat, lng, pin: pinValue || undefined }),
+        body: JSON.stringify({
+          qrToken: token, lat, lng,
+          pin: pinValue || undefined,
+          campaignId: businessInfo?.campaignId || undefined,
+        }),
       });
       const data = await r.json().catch(() => ({}));
       console.log('[CHECKIN:DO_CHECKIN] response status:', r.status, '| data:', JSON.stringify(data));
@@ -274,7 +278,9 @@ export default function Checkin() {
           }, 500);
         }
       }
-    } catch {
+    } catch (e) {
+      console.error('[CHECKIN:DO_CHECKIN:CATCH]', e?.message || String(e));
+      sent.current = false;
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
       setStatus('error');
     }
@@ -306,7 +312,9 @@ export default function Checkin() {
         setTimeout(() => setShowBurst(false), 1400);
         setTimeout(() => setShowWave(false), 900);
       }
-    } catch {
+    } catch (e) {
+      console.error('[CHECKIN:DO_PROMO:CATCH]', e?.message || String(e));
+      sent.current = false;
       setErrInfo({ Icon: Wifi, titleKey: 'err.NO_CONNECTION.title', textKey: 'err.NO_CONNECTION.text' });
       setStatus('error');
     }
