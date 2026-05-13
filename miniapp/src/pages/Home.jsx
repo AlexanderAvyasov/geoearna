@@ -11,7 +11,7 @@ import { C, E, cardBase, pressable } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-const BC = { fontFamily: "'Barlow Condensed', sans-serif" };
+const RYE = { fontFamily: "'Rye', serif" };
 
 const TASK_ICONS = {
   visit:    MapPin,
@@ -217,25 +217,25 @@ function CampaignSheet({ campaign, userPos, onClose }) {
   );
 }
 
-const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+const MONO = {};
 
 // ── Section divider label ─────────────────────────────────────────────────────
 function SectionLabel({ icon: Icon, label, count, color = C.t3 }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
-      padding: '10px 0 8px',
-      borderBottom: '1px solid rgba(0,200,255,0.08)',
+      padding: '14px 0 10px',
+      borderBottom: `1px solid rgba(255,255,255,0.06)`,
       marginBottom: 4,
     }}>
-      <div style={{ width: 2, height: 10, background: color, borderRadius: 1, flexShrink: 0 }} />
-      {Icon && <Icon size={10} color={color} strokeWidth={2} />}
-      <span style={{ ...MONO, fontSize: 9, color, letterSpacing: 2, textTransform: 'uppercase' }}>{label}</span>
+      <div style={{ width: 3, height: 14, background: color, borderRadius: 2, flexShrink: 0 }} />
+      {Icon && <Icon size={12} color={color} strokeWidth={2} />}
+      <span style={{ fontSize: 11, fontWeight: 700, color, letterSpacing: 0.5, textTransform: 'uppercase' }}>{label}</span>
       {count != null && (
         <span style={{
-          ...MONO, fontSize: 8, color,
+          fontSize: 10, fontWeight: 600, color,
           background: `${color}18`, border: `1px solid ${color}30`,
-          borderRadius: 2, padding: '1px 5px', marginLeft: 'auto',
+          borderRadius: 8, padding: '1px 7px', marginLeft: 'auto',
         }}>{String(count).padStart(2, '0')}</span>
       )}
     </div>
@@ -255,7 +255,7 @@ function CampaignCard({ campaign, onTap, index }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '11px 0',
-        borderBottom: '1px solid rgba(0,200,255,0.07)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         cursor: 'pointer',
         ...pressable(pressed),
         animation: `fadeUp 0.28s ${E.smooth} both`,
@@ -263,31 +263,31 @@ function CampaignCard({ campaign, onTap, index }) {
         userSelect: 'none', WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <span style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>
+      <span style={{ fontSize: 11, fontWeight: 600, color: C.t3, width: 20, flexShrink: 0, textAlign: 'right' }}>
         {String(index + 1).padStart(2, '0')}
       </span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: 0.3 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.t1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {campaign.business_name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
           {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ ...MONO, fontSize: 9, color: C.t2 }}>
+            <span style={{ fontSize: 12, color: C.t2 }}>
               {formatDistance(campaign.dist)}
             </span>
           )}
           {campaign.requires_pin && (
-            <span style={{ ...MONO, fontSize: 8, color: C.gold, background: C.goldFt, borderRadius: 2, padding: '1px 4px', border: `1px solid ${C.goldGl}` }}>
+            <span style={{ fontSize: 10, fontWeight: 600, color: C.gold, background: C.goldFt, borderRadius: 6, padding: '1px 6px', border: `1px solid ${C.goldGl}` }}>
               PIN
             </span>
           )}
         </div>
       </div>
       <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{ ...MONO, fontSize: 13, fontWeight: 700, color: C.geo, letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.geo }}>
           +{formatGeo(campaign.reward_amount)}
         </div>
-        <div style={{ ...MONO, fontSize: 8, color: C.t3, marginTop: 2 }}>GEO</div>
+        <div style={{ fontSize: 10, color: C.t3, marginTop: 1 }}>GEO</div>
       </div>
     </div>
   );
@@ -305,7 +305,7 @@ function PlatformPromoCard({ promo, onTap, index }) {
       onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+        padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
         cursor: 'pointer',
         ...pressable(pressed),
         animation: `fadeUp 0.28s ${E.smooth} both`,
@@ -349,7 +349,7 @@ function GeoHuntCard({ hunt, index }) {
       onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+        padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
         ...pressable(pressed),
         animation: `fadeUp 0.28s ${E.smooth} both`,
         animationDelay: `${index * 0.04}s`,
@@ -399,7 +399,7 @@ function PromoQrCard({ promo, index }) {
       onTouchStart={() => setPressed(true)} onTouchEnd={() => setPressed(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
-        padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+        padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
         ...pressable(pressed),
         animation: `fadeUp 0.28s ${E.smooth} both`,
         animationDelay: `${index * 0.04}s`,
@@ -511,20 +511,20 @@ export default function Home() {
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
 
       {/* ── Hero ── */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(0,200,255,0.10)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+      <div style={{ padding: '20px 16px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
             <div style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: 38, fontWeight: 700, lineHeight: 1,
-              color: C.t1, letterSpacing: -0.5,
+              ...RYE,
+              fontSize: 34, lineHeight: 1.1,
+              color: C.t1,
             }}>
-              {t('home.title').split(' ').slice(0, -1).join(' ') || 'ЗАРАБАТЫВАЙ'}
+              {t('home.title').split(' ').slice(0, -1).join(' ') || 'Зарабатывай'}
             </div>
             <div style={{
-              fontFamily: "'Rajdhani', sans-serif",
-              fontSize: 38, fontWeight: 700, lineHeight: 1,
-              color: C.geo, letterSpacing: -0.5,
+              ...RYE,
+              fontSize: 34, lineHeight: 1.1,
+              color: C.geo,
             }}>
               GEO.
             </div>
@@ -532,39 +532,38 @@ export default function Home() {
           <LanguageSwitcher />
         </div>
 
-        <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, marginBottom: 18, maxWidth: 260 }}>
+        <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.6, marginBottom: 18, maxWidth: 260 }}>
           {t('home.subtitle')}
         </div>
 
         {/* CTA buttons */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={() => getGeoPos().then(p => setUserPos(p)).catch(() => {})}
             style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: C.geo, color: C.bg,
-              border: 'none', borderRadius: 4, padding: '11px 0',
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: C.geo, color: '#F4EBDD',
+              border: 'none', borderRadius: 14, padding: '12px 0',
+              fontSize: 13, fontWeight: 600,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              boxShadow: '0 4px 20px rgba(201,123,71,0.35)',
             }}
           >
-            <Compass size={13} strokeWidth={2} />
-            ПО РАССТОЯНИЮ
+            <Compass size={14} strokeWidth={2} />
+            По расстоянию
           </button>
           <button
             onClick={() => navigate('/map')}
             style={{
-              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: 'transparent', color: C.geo,
-              border: '1px solid rgba(0,200,255,0.35)', borderRadius: 4, padding: '11px 0',
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              background: 'transparent', color: C.teal,
+              border: `1px solid ${C.tealGl}`, borderRadius: 14, padding: '12px 0',
+              fontSize: 13, fontWeight: 600,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <MapPin size={13} strokeWidth={2} />
-            КАРТА
+            <MapPin size={14} strokeWidth={2} />
+            Карта
           </button>
         </div>
       </div>
@@ -609,7 +608,7 @@ export default function Home() {
         {loading && (
           <div style={{ paddingTop: 8 }}>
             {[1, 2, 3].map(i => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)' }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="sk" style={{ height: 10, width: 18, borderRadius: 2 }} />
                 <div style={{ flex: 1 }}>
                   <div className="sk" style={{ height: 12, width: '55%', borderRadius: 2, marginBottom: 6 }} />
@@ -626,9 +625,9 @@ export default function Home() {
             <AlertCircle size={36} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.7 }} />
             <div style={{ ...MONO, fontSize: 11, color: C.red, marginBottom: 16, letterSpacing: 1 }}>ОШИБКА ЗАГРУЗКИ</div>
             <button onClick={loadCampaigns} style={{
-              background: 'transparent', border: '1px solid rgba(0,200,255,0.3)',
+              background: 'transparent', border: `1px solid ${C.geoGl}`,
               color: C.geo, borderRadius: 4, padding: '8px 20px',
-              fontFamily: "'Share Tech Mono', monospace",
+              fontFamily: "'Inter', sans-serif",
               fontSize: 10, letterSpacing: 1.5, cursor: 'pointer',
             }}>
               RETRY
@@ -648,7 +647,7 @@ export default function Home() {
 
         {/* How it works */}
         {!loading && !error && totalCampaigns > 0 && (
-          <div style={{ marginTop: 20, padding: '14px 0', borderTop: '1px solid rgba(0,200,255,0.08)' }}>
+          <div style={{ marginTop: 20, padding: '14px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
             <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 2, marginBottom: 12 }}>КАК ЭТО РАБОТАЕТ</div>
             {[
               [ScanLine, t('home.how.1')],

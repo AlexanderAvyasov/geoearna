@@ -5,7 +5,7 @@ import { LegalSheet } from './Legal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LANGS } from '../lib/i18n';
 
-const SYNE = { fontFamily: "'Syne', sans-serif" };
+const RYE = { fontFamily: "'Rye', serif" };
 
 const SLIDE_META = [
   { Icon: MapPin,     accent: C.geo,   accentDim: C.geoDim,  accentGl: C.geoGl,  num: 1 },
@@ -36,7 +36,7 @@ function LangPhase({ onDone }) {
       <div style={{
         width: 72, height: 72, borderRadius: 22,
         background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
-        border: '1px solid rgba(0,200,255,0.25)',
+        border: `0.5px solid ${C.geoGl}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 32,
         animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
@@ -45,7 +45,7 @@ function LangPhase({ onDone }) {
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: 36, animation: 'fadeUp 0.5s 0.1s ease both' }}>
-        <div style={{ ...SYNE, fontSize: 24, fontWeight: 700, color: C.t1, marginBottom: 6, letterSpacing: -0.4 }}>
+        <div style={{ ...RYE, fontSize: 24, fontWeight: 700, color: C.t1, marginBottom: 6, letterSpacing: -0.4 }}>
           {t('lang.title')}
         </div>
         <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5 }}>
@@ -208,7 +208,7 @@ function SlidePhase({ onDone }) {
         </div>
 
         <div key={`title-${key}`} style={{
-          ...SYNE, fontSize: 28, fontWeight: 700, color: C.t1,
+          ...RYE, fontSize: 28, fontWeight: 700, color: C.t1,
           marginBottom: 18, lineHeight: 1.2, whiteSpace: 'pre-line',
           letterSpacing: -0.4,
           animation: 'fadeUp 0.5s 0.1s ease both',
@@ -309,7 +309,7 @@ function ModePhase({ onChoose }) {
           }}>
             <MapPin size={32} color={C.geo} strokeWidth={1.75} />
           </div>
-          <div style={{ ...SYNE, fontSize: 26, fontWeight: 700, color: C.t1, marginBottom: 8, lineHeight: 1.2, letterSpacing: -0.4 }}>
+          <div style={{ ...RYE, fontSize: 26, fontWeight: 700, color: C.t1, marginBottom: 8, lineHeight: 1.2, letterSpacing: -0.4 }}>
             {t('onboard.mode.title')}
           </div>
           <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.5 }}>

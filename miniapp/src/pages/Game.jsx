@@ -7,7 +7,7 @@ import { apiFetch } from '../lib/api';
 import { C, cardBase } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const SYNE = { fontFamily: "'Syne', sans-serif" };
+const SYNE = {};
 
 const LV = {
   1:  { color: '#6B7280', bg: 'rgba(107,114,128,0.10)', min: 0,    next: 100   },
@@ -141,7 +141,7 @@ function ProfileCard({ data }) {
   );
 }
 
-const MONO_G = { fontFamily: "'Share Tech Mono', monospace" };
+const MONO_G = {};
 
 function TaskCard({ task, onClaim, claiming }) {
   const req   = task.requirement || {};
@@ -154,7 +154,7 @@ function TaskCard({ task, onClaim, claiming }) {
   return (
     <div style={{
       padding: '11px 0',
-      borderBottom: '1px solid rgba(0,200,255,0.07)',
+      borderBottom: '1px solid rgba(255,255,255,0.06)',
       opacity: done ? 0.45 : 1,
       transition: 'opacity 0.2s',
     }}>
@@ -185,7 +185,7 @@ function TaskCard({ task, onClaim, claiming }) {
             )}
           </div>
           {!done && total > 1 && (
-            <div style={{ height: 2, background: 'rgba(0,200,255,0.08)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
+            <div style={{ height: 2, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', marginTop: 5 }}>
               <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: canClaim ? C.green : C.geo, borderRadius: 99, transition: 'width 0.5s ease' }} />
             </div>
           )}
@@ -196,9 +196,8 @@ function TaskCard({ task, onClaim, claiming }) {
             disabled={!!claiming}
             style={{
               background: C.geo, color: C.bg, border: 'none',
-              borderRadius: 3, padding: '6px 10px',
-              fontFamily: "'Share Tech Mono', monospace",
-              fontSize: 9, letterSpacing: 1, cursor: claiming ? 'not-allowed' : 'pointer',
+              borderRadius: 10, padding: '7px 12px',
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, cursor: claiming ? 'not-allowed' : 'pointer',
               flexShrink: 0, opacity: claiming ? 0.7 : 1,
               display: 'flex', alignItems: 'center', gap: 4,
             }}
@@ -440,7 +439,7 @@ export default function Game() {
     }
   }
 
-  const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+  const MONO = {};
   const lv = data?.level || 1;
   const cfg = LV[lv] || LV[1];
   const streak = data?.streak?.current_streak || 0;
@@ -453,18 +452,18 @@ export default function Game() {
       {/* ── Sticky header ── */}
       <div style={{
         background: 'rgba(6,8,14,0.98)',
-        borderBottom: '1px solid rgba(0,200,255,0.14)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         position: 'sticky', top: 66, zIndex: 10,
         padding: '0 16px',
       }}>
         {/* Level + XP bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, paddingBottom: 8, borderBottom: '1px solid rgba(0,200,255,0.06)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 10, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <span style={{ ...MONO, fontSize: 9, color: cfg.color, background: `${cfg.color}18`, border: `1px solid ${cfg.color}40`, borderRadius: 2, padding: '2px 6px' }}>
             L{lv}
           </span>
-          <div style={{ flex: 1, height: 3, background: 'rgba(0,200,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
+          <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
             {!loading && (
               <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: cfg.color, borderRadius: 99, transition: 'width 0.8s ease' }} />
             )}
@@ -524,13 +523,12 @@ export default function Game() {
         <div style={{
           position: 'fixed', bottom: 80, left: '50%',
           transform: 'translate(-50%, 0)',
-          background: toast.isError ? 'rgba(255,56,96,0.12)' : 'rgba(0,200,255,0.10)',
+          background: toast.isError ? C.redFt : C.geoDim,
           backdropFilter: 'blur(20px)',
           color: toast.isError ? C.red : C.geo,
-          borderRadius: 3, border: `1px solid ${toast.isError ? C.redGl : C.geoGl}`,
-          padding: '9px 18px', zIndex: 500, whiteSpace: 'nowrap',
-          fontFamily: "'Share Tech Mono', monospace",
-          fontSize: 11, letterSpacing: 1,
+          borderRadius: 12, border: `1px solid ${toast.isError ? C.redGl : C.geoGl}`,
+          padding: '10px 20px', zIndex: 500, whiteSpace: 'nowrap',
+          fontSize: 13, fontWeight: 600,
           animation: 'toastIn 0.25s ease',
         }}>
           {toast.msg}

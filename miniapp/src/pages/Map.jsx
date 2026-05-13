@@ -8,7 +8,7 @@ import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { C } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+const MONO = {};
 const TASK_ICON = { visit: MapPin, purchase: ShoppingBag, review: Star };
 const CAT_LABEL  = { visit: 'FOOD', purchase: 'SHOP', review: 'REVIEW' };
 const RARITY = {
@@ -43,7 +43,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: C.surf,
         borderRadius: '4px 4px 0 0',
-        border: `1px solid rgba(0,200,255,0.15)`,
+        border: `1px solid rgba(255,255,255,0.10)`,
         borderBottom: 'none',
         padding: '0 0 44px', zIndex: 501,
         maxWidth: 480, margin: '0 auto',
@@ -72,9 +72,9 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 
           {/* Reward box */}
           <div style={{
-            background: 'linear-gradient(135deg, rgba(0,200,255,0.08) 0%, rgba(0,200,255,0.04) 100%)',
-            border: '1px solid rgba(0,200,255,0.20)',
-            borderRadius: 4, padding: '16px',
+            background: C.geoDim,
+            border: `1px solid ${C.geoGl}`,
+            borderRadius: 14, padding: '16px',
             textAlign: 'center', marginBottom: 10,
           }}>
             <div style={{ ...MONO, fontSize: 9, color: C.t3, marginBottom: 4, letterSpacing: 1.5 }}>REWARD</div>
@@ -238,9 +238,9 @@ export default function MapPage() {
 
     const icon = L.divIcon({
       html: `<div style="position:relative;width:14px;height:14px;">
-        <div style="position:absolute;inset:-10px;border-radius:50%;background:rgba(0,200,255,0.15);animation:radarPing 2s ease-out infinite;"></div>
-        <div style="position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(0,200,255,0.4);animation:radarPing 2s ease-out 0.5s infinite;"></div>
-        <div style="width:14px;height:14px;border-radius:50%;background:#00C8FF;border:2px solid #06080E;box-shadow:0 0 8px rgba(0,200,255,0.8);"></div>
+        <div style="position:absolute;inset:-10px;border-radius:50%;background:rgba(201,123,71,0.15);animation:radarPing 2s ease-out infinite;"></div>
+        <div style="position:absolute;inset:-6px;border-radius:50%;border:1px solid rgba(201,123,71,0.4);animation:radarPing 2s ease-out 0.5s infinite;"></div>
+        <div style="width:14px;height:14px;border-radius:50%;background:#C97B47;border:2px solid #06080E;box-shadow:0 0 8px rgba(201,123,71,0.8);"></div>
       </div>`,
       className: '', iconSize: [14, 14], iconAnchor: [7, 7],
     });
@@ -265,15 +265,15 @@ export default function MapPage() {
           display:flex;align-items:center;justify-content:center;
           animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both;
         ">
-          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid rgba(0,200,255,0.5);animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
+          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid rgba(201,123,71,0.4);animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
           <div style="
-            background:rgba(6,8,14,0.92);
-            color:#00C8FF;padding:4px 9px;border-radius:2px;
-            font-size:11px;font-weight:700;white-space:nowrap;
-            border:1px solid rgba(0,200,255,0.45);
-            box-shadow:0 0 10px rgba(0,200,255,0.25);
-            font-family:'Share Tech Mono',monospace;
-            letter-spacing:0.5px;
+            background:rgba(8,16,24,0.92);
+            color:#C97B47;padding:5px 10px;border-radius:8px;
+            font-size:12px;font-weight:700;white-space:nowrap;
+            border:1px solid rgba(201,123,71,0.35);
+            box-shadow:0 4px 16px rgba(0,0,0,0.4);
+            font-family:'Inter',sans-serif;
+            letter-spacing:0.2px;
             position:relative;z-index:1;
           ">+${formatGeo(c.reward_amount)} GEO</div>
         </div>`,
@@ -305,11 +305,11 @@ export default function MapPage() {
       <div style={{
         display: 'flex',
         background: C.surf,
-        borderBottom: '1px solid rgba(0,200,255,0.12)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
         flexShrink: 0,
       }}>
         {/* BALANCE */}
-        <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid rgba(0,200,255,0.07)' }}>
+        <div style={{ flex: 1, padding: '10px 12px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.2, marginBottom: 4 }}>BALANCE</div>
           <div style={{ ...MONO, fontSize: 14, color: C.geo }}>
             {stats ? Math.floor(stats.balance) : '—'}
@@ -317,11 +317,11 @@ export default function MapPage() {
           </div>
         </div>
         {/* LEVEL XP */}
-        <div style={{ flex: 1.6, padding: '10px 12px', borderRight: '1px solid rgba(0,200,255,0.07)' }}>
+        <div style={{ flex: 1.6, padding: '10px 12px', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 1.2, marginBottom: 4 }}>
             LEVEL {stats ? String(stats.level).padStart(2, '0') : '--'}
           </div>
-          <div style={{ height: 2, background: 'rgba(0,200,255,0.10)', borderRadius: 1, marginBottom: 3 }}>
+          <div style={{ height: 2, background: 'rgba(255,255,255,0.07)', borderRadius: 1, marginBottom: 3 }}>
             <div style={{ height: '100%', width: `${xpPct}%`, background: C.geo, borderRadius: 1, transition: 'width 0.6s ease' }} />
           </div>
           <div style={{ ...MONO, fontSize: 8, color: C.t3 }}>
@@ -344,7 +344,7 @@ export default function MapPage() {
         {/* Radar grid overlay */}
         <div style={{
           position: 'absolute', inset: 0, zIndex: 900, pointerEvents: 'none',
-          backgroundImage: 'linear-gradient(rgba(0,200,255,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.035) 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)',
           backgroundSize: '40px 40px',
         }} />
 
@@ -354,7 +354,7 @@ export default function MapPage() {
             position: 'absolute', top: 8, left: 8, zIndex: 1000, pointerEvents: 'none',
             ...MONO, fontSize: 9, color: C.geo,
             background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
-            border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
           }}>
             LAT {userPos.lat.toFixed(3)}°N
           </div>
@@ -366,7 +366,7 @@ export default function MapPage() {
             position: 'absolute', top: 8, right: 8, zIndex: 1000, pointerEvents: 'none',
             ...MONO, fontSize: 9, color: C.geo,
             background: 'rgba(6,8,14,0.80)', padding: '3px 7px',
-            border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
+            border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
           }}>
             LON {userPos.lng.toFixed(3)}°E
           </div>
@@ -393,7 +393,7 @@ export default function MapPage() {
         <div style={{
           position: 'absolute', bottom: 8, right: 8, zIndex: 1000, pointerEvents: 'none',
           background: 'rgba(6,8,14,0.80)', padding: '4px 8px',
-          border: '1px solid rgba(0,200,255,0.18)', borderRadius: 2,
+          border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6,
           display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
         }}>
           <div style={{ ...MONO, fontSize: 12, color: C.t1, lineHeight: 1 }}>N</div>
@@ -417,7 +417,7 @@ export default function MapPage() {
           {userPos && (
             <button onClick={() => mapRef.current?.setView([userPos.lat, userPos.lng], 15)} style={{
               width: 28, height: 28, borderRadius: 2,
-              border: `1px solid rgba(0,200,255,0.25)`,
+              border: `1px solid ${C.geoGl}`,
               background: 'rgba(6,8,14,0.88)',
               cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -449,17 +449,16 @@ export default function MapPage() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '9px 16px',
-          borderBottom: '1px solid rgba(0,200,255,0.08)',
+          borderBottom: '1px solid rgba(255,255,255,0.07)',
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ ...MONO, fontSize: 8, color: C.geo, letterSpacing: 1.5 }}>◆ NEARBY TARGETS</span>
-            <span style={{ ...MONO, fontSize: 8, color: C.b2 }}>———</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.geo }}>Ближайшие</span>
           </div>
-          <div style={{ ...MONO, fontSize: 8, color: C.t3, letterSpacing: 0.5, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {!loading && <span>■ {String(nearby.length).padStart(2, '0')} LOCKED</span>}
+          <div style={{ fontSize: 11, color: C.t3, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {!loading && <span>{nearby.length} мест</span>}
             <span style={{ color: userPos ? C.green : C.gold }}>
-              {userPos ? '· SYNC' : '· GPS !'}
+              {userPos ? '· GPS ✓' : '· GPS …'}
             </span>
           </div>
         </div>
@@ -495,7 +494,7 @@ export default function MapPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '11px 0',
-                  borderBottom: '1px solid rgba(0,200,255,0.06)',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
                   cursor: 'pointer',
                   WebkitTapHighlightColor: 'transparent',
                 }}
@@ -505,7 +504,7 @@ export default function MapPage() {
                 </div>
                 <div style={{
                   width: 20, height: 20, borderRadius: 2, flexShrink: 0,
-                  background: 'rgba(0,200,255,0.07)', border: '1px solid rgba(0,200,255,0.14)',
+                  background: C.geoDim, border: `1px solid ${C.geoGl}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <TIcon size={11} color={C.t3} strokeWidth={2} />
@@ -537,7 +536,7 @@ export default function MapPage() {
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '12px 0 8px',
-                borderBottom: '1px solid rgba(0,200,255,0.08)',
+                borderBottom: '1px solid rgba(255,255,255,0.07)',
                 marginTop: nearby.length > 0 ? 4 : 0,
               }}>
                 <div style={{ width: 2, height: 10, background: C.geo, borderRadius: 1, flexShrink: 0 }} />
@@ -545,8 +544,8 @@ export default function MapPage() {
                 <span style={{ ...MONO, fontSize: 9, color: C.geo, letterSpacing: 2 }}>PROMO QR</span>
                 <span style={{
                   ...MONO, fontSize: 8, color: C.geo,
-                  background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.2)',
-                  borderRadius: 2, padding: '1px 5px', marginLeft: 'auto',
+                  background: C.geoDim, border: `1px solid ${C.geoGl}`,
+                  borderRadius: 6, padding: '1px 6px', marginLeft: 'auto',
                 }}>{String(promoQrs.length).padStart(2, '0')}</span>
               </div>
 
@@ -557,7 +556,7 @@ export default function MapPage() {
                   <div key={p.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '11px 0',
-                    borderBottom: '1px solid rgba(0,200,255,0.06)',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
                     WebkitTapHighlightColor: 'transparent',
                   }}>
                     <div style={{ ...MONO, fontSize: 10, color: C.t3, width: 18, flexShrink: 0, textAlign: 'right' }}>

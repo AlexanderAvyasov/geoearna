@@ -89,7 +89,7 @@ function DebugOverlay() {
         style={{
           position: 'fixed', bottom: 88, right: 12, zIndex: 9100,
           width: 34, height: 34, borderRadius: '50%',
-          background: open ? 'rgba(239,68,68,0.85)' : 'rgba(0,200,255,0.85)',
+          background: open ? 'rgba(239,68,68,0.85)' : 'rgba(201,123,71,0.85)',
           border: 'none', cursor: 'pointer',
           fontSize: 13, fontWeight: 900, color: '#090B10',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -103,7 +103,7 @@ function DebugOverlay() {
         <div style={{
           position: 'fixed', bottom: 130, left: 8, right: 8, zIndex: 9099,
           background: 'rgba(5,8,14,0.97)',
-          border: '1px solid rgba(0,200,255,0.25)',
+          border: '1px solid rgba(255,255,255,0.10)',
           borderRadius: 14,
           maxHeight: '60vh', overflowY: 'auto',
           padding: '10px 12px',
@@ -111,11 +111,11 @@ function DebugOverlay() {
           lineHeight: 1.5,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ color: '#00C8FF', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
+            <span style={{ color: '#C97B47', fontWeight: 700, fontSize: 11 }}>DEBUG · {logs.length} записей</span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button
                 onClick={handleCopy}
-                style={{ ...btnBase, color: copied ? '#00C8FF' : '#9ca3af', background: copied ? 'rgba(0,200,255,0.1)' : 'none' }}
+                style={{ ...btnBase, color: copied ? '#C97B47' : '#9ca3af', background: copied ? 'rgba(201,123,71,0.1)' : 'none' }}
               >
                 {copied ? 'скопировано' : 'копировать все'}
               </button>
@@ -163,7 +163,7 @@ class AppErrorBoundary extends Component {
           padding: '32px 20px', fontFamily: 'monospace', fontSize: 13,
           overflowY: 'auto',
         }}>
-          <div style={{ color: '#00C8FF', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
+          <div style={{ color: '#C97B47', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>
             React render error
           </div>
           <div style={{ color: '#fbbf24', marginBottom: 12 }}>
@@ -175,8 +175,8 @@ class AppErrorBoundary extends Component {
           <button
             onClick={() => this.setState({ error: null, stack: null })}
             style={{
-              marginTop: 24, background: '#00C8FF', color: '#06080E',
-              border: 'none', padding: '12px 28px', borderRadius: 4,
+              marginTop: 24, background: '#C97B47', color: '#06080E',
+              border: 'none', padding: '12px 28px', borderRadius: 12,
               fontWeight: 700, fontSize: 14, cursor: 'pointer',
             }}
           >
@@ -202,10 +202,10 @@ function BrowserGate() {
       <div style={{
         width: 96, height: 96, borderRadius: 28,
         background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
-        border: '1px solid rgba(0,200,255,0.25)',
+        border: `0.5px solid rgba(201,123,71,0.30)`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 32,
-        boxShadow: '0 0 40px rgba(0,200,255,0.12)',
+        boxShadow: '0 0 40px rgba(201,123,71,0.10)',
       }}>
         <MapPin size={44} color={C.geo} strokeWidth={1.75} />
       </div>
@@ -225,9 +225,9 @@ function BrowserGate() {
           display: 'inline-flex', alignItems: 'center', gap: 10,
           background: C.geo, color: C.bg,
           textDecoration: 'none',
-          padding: '14px 36px', borderRadius: 4,
-          fontWeight: 700, fontSize: 16, letterSpacing: 1,
-          boxShadow: '0 6px 28px rgba(0,200,255,0.30)',
+          padding: '14px 36px', borderRadius: 14,
+          fontWeight: 700, fontSize: 16,
+          boxShadow: '0 6px 28px rgba(201,123,71,0.30)',
         }}
       >
         Открыть @geoearnbot
@@ -242,10 +242,10 @@ function BrowserGate() {
 
 export const GLOBAL_CSS = `
   :root {
-    --geo: #00C8FF;
-    --bg: #06080E;
-    --surf: #0A0D16;
-    --card: #0E1222;
+    --geo: #C97B47;
+    --bg: #081018;
+    --surf: #101A24;
+    --card: #16212D;
   }
 
   *, *::before, *::after { box-sizing: border-box; }
@@ -253,14 +253,10 @@ export const GLOBAL_CSS = `
     margin: 0; padding: 0;
     background: ${C.bg};
     color: ${C.t1};
-    font-family: 'Rajdhani', 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;
-  }
-  body {
-    background-image: radial-gradient(rgba(0,200,255,0.045) 1px, transparent 1px);
-    background-size: 28px 28px;
   }
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
@@ -291,9 +287,9 @@ export const GLOBAL_CSS = `
     100% { opacity: 0.5; }
   }
   @keyframes scanRing {
-    0%   { box-shadow: 0 0 0 0   rgba(0,200,255,.6); }
-    60%  { box-shadow: 0 0 0 14px rgba(0,200,255,0); }
-    100% { box-shadow: 0 0 0 0   rgba(0,200,255,0); }
+    0%   { box-shadow: 0 0 0 0   rgba(201,123,71,.6); }
+    60%  { box-shadow: 0 0 0 14px rgba(201,123,71,0); }
+    100% { box-shadow: 0 0 0 0   rgba(201,123,71,0); }
   }
   @keyframes coinBurst {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
@@ -328,8 +324,8 @@ export const GLOBAL_CSS = `
     50%       { transform: scale(1.7); opacity: 0; }
   }
   @keyframes successGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,255,.4); }
-    50%       { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(143,174,123,.4); }
+    50%       { box-shadow: 0 0 0 22px rgba(143,174,123,0); }
   }
   @keyframes toastIn {
     from { transform: translate(-50%, 10px); opacity: 0; }
@@ -386,13 +382,13 @@ export const GLOBAL_CSS = `
     100% { transform: translate(-50%,-100%) scale(1); opacity: 1; }
   }
   @keyframes markerPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,200,255,0.55); }
-    50%       { box-shadow: 0 0 0 8px rgba(0,200,255,0); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,123,71,0.55); }
+    50%       { box-shadow: 0 0 0 8px rgba(201,123,71,0); }
   }
 
   /* ── Skeleton shimmer ── */
   .sk {
-    background: rgba(0,200,255,0.05);
+    background: rgba(255,255,255,0.06);
     flex-shrink: 0;
     animation: shimmer 1.6s ease-in-out infinite;
   }
@@ -411,9 +407,9 @@ export const GLOBAL_CSS = `
     40%            { transform: scale(1);    opacity: 1; }
   }
   @keyframes splashRing {
-    0%   { box-shadow: 0 0 0 0   rgba(0,200,255,0.45); }
-    70%  { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
-    100% { box-shadow: 0 0 0 0   rgba(0,200,255,0); }
+    0%   { box-shadow: 0 0 0 0   rgba(201,123,71,0.45); }
+    70%  { box-shadow: 0 0 0 22px rgba(201,123,71,0); }
+    100% { box-shadow: 0 0 0 0   rgba(201,123,71,0); }
   }
   @keyframes splashFadeOut {
     0%   { opacity: 1; }
@@ -437,9 +433,9 @@ const SPLASH_CSS = `
     40%            { transform: scale(1);    opacity: 1; }
   }
   @keyframes _sRing {
-    0%   { box-shadow: 0 0 0 0    rgba(0,200,255,0.45); }
-    70%  { box-shadow: 0 0 0 22px rgba(0,200,255,0); }
-    100% { box-shadow: 0 0 0 0    rgba(0,200,255,0); }
+    0%   { box-shadow: 0 0 0 0    rgba(201,123,71,0.40); }
+    70%  { box-shadow: 0 0 0 22px rgba(201,123,71,0); }
+    100% { box-shadow: 0 0 0 0    rgba(201,123,71,0); }
   }
   @keyframes _sFadeOut {
     0%   { opacity: 1; }
@@ -466,7 +462,7 @@ function SplashScreen({ fading }) {
           position: 'absolute', top: '28%', left: '50%',
           transform: 'translateX(-50%)',
           width: 280, height: 280, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(0,200,255,0.07) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, rgba(201,123,71,0.07) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
@@ -476,7 +472,7 @@ function SplashScreen({ fading }) {
           width: 88, height: 88,
           borderRadius: 28,
           background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
-          border: '1px solid rgba(0,200,255,0.25)',
+          border: `0.5px solid rgba(201,123,71,0.30)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           animation: '_sLogoIn 0.65s cubic-bezier(0.32,0.72,0,1) both, _sRing 2.4s ease-in-out 0.7s infinite',
           marginBottom: 24,
@@ -732,10 +728,10 @@ function BottomNav({ onQrResult }) {
     <>
       <nav ref={navRef} style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(6,8,14,0.97)',
+        background: 'rgba(8,16,24,0.97)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(0,200,255,0.14)',
+        borderTop: '1px solid rgba(255,255,255,0.07)',
         display: 'flex', alignItems: 'flex-end',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
         zIndex: 100,
@@ -748,7 +744,7 @@ function BottomNav({ onQrResult }) {
             left: indicatorX,
             width: 24, height: 2.5, borderRadius: 2,
             background: C.geo,
-            boxShadow: `0 0 8px ${C.geo}`,
+            boxShadow: `0 0 10px rgba(201,123,71,0.5)`,
             transition: `left 0.3s cubic-bezier(0.32,0.72,0,1)`,
             pointerEvents: 'none',
           }} />
@@ -815,7 +811,6 @@ let _hdrCache = null;
 
 function GlobalHeader() {
   const [stats, setStats] = useState(_hdrCache);
-  const mono = { fontFamily: "'Share Tech Mono', monospace" };
 
   useEffect(() => {
     if (_hdrCache) return;
@@ -837,8 +832,8 @@ function GlobalHeader() {
 
   return (
     <div style={{
-      background: 'rgba(6,8,14,0.98)',
-      borderBottom: '1px solid rgba(0,200,255,0.14)',
+      background: 'rgba(8,16,24,0.98)',
+      borderBottom: '1px solid rgba(255,255,255,0.07)',
       backdropFilter: 'blur(20px)',
       WebkitBackdropFilter: 'blur(20px)',
       padding: '0 16px',
@@ -847,57 +842,51 @@ function GlobalHeader() {
       {/* Brand row */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        height: 36, borderBottom: '1px solid rgba(0,200,255,0.06)',
+        height: 36, borderBottom: '1px solid rgba(255,255,255,0.05)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            background: 'rgba(0,200,255,0.08)', border: '1px solid rgba(0,200,255,0.2)',
-            borderRadius: 3, padding: '2px 8px',
-          }}>
-            <div style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: C.green, boxShadow: `0 0 6px ${C.green}`,
-              animation: 'hudPulse 2s ease-in-out infinite',
-            }} />
-            <span style={{ ...mono, fontSize: 10, color: C.geo, letterSpacing: 2 }}>GEO-EARN</span>
-            <span style={{ fontSize: 8, color: C.t2, letterSpacing: 1 }}>· LIVE</span>
-          </div>
+            width: 6, height: 6, borderRadius: '50%',
+            background: C.green,
+            boxShadow: `0 0 6px ${C.green}`,
+            animation: 'hudPulse 2.5s ease-in-out infinite',
+          }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: C.t1, letterSpacing: 0.3 }}>GeoEarn</span>
           {stats && (
             <span style={{
-              ...mono, fontSize: 9, color: C.geo,
-              background: 'rgba(0,200,255,0.06)', border: '1px solid rgba(0,200,255,0.15)',
-              borderRadius: 2, padding: '2px 6px',
+              fontSize: 10, fontWeight: 600, color: C.t3,
+              background: C.geoDim, border: `1px solid ${C.geoGl}`,
+              borderRadius: 6, padding: '1px 7px',
             }}>L{stats.level}</span>
           )}
         </div>
         {stats ? (
-          <span style={{ ...mono, fontSize: 9, color: C.gold, letterSpacing: 1 }}>
-            ★ {stats.tasksDone} TASKS
+          <span style={{ fontSize: 10, color: C.gold, fontWeight: 600 }}>
+            ★ {stats.tasksDone} задач
           </span>
         ) : (
-          <div className="sk" style={{ height: 12, width: 60, borderRadius: 2 }} />
+          <div className="sk" style={{ height: 12, width: 60, borderRadius: 6 }} />
         )}
       </div>
 
       {/* Stats row */}
       <div style={{ display: 'flex', height: 30, alignItems: 'center' }}>
         {stats ? [
-          { label: 'BALANCE', val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
-          { label: 'STREAK',  val: `${String(stats.streak).padStart(2, '0')}d` },
-          { label: 'TASKS',   val: `${stats.tasksDone}/${stats.tasksTotal}` },
+          { label: 'Баланс', val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
+          { label: 'Стрик',  val: `${stats.streak}д` },
+          { label: 'Задачи', val: `${stats.tasksDone}/${stats.tasksTotal}` },
         ].map((item, i) => (
           <div key={i} style={{
-            flex: 1, display: 'flex', flexDirection: 'column', gap: 0,
+            flex: 1, display: 'flex', flexDirection: 'column',
             paddingLeft: i === 0 ? 0 : 10,
-            borderLeft: i > 0 ? '1px solid rgba(0,200,255,0.08)' : 'none',
+            borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
           }}>
-            <span style={{ ...mono, fontSize: 6, color: C.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>{item.label}</span>
-            <span style={{ ...mono, fontSize: 11, color: i === 0 ? C.geo : C.t1, letterSpacing: 0.3 }}>{item.val}</span>
+            <span style={{ fontSize: 9, color: C.t3, letterSpacing: 0.3, marginBottom: 1 }}>{item.label}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: i === 0 ? C.geo : C.t1 }}>{item.val}</span>
           </div>
         )) : (
-          <div style={{ display: 'flex', gap: 8, paddingLeft: 0 }}>
-            {[70, 45, 50].map((w, i) => <div key={i} className="sk" style={{ height: 16, width: w, borderRadius: 2 }} />)}
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[70, 45, 50].map((w, i) => <div key={i} className="sk" style={{ height: 14, width: w, borderRadius: 6 }} />)}
           </div>
         )}
       </div>
@@ -942,7 +931,7 @@ function AppLayout() {
     <div style={{
       minHeight: '100vh',
       background: C.bg,
-      fontFamily: "'Rajdhani', 'Barlow Condensed', -apple-system, sans-serif",
+      fontFamily: "'Inter', 'Space Grotesk', -apple-system, sans-serif",
       color: C.t1,
       WebkitTapHighlightColor: 'transparent',
     }}>

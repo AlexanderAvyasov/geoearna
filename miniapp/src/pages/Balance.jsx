@@ -6,7 +6,7 @@ import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
 import { C, E, cardBase } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const BC = { fontFamily: "'Barlow Condensed', sans-serif" };
+const BC = {};
 
 const RARITY_STYLE = {
   common:    { color: '#10B981', bg: '#10B98114', border: '#10B98130' },
@@ -115,7 +115,7 @@ export default function Balance() {
   const geoBalance     = user?.balance ?? 0;
   const totalEarnedGeo = activity.reduce((s, v) => s + (v.amount || 0), 0);
 
-  const MONO = { fontFamily: "'Share Tech Mono', monospace" };
+  const MONO = {};
 
   if (error) return (
     <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
@@ -128,7 +128,7 @@ export default function Balance() {
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
 
       {/* ── Vault header ── */}
-      <div style={{ padding: '16px 16px 0', borderBottom: '1px solid rgba(0,200,255,0.10)' }}>
+      <div style={{ padding: '16px 16px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <span style={{ ...MONO, fontSize: 8, color: C.t2, letterSpacing: 2 }}>THE VAULT — GEO WALLET</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -147,7 +147,7 @@ export default function Balance() {
                 <SlotCounter
                   value={geoBalance}
                   loading={loading}
-                  style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 44, fontWeight: 400, letterSpacing: -1, lineHeight: 1, color: C.t1 }}
+                  style={{ fontFamily: "'Inter', sans-serif", fontSize: 44, fontWeight: 400, letterSpacing: -1, lineHeight: 1, color: C.t1 }}
                 />
                 <span style={{ ...MONO, fontSize: 16, color: C.geo }}>GEO</span>
               </div>
@@ -155,7 +155,7 @@ export default function Balance() {
                 <span style={{ ...MONO, fontSize: 11, color: C.t2 }}>
                   ≈ {formatUzs(geoToUzs(geoBalance, geoRate))} UZS
                 </span>
-                <span style={{ ...MONO, fontSize: 9, color: C.t3, background: 'rgba(0,200,255,0.06)', border: '1px solid rgba(0,200,255,0.12)', borderRadius: 2, padding: '1px 5px' }}>
+                <span style={{ ...MONO, fontSize: 9, color: C.t3, background: C.geoDim, border: `1px solid ${C.geoGl}`, borderRadius: 8, padding: '1px 7px' }}>
                   1 GEO = {geoRate} UZS
                 </span>
               </div>
@@ -173,12 +173,12 @@ export default function Balance() {
             to ? (
               <Link key={label} to={to} style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                background: primary ? C.geo : 'rgba(0,200,255,0.06)',
-                color: primary ? C.bg : C.geo,
-                border: primary ? 'none' : '1px solid rgba(0,200,255,0.22)',
-                borderRadius: 4, padding: '10px 4px',
+                background: primary ? C.geo : C.geoDim,
+                color: primary ? '#F4EBDD' : C.geo,
+                border: primary ? 'none' : `1px solid ${C.geoGl}`,
+                borderRadius: 14, padding: '10px 4px',
                 textDecoration: 'none',
-                fontFamily: "'Share Tech Mono', monospace",
+                fontFamily: "'Inter', sans-serif",
                 fontSize: 9, letterSpacing: 1.5,
               }}>
                 <Icon size={14} strokeWidth={1.75} />
@@ -187,10 +187,10 @@ export default function Balance() {
             ) : (
               <button key={label} onClick={() => tab && setActiveTab(tab)} style={{
                 flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                background: 'rgba(0,200,255,0.06)',
-                color: C.geo, border: '1px solid rgba(0,200,255,0.22)',
-                borderRadius: 4, padding: '10px 4px', cursor: 'pointer',
-                fontFamily: "'Share Tech Mono', monospace",
+                background: C.geoDim,
+                color: C.geo, border: `1px solid ${C.geoGl}`,
+                borderRadius: 14, padding: '10px 4px', cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif",
                 fontSize: 9, letterSpacing: 1.5,
                 WebkitTapHighlightColor: 'transparent',
               }}>
@@ -203,7 +203,7 @@ export default function Balance() {
       </div>
 
       {/* ── Tab switcher ── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,200,255,0.10)' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         {[
           { key: 'visits',      label: 'LEDGER' },
           { key: 'withdrawals', label: 'WITHDRAWALS', badge: withdrawals.filter(w => w.status === 'pending').length },
@@ -212,7 +212,7 @@ export default function Balance() {
             flex: 1, background: 'none', border: 'none', cursor: 'pointer',
             padding: '10px 0',
             borderBottom: `2px solid ${activeTab === tab.key ? C.geo : 'transparent'}`,
-            fontFamily: "'Share Tech Mono', monospace",
+            fontFamily: "'Inter', sans-serif",
             fontSize: 9, letterSpacing: 1.5,
             color: activeTab === tab.key ? C.geo : C.t3,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -238,7 +238,7 @@ export default function Balance() {
             {loading && (
               <div style={{ paddingTop: 8 }}>
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="sk" style={{ height: 10, width: 18, borderRadius: 2 }} />
                     <div style={{ flex: 1 }}>
                       <div className="sk" style={{ height: 12, width: '50%', borderRadius: 2, marginBottom: 5 }} />
@@ -261,7 +261,7 @@ export default function Balance() {
               return (
                 <div key={item.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+                  padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
                   animation: `fadeUp 0.28s ${E.smooth} both`,
                   animationDelay: `${i * 0.03}s`,
                 }}>
@@ -298,7 +298,7 @@ export default function Balance() {
             {loading && (
               <div style={{ paddingTop: 8 }}>
                 {[1, 2].map(i => (
-                  <div key={i} style={{ display: 'flex', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)' }}>
+                  <div key={i} style={{ display: 'flex', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                     <div className="sk" style={{ height: 10, width: 18, borderRadius: 2 }} />
                     <div style={{ flex: 1 }}>
                       <div className="sk" style={{ height: 12, width: '40%', borderRadius: 2, marginBottom: 5 }} />
@@ -323,7 +323,7 @@ export default function Balance() {
               return (
                 <div key={w.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '11px 0', borderBottom: '1px solid rgba(0,200,255,0.07)',
+                  padding: '11px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
                   animation: `fadeUp 0.28s ${E.smooth} both`,
                   animationDelay: `${i * 0.03}s`,
                 }}>
