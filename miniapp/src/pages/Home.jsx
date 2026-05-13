@@ -13,6 +13,39 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const RYE = { fontFamily: "'Rye', serif" };
 
+function HeroIllustration() {
+  return (
+    <div style={{ position: 'relative', width: 148, height: 190, flexShrink: 0 }}>
+      {/* Mountain scene */}
+      <svg viewBox="0 0 148 190" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="32" cy="32" rx="24" ry="10" fill="rgba(109,139,116,0.10)"/>
+        <ellipse cx="118" cy="22" rx="18" ry="8" fill="rgba(109,139,116,0.08)"/>
+        <path d="M15 148 L58 52 L101 148Z" fill="#101A24"/>
+        <path d="M55 148 L92 68 L129 148Z" fill="#16212D"/>
+        <path d="M92 68 L102 90 L82 90Z" fill="rgba(244,235,221,0.10)"/>
+        <polygon points="4,148 11,128 18,148" fill="#1A2C1F"/>
+        <polygon points="10,148 19,122 28,148" fill="#152318"/>
+        <polygon points="126,148 133,130 140,148" fill="#1A2C1F"/>
+        <polygon points="119,148 128,125 137,148" fill="#152318"/>
+        <rect x="0" y="148" width="148" height="42" fill="#0D161F"/>
+      </svg>
+      {/* Post */}
+      <div style={{ position: 'absolute', left: '50%', top: 22, bottom: 42, transform: 'translateX(-50%)', width: 7, background: 'linear-gradient(90deg,#3A2408,#7A5018,#3A2408)', borderRadius: 3, boxShadow: '2px 0 4px rgba(0,0,0,0.4)' }} />
+      {/* EXPLORE */}
+      <div style={{ position: 'absolute', top: 18, left: '50%', transform: 'translateX(-50%) rotate(2.5deg)', background: 'linear-gradient(180deg,#C97B47,#9E4E1A)', borderRadius: 5, padding: '6px 0', color: '#F4EBDD', fontSize: 11, fontWeight: 800, letterSpacing: 1.5, whiteSpace: 'nowrap', textShadow: '0 1px 2px rgba(0,0,0,0.5)', boxShadow: '0 3px 8px rgba(0,0,0,0.4)', width: 110, textAlign: 'center', clipPath: 'polygon(0 0,91% 0,100% 50%,91% 100%,0 100%)' }}>EXPLORE</div>
+      {/* EARN */}
+      <div style={{ position: 'absolute', top: 54, left: '50%', transform: 'translateX(-50%) rotate(-2deg)', background: 'linear-gradient(180deg,#6D8B74,#3D5E47)', borderRadius: 5, padding: '6px 0', color: '#F4EBDD', fontSize: 11, fontWeight: 800, letterSpacing: 1.5, whiteSpace: 'nowrap', textShadow: '0 1px 2px rgba(0,0,0,0.5)', boxShadow: '0 3px 8px rgba(0,0,0,0.4)', width: 95, textAlign: 'center', clipPath: 'polygon(0 0,91% 0,100% 50%,91% 100%,0 100%)' }}>EARN</div>
+      {/* REPEAT */}
+      <div style={{ position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%) rotate(1.5deg)', background: 'linear-gradient(180deg,#C9A042,#8E6810)', borderRadius: 5, padding: '6px 0', color: '#F4EBDD', fontSize: 11, fontWeight: 800, letterSpacing: 1.5, whiteSpace: 'nowrap', textShadow: '0 1px 2px rgba(0,0,0,0.5)', boxShadow: '0 3px 8px rgba(0,0,0,0.4)', width: 110, textAlign: 'center', clipPath: 'polygon(0 0,91% 0,100% 50%,91% 100%,0 100%)' }}>REPEAT</div>
+      {/* Route 66 shield */}
+      <div style={{ position: 'absolute', bottom: 46, right: 4, width: 40, height: 44, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(180deg,#C97B47,#7A3E10)', borderRadius: '40% 40% 48% 48% / 28% 28% 52% 52%', border: '2px solid rgba(244,235,221,0.65)', boxShadow: '0 3px 10px rgba(0,0,0,0.55)', gap: 0 }}>
+        <span style={{ fontSize: 6.5, fontWeight: 800, color: '#F4EBDD', letterSpacing: 0.2, lineHeight: 1.2 }}>ROUTE</span>
+        <span style={{ fontSize: 13, fontWeight: 900, color: '#F4EBDD', lineHeight: 1 }}>66</span>
+      </div>
+    </div>
+  );
+}
+
 const TASK_ICONS = {
   visit:    MapPin,
   purchase: ShoppingBag,
@@ -91,7 +124,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         <div style={{ padding: '0 20px' }}>
           {/* Business name + type badge */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
-            <div style={{ ...BC, fontWeight: 700, fontSize: 22, color: C.t1, letterSpacing: -0.3 }}>
+            <div style={{ fontWeight: 700, fontSize: 22, color: C.t1, letterSpacing: -0.3 }}>
               {campaign.business_name}
             </div>
           </div>
@@ -120,7 +153,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
               {t('home.reward')}
             </div>
-            <div style={{ ...BC, fontSize: 48, fontWeight: 800, letterSpacing: -1.5, color: C.geo, lineHeight: 1 }}>
+            <div style={{ fontSize: 48, fontWeight: 800, letterSpacing: -1.5, color: C.geo, lineHeight: 1 }}>
               +{formatGeo(campaign.reward_amount)}
               <span style={{ fontSize: 18, fontWeight: 700, color: C.t2, marginLeft: 8 }}>GEO</span>
             </div>
@@ -511,29 +544,31 @@ export default function Home() {
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
 
       {/* ── Hero ── */}
-      <div style={{ padding: '20px 16px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div>
-            <div style={{
-              ...RYE,
-              fontSize: 34, lineHeight: 1.1,
-              color: C.t1,
-            }}>
-              {t('home.title').split(' ').slice(0, -1).join(' ') || 'Зарабатывай'}
-            </div>
-            <div style={{
-              ...RYE,
-              fontSize: 34, lineHeight: 1.1,
-              color: C.geo,
-            }}>
-              GEO.
-            </div>
-          </div>
+      <div style={{
+        padding: '0 16px 18px',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        background: `linear-gradient(135deg, ${C.bg} 55%, rgba(201,123,71,0.04) 100%)`,
+        overflow: 'hidden',
+      }}>
+        {/* Top bar: language switcher */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 0 4px' }}>
           <LanguageSwitcher />
         </div>
 
-        <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.6, marginBottom: 18, maxWidth: 260 }}>
-          {t('home.subtitle')}
+        {/* Hero body: text left, illustration right */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...RYE, fontSize: 36, lineHeight: 1.05, color: C.t1 }}>
+              {t('home.title').split(' ').slice(0, -1).join(' ') || 'Зарабатывайте'}
+            </div>
+            <div style={{ ...RYE, fontSize: 36, lineHeight: 1.05, color: C.geo, marginBottom: 12 }}>
+              GEO.
+            </div>
+            <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.6, maxWidth: 200 }}>
+              {t('home.subtitle')}
+            </div>
+          </div>
+          <HeroIllustration />
         </div>
 
         {/* CTA buttons */}
@@ -543,8 +578,8 @@ export default function Home() {
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               background: C.geo, color: '#F4EBDD',
-              border: 'none', borderRadius: 14, padding: '12px 0',
-              fontSize: 13, fontWeight: 600,
+              border: 'none', borderRadius: 14, padding: '13px 0',
+              fontSize: 13, fontWeight: 700,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               boxShadow: '0 4px 20px rgba(201,123,71,0.35)',
             }}
@@ -557,8 +592,8 @@ export default function Home() {
             style={{
               flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               background: 'transparent', color: C.teal,
-              border: `1px solid ${C.tealGl}`, borderRadius: 14, padding: '12px 0',
-              fontSize: 13, fontWeight: 600,
+              border: `1px solid ${C.tealGl}`, borderRadius: 14, padding: '13px 0',
+              fontSize: 13, fontWeight: 700,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             }}
           >

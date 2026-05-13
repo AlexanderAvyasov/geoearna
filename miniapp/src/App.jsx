@@ -809,7 +809,7 @@ function BottomNav({ onQrResult }) {
 // Module-level stats cache — avoids re-fetch on every route change
 let _hdrCache = null;
 
-function GlobalHeader() {
+function GlobalHeader({ showStats = true }) {
   const [stats, setStats] = useState(_hdrCache);
 
   useEffect(() => {
@@ -869,8 +869,8 @@ function GlobalHeader() {
         )}
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', height: 30, alignItems: 'center' }}>
+      {/* Stats row — only on Home */}
+      {showStats && <div style={{ display: 'flex', height: 30, alignItems: 'center' }}>
         {stats ? [
           { label: 'Баланс', val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
           { label: 'Стрик',  val: `${stats.streak}д` },
@@ -889,7 +889,7 @@ function GlobalHeader() {
             {[70, 45, 50].map((w, i) => <div key={i} className="sk" style={{ height: 14, width: w, borderRadius: 6 }} />)}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -940,7 +940,7 @@ function AppLayout() {
         paddingBottom: hasNav ? 68 : 0,
         height: isSAPage ? 'auto' : undefined,
       }}>
-        {hasHeader && <GlobalHeader />}
+        {hasHeader && <GlobalHeader showStats={pathname === '/'} />}
         <Routes>
           <Route path="/"                element={<Home />} />
           <Route path="/map"             element={<Map />} />
