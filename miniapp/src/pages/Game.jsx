@@ -624,45 +624,6 @@ export default function Game() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.3s ease both' }}>
 
-      {/* ── Segment tab switcher ── */}
-      <div style={{
-        background: 'rgba(8,16,24,0.98)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        position: 'sticky', top: 66, zIndex: 10,
-        padding: '10px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-      }}>
-        <div style={{
-          background: C.surf,
-          borderRadius: 14, padding: 4,
-          display: 'flex', gap: 2,
-        }}>
-          {TABS.map(({ key, label, Icon }) => {
-            const active = tab === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                style={{
-                  flex: 1, border: 'none', cursor: 'pointer',
-                  background: active ? C.cardHi : 'transparent',
-                  borderRadius: 11,
-                  padding: '9px 6px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                  transition: `background 0.2s ${E.smooth}`,
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                <Icon size={13} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
-                <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? C.geo : C.t3 }}>
-                  {label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* ── Content ── */}
       <div style={{ padding: '16px 16px 40px' }}>
         {loading ? (
@@ -674,6 +635,34 @@ export default function Game() {
         ) : (
           <>
             <PlayerCard data={data} />
+
+            {/* ── Segment tab switcher ── */}
+            <div style={{ background: C.surf, borderRadius: 14, padding: 4, display: 'flex', gap: 2, marginBottom: 20 }}>
+              {TABS.map(({ key, label, Icon }) => {
+                const active = tab === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setTab(key)}
+                    style={{
+                      flex: 1, border: 'none', cursor: 'pointer',
+                      background: active ? C.cardHi : 'transparent',
+                      borderRadius: 11,
+                      padding: '9px 6px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      transition: `background 0.2s ${E.smooth}`,
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <Icon size={13} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
+                    <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? C.geo : C.t3 }}>
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             {tab === 'tasks'        && <TasksTab tasks={data.tasks} onClaim={handleClaim} claiming={claiming} />}
             {tab === 'achievements' && <AchievementsTab achievements={data.achievements} />}
             {tab === 'referral'     && <ReferralTab referral={data.referral} />}
