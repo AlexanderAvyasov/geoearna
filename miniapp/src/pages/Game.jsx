@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Flame, Trophy, Crown, Gift, Users, Zap, TrendingUp,
   Copy, Check, CheckCircle2, Lock, Loader2, Star, Target,
+  Medal, ShieldCheck,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { C, cardBase, E } from '../lib/design';
@@ -33,39 +34,68 @@ function pluralDays(n) {
   return 'дней';
 }
 
+// ── SVG circular progress ring ────────────────────────────────────────────────
+function RingProgress({ pct, size = 88, strokeW = 7, color }) {
+  const r    = (size - strokeW) / 2;
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg
+      width={size} height={size}
+      style={{ transform: 'rotate(-90deg)', display: 'block', flexShrink: 0 }}
+    >
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={strokeW}
+      />
+      <circle
+        cx={size / 2} cy={size / 2} r={r}
+        fill="none" stroke={color} strokeWidth={strokeW}
+        strokeDasharray={`${circ * Math.min(pct, 1)} ${circ}`}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)' }}
+      />
+    </svg>
+  );
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skeleton() {
   return (
     <div style={{ animation: 'fadeUp 0.3s ease both' }}>
-      {/* Progress banner */}
-      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: 18, marginBottom: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <div className="sk" style={{ width: 42, height: 42, borderRadius: 13 }} />
+      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '20px 18px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="sk" style={{ width: 88, height: 88, borderRadius: '50%', flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
-            <div className="sk" style={{ height: 15, width: 100, borderRadius: 6, marginBottom: 6 }} />
-            <div className="sk" style={{ height: 11, width: 60, borderRadius: 5 }} />
+            <div className="sk" style={{ height: 18, width: 120, borderRadius: 8, marginBottom: 8 }} />
+            <div className="sk" style={{ height: 12, width: 80,  borderRadius: 6, marginBottom: 14 }} />
+            <div style={{ display: 'flex', gap: 7 }}>
+              <div className="sk" style={{ height: 28, width: 80, borderRadius: 8 }} />
+              <div className="sk" style={{ height: 28, width: 60, borderRadius: 8 }} />
+            </div>
           </div>
-          <div className="sk" style={{ height: 34, width: 72, borderRadius: 10 }} />
         </div>
-        <div className="sk" style={{ height: 6, borderRadius: 99 }} />
-        <div className="sk" style={{ height: 10, width: 140, borderRadius: 5, marginTop: 7 }} />
       </div>
       {[1, 2, 3].map(i => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div className="sk" style={{ width: 36, height: 36, borderRadius: 11 }} />
-          <div style={{ flex: 1 }}>
-            <div className="sk" style={{ height: 13, width: '60%', borderRadius: 6, marginBottom: 7 }} />
-            <div className="sk" style={{ height: 10, width: '38%', borderRadius: 5 }} />
+        <div key={i} style={{
+          borderRadius: 14, background: C.b0, border: `1px solid ${C.b1}`,
+          padding: '12px 14px', marginBottom: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <div className="sk" style={{ width: 32, height: 32, borderRadius: 10 }} />
+            <div style={{ flex: 1 }}>
+              <div className="sk" style={{ height: 13, width: '60%', borderRadius: 6, marginBottom: 7 }} />
+              <div className="sk" style={{ height: 10, width: '35%', borderRadius: 5 }} />
+            </div>
+            <div className="sk" style={{ height: 30, width: 70, borderRadius: 9 }} />
           </div>
-          <div className="sk" style={{ height: 32, width: 76, borderRadius: 10 }} />
         </div>
       ))}
     </div>
   );
 }
 
-// ── Progress banner (level + XP + streak) ─────────────────────────────────────
-function ProgressBanner({ data }) {
+// ── Player card ───────────────────────────────────────────────────────────────
+function PlayerCard({ data }) {
   const { t } = useLanguage();
   const lv     = data.level || 1;
   const cfg    = LV[lv] || LV[1];
@@ -73,73 +103,82 @@ function ProgressBanner({ data }) {
   const pct    = xpPct(xp, lv);
   const streak = data.streak?.current_streak || 0;
   const freeze = data.streak?.freeze_available || 0;
-  const isMilestone = [7, 14, 30].includes(streak) && streak > 0;
 
   return (
     <div style={{
       ...cardBase,
-      border: `1px solid ${cfg.color}28`,
-      background: `linear-gradient(135deg, ${cfg.color}08 0%, ${C.card} 65%)`,
-      padding: '16px', marginBottom: 20,
+      border: `1px solid ${cfg.color}32`,
+      background: `linear-gradient(145deg, ${cfg.color}0E 0%, ${C.card} 55%)`,
+      padding: '20px 18px 17px',
+      marginBottom: 20,
+      position: 'relative', overflow: 'hidden',
     }}>
-      {/* Level + streak */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 42, height: 42, borderRadius: 13, background: cfg.bg, border: `1px solid ${cfg.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <Crown size={19} color={cfg.color} strokeWidth={1.75} />
-          </div>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: cfg.color, lineHeight: 1.1 }}>
-              Уровень {lv}
-            </div>
-            <div style={{ fontSize: 12, color: C.t3, marginTop: 2 }}>
-              {t(`level.${lv}`)}
-            </div>
+      {/* ambient glow */}
+      <div style={{
+        position: 'absolute', top: -30, right: -30,
+        width: 130, height: 130, borderRadius: '50%',
+        background: `radial-gradient(circle, ${cfg.color}12 0%, transparent 70%)`,
+        pointerEvents: 'none',
+      }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 17, position: 'relative' }}>
+        {/* XP ring */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <RingProgress pct={pct} size={90} strokeW={7} color={cfg.color} />
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 1,
+          }}>
+            <Crown size={12} color={cfg.color} strokeWidth={2} />
+            <span style={{ fontSize: 24, fontWeight: 800, color: cfg.color, lineHeight: 1 }}>{lv}</span>
           </div>
         </div>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          background: streak > 0 ? 'rgba(212,135,79,0.12)' : C.b0,
-          borderRadius: 12, padding: '8px 12px',
-          border: `1px solid ${streak > 0 ? 'rgba(212,135,79,0.28)' : C.b1}`,
-        }}>
-          <Flame size={15} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: streak > 0 ? C.orange : C.t3 }}>
-            {streak}
-            <span style={{ fontSize: 11, fontWeight: 500, marginLeft: 3 }}>{pluralDays(streak)}</span>
-          </span>
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: C.t1, lineHeight: 1.15, marginBottom: 3 }}>
+            {t(`level.${lv}`)}
+          </div>
+          <div style={{ fontSize: 12, color: C.t3, marginBottom: 13 }}>
+            {xp.toLocaleString('ru-RU')}
+            {cfg.next
+              ? ` / ${cfg.next.toLocaleString('ru-RU')} XP`
+              : ' XP · MAX'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: streak > 0 ? 'rgba(212,135,79,0.14)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${streak > 0 ? 'rgba(212,135,79,0.28)' : C.b1}`,
+              borderRadius: 8, padding: '5px 10px',
+            }}>
+              <Flame size={12} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: streak > 0 ? C.orange : C.t3 }}>
+                {streak}
+              </span>
+              <span style={{ fontSize: 10, color: C.t3 }}>{pluralDays(streak)}</span>
+            </div>
+            {freeze > 0 && (
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: C.tealDim, border: `1px solid ${C.tealGl}`,
+                borderRadius: 8, padding: '5px 10px',
+              }}>
+                <span style={{ fontSize: 11 }}>❄</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.teal }}>×{freeze}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* XP bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.t3 }}>Опыт</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>
-          {xp.toLocaleString('ru-RU')}
-          {cfg.next
-            ? <span style={{ color: C.t3, fontWeight: 400 }}> / {cfg.next.toLocaleString('ru-RU')}</span>
-            : <span style={{ color: C.t3, fontWeight: 400 }}> · MAX</span>}
-        </span>
-      </div>
-      <div style={{ height: 6, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: `linear-gradient(90deg, ${cfg.color}BB, ${cfg.color})`, borderRadius: 99, transition: 'width 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-        {freeze > 0
-          ? <span style={{ fontSize: 11, color: C.teal }}>❄ Заморозка ×{freeze}</span>
-          : <span />}
-        {cfg.next && (
-          <span style={{ fontSize: 11, color: C.t3 }}>
-            ещё {(cfg.next - xp).toLocaleString('ru-RU')} XP до ур. {lv + 1}
+      {cfg.next && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 13, position: 'relative' }}>
+          <span style={{ fontSize: 10, color: C.t3 }}>до {lv + 1} уровня</span>
+          <span style={{ fontSize: 10, color: cfg.color, fontWeight: 600 }}>
+            ещё {(cfg.next - xp).toLocaleString('ru-RU')} XP
           </span>
-        )}
-      </div>
-
-      {isMilestone && (
-        <div style={{ marginTop: 12, background: 'rgba(212,135,79,0.10)', border: '1px solid rgba(212,135,79,0.25)', borderRadius: 10, padding: '9px 12px', fontSize: 13, color: C.orange, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 7 }}>
-          <Star size={14} color={C.orange} strokeWidth={2} />
-          {t('game.milestone')}
         </div>
       )}
     </div>
@@ -148,76 +187,92 @@ function ProgressBanner({ data }) {
 
 // ── Task card ─────────────────────────────────────────────────────────────────
 function TaskCard({ task, onClaim, claiming }) {
-  const req   = task.requirement || {};
-  const total = req.distinct_businesses || req.distinct_categories || req.streak_days || req.checkin_count || req.referral_activated || req.withdrawal_count || 1;
-  const prog  = Math.min(task.progress || 0, total);
-  const pct   = total > 1 ? prog / total : 0;
+  const req      = task.requirement || {};
+  const total    = req.distinct_businesses || req.distinct_categories || req.streak_days
+                || req.checkin_count || req.referral_activated || req.withdrawal_count || 1;
+  const prog     = Math.min(task.progress || 0, total);
+  const pct      = total > 1 ? prog / total : 0;
   const canClaim = task.completed && !task.claimed;
   const done     = task.claimed;
 
-  let iconBg     = 'rgba(255,255,255,0.04)';
-  let iconBorder = C.b1;
-  let StateIcon  = null;
-  let iconColor  = C.t3;
-  if (done)      { iconBg = C.greenFt; iconBorder = C.greenGl; StateIcon = CheckCircle2; iconColor = C.green; }
-  else if (canClaim) { iconBg = C.geoDim;  iconBorder = C.geoGl;  StateIcon = Star;        iconColor = C.geo; }
-
   return (
     <div style={{
-      display: 'flex', alignItems: 'flex-start', gap: 12,
-      padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
-      opacity: done ? 0.46 : 1, transition: 'opacity 0.2s',
+      borderRadius: 14,
+      background: canClaim
+        ? `linear-gradient(135deg, rgba(201,123,71,0.10) 0%, rgba(201,123,71,0.04) 100%)`
+        : done ? 'transparent' : 'rgba(255,255,255,0.02)',
+      border: `1px solid ${canClaim ? C.geoGl : done ? 'transparent' : 'rgba(255,255,255,0.05)'}`,
+      padding: '12px 13px',
+      marginBottom: 8,
+      opacity: done ? 0.4 : 1,
+      transition: 'opacity 0.2s, border-color 0.2s',
     }}>
-      {/* State icon */}
-      <div style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: iconBg, border: `1px solid ${iconBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {StateIcon
-          ? <StateIcon size={16} color={iconColor} strokeWidth={2.25} />
-          : <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.t3, opacity: 0.28 }} />}
-      </div>
-
-      {/* Text + rewards */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: done ? C.t2 : C.t1, lineHeight: 1.35, marginBottom: 6 }}>
-          {task.title}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+        {/* State icon */}
+        <div style={{
+          width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+          background: done ? C.greenFt : canClaim ? C.geoDim : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${done ? C.greenGl : canClaim ? C.geoGl : C.b1}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {done
+            ? <CheckCircle2 size={14} color={C.green} strokeWidth={2.5} />
+            : canClaim
+              ? <Star size={14} color={C.geo} strokeWidth={2} />
+              : <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.t3, opacity: 0.3 }} />
+          }
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.geo, background: C.geoDim, borderRadius: 6, padding: '2px 8px', border: `1px solid ${C.geoGl}` }}>
-            +{task.geo_reward} GEO
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.gold, background: C.goldFt, borderRadius: 6, padding: '2px 8px', border: `1px solid ${C.goldGl}` }}>
-            +{task.xp_reward} XP
-          </span>
+
+        {/* Text + rewards */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: C.t1, lineHeight: 1.4, marginBottom: 5 }}>
+            {task.title}
+          </div>
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.geo, background: C.geoDim, borderRadius: 5, padding: '2px 7px', border: `1px solid ${C.geoGl}` }}>
+              +{task.geo_reward} GEO
+            </span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.gold, background: C.goldFt, borderRadius: 5, padding: '2px 7px', border: `1px solid ${C.goldGl}` }}>
+              +{task.xp_reward} XP
+            </span>
+            {!done && total > 1 && (
+              <span style={{ fontSize: 10, color: C.t3, alignSelf: 'center' }}>
+                {prog}/{total}
+              </span>
+            )}
+          </div>
           {!done && total > 1 && (
-            <span style={{ fontSize: 11, color: C.t3, alignSelf: 'center' }}>{prog} / {total}</span>
+            <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden', marginTop: 8 }}>
+              <div style={{
+                height: '100%', width: `${Math.round(pct * 100)}%`,
+                background: canClaim ? C.green : C.geo,
+                borderRadius: 99, transition: 'width 0.5s ease',
+              }} />
+            </div>
           )}
         </div>
-        {!done && total > 1 && (
-          <div style={{ height: 4, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden', marginTop: 8 }}>
-            <div style={{ height: '100%', width: `${Math.round(pct * 100)}%`, background: canClaim ? C.green : C.geo, borderRadius: 99, transition: 'width 0.5s ease' }} />
-          </div>
+
+        {/* Claim button */}
+        {canClaim && (
+          <button
+            onClick={() => onClaim(task.key)}
+            disabled={!!claiming}
+            style={{
+              flexShrink: 0, alignSelf: 'center',
+              background: C.geo, color: C.bg, border: 'none',
+              borderRadius: 9, padding: '8px 12px',
+              fontSize: 12, fontWeight: 700,
+              cursor: claiming ? 'not-allowed' : 'pointer',
+              opacity: claiming ? 0.7 : 1,
+              display: 'flex', alignItems: 'center', gap: 4,
+              transition: `opacity 0.15s ease`,
+            }}
+          >
+            {claiming && <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />}
+            Забрать
+          </button>
         )}
       </div>
-
-      {/* Claim */}
-      {canClaim && (
-        <button
-          onClick={() => onClaim(task.key)}
-          disabled={!!claiming}
-          style={{
-            flexShrink: 0, alignSelf: 'center',
-            background: C.geo, color: C.bg, border: 'none',
-            borderRadius: 10, padding: '8px 14px',
-            fontSize: 13, fontWeight: 700,
-            cursor: claiming ? 'not-allowed' : 'pointer',
-            opacity: claiming ? 0.7 : 1,
-            display: 'flex', alignItems: 'center', gap: 5,
-            transition: `opacity 0.15s ${E.smooth}`,
-          }}
-        >
-          {claiming && <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} />}
-          Получить
-        </button>
-      )}
     </div>
   );
 }
@@ -230,35 +285,62 @@ const TASK_GROUPS = [
 ];
 
 function TasksTab({ tasks, onClaim, claiming }) {
-  const allTasks = tasks || [];
-  const totalClaimable = allTasks.filter(t => t.completed && !t.claimed).length;
+  const all       = tasks || [];
+  const claimable = all.filter(t => t.completed && !t.claimed);
 
   return (
     <div>
-      {totalClaimable > 0 && (
-        <div style={{ background: C.geoDim, border: `1px solid ${C.geoGl}`, borderRadius: 14, padding: '10px 14px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Star size={14} color={C.geo} strokeWidth={2} />
+      {claimable.length > 0 && (
+        <div style={{
+          background: `linear-gradient(135deg, ${C.geoDim} 0%, rgba(201,123,71,0.06) 100%)`,
+          border: `1px solid ${C.geoGl}`, borderRadius: 14,
+          padding: '11px 14px', marginBottom: 16,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <Star size={13} color={C.geo} strokeWidth={2} />
           <span style={{ fontSize: 13, fontWeight: 600, color: C.geo }}>
-            {totalClaimable} {totalClaimable === 1 ? 'задание готово' : 'задания готовы'} к получению
+            {claimable.length} {claimable.length === 1 ? 'задание готово' : 'задания готовы'} к получению
           </span>
         </div>
       )}
 
       {TASK_GROUPS.map(({ key, label, Icon, color }) => {
-        const items = allTasks.filter(t => t.type === key);
+        const items        = all.filter(t => t.type === key);
         if (!items.length) return null;
         const claimedCount = items.filter(t => t.claimed).length;
+        const groupPct     = items.length ? claimedCount / items.length : 0;
+
         return (
-          <div key={key} style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2, paddingBottom: 8, borderBottom: `1px solid rgba(255,255,255,0.06)` }}>
+          <div key={key} style={{ marginBottom: 22 }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              marginBottom: 10,
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <div style={{ width: 3, height: 14, background: color, borderRadius: 2 }} />
-                <Icon size={13} color={color} strokeWidth={2} />
-                <span style={{ fontSize: 12, fontWeight: 700, color, letterSpacing: 0.3 }}>{label}</span>
+                <div style={{
+                  width: 26, height: 26, borderRadius: 8,
+                  background: `${color}14`, border: `1px solid ${color}28`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Icon size={12} color={color} strokeWidth={2} />
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 700, color }}>{label}</span>
               </div>
-              <span style={{ fontSize: 11, color: C.t3 }}>{claimedCount}/{items.length}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 52, height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', width: `${Math.round(groupPct * 100)}%`,
+                    background: color, borderRadius: 99, transition: 'width 0.5s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: 11, color: C.t3, minWidth: 28, textAlign: 'right' }}>
+                  {claimedCount}/{items.length}
+                </span>
+              </div>
             </div>
-            {items.map(t => <TaskCard key={t.key} task={t} onClaim={onClaim} claiming={claiming === t.key} />)}
+            {items.map(t => (
+              <TaskCard key={t.key} task={t} onClaim={onClaim} claiming={claiming === t.key} />
+            ))}
           </div>
         );
       })}
@@ -266,48 +348,61 @@ function TasksTab({ tasks, onClaim, claiming }) {
   );
 }
 
-// ── Achievement card ───────────────────────────────────────────────────────────
-function AchievementCard({ ach, index }) {
-  const { earned } = ach;
+// ── Badge card ────────────────────────────────────────────────────────────────
+function BadgeCard({ ach, index }) {
+  const earned = ach.earned;
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
+      borderRadius: 16,
+      background: earned
+        ? `linear-gradient(145deg, ${C.goldFt} 0%, rgba(232,192,104,0.04) 100%)`
+        : 'rgba(255,255,255,0.02)',
+      border: `1px solid ${earned ? C.goldGl : 'rgba(255,255,255,0.05)'}`,
+      padding: '16px 10px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 9,
+      opacity: earned ? 1 : 0.3,
       animation: `fadeUp 0.24s ease both`,
       animationDelay: `${index * 0.04}s`,
     }}>
-      {/* Icon with status badge */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: earned ? C.goldFt : C.b0, border: `1px solid ${earned ? C.goldGl : C.b1}`, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: earned ? 1 : 0.45 }}>
-          <Trophy size={20} color={earned ? C.gold : C.t3} strokeWidth={1.75} />
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          width: 50, height: 50, borderRadius: 16,
+          background: earned ? C.goldFt : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${earned ? C.goldGl : C.b1}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Trophy size={23} color={earned ? C.gold : C.t3} strokeWidth={1.5} />
         </div>
-        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 17, height: 17, borderRadius: '50%', background: earned ? C.green : C.surf, border: `2px solid ${C.bg}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {earned
-            ? <Check size={8} color={C.bg} strokeWidth={3.5} />
-            : <Lock size={7} color={C.t3} strokeWidth={2.5} />}
-        </div>
+        {earned && (
+          <div style={{
+            position: 'absolute', bottom: -3, right: -3,
+            width: 16, height: 16, borderRadius: '50%',
+            background: C.green, border: `2px solid ${C.bg}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Check size={7} color={C.bg} strokeWidth={3.5} />
+          </div>
+        )}
       </div>
-
-      {/* Text */}
-      <div style={{ flex: 1, minWidth: 0, opacity: earned ? 1 : 0.55 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: earned ? C.t1 : C.t2, marginBottom: 3 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: earned ? C.t1 : C.t2, lineHeight: 1.35, marginBottom: 3 }}>
           {ach.title}
         </div>
-        <div style={{ fontSize: 12, color: C.t3, lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-          {ach.description}
-        </div>
-      </div>
-
-      {/* Reward */}
-      <div style={{ flexShrink: 0, textAlign: 'right', opacity: earned ? 1 : 0.5 }}>
-        {ach.geo_reward > 0 && (
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.geo }}>+{ach.geo_reward}</div>
+        {earned && (ach.geo_reward > 0 || ach.xp_reward > 0) && (
+          <div style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>
+            {ach.geo_reward > 0 && `+${ach.geo_reward} GEO`}
+            {ach.geo_reward > 0 && ach.xp_reward > 0 && ' · '}
+            {ach.xp_reward > 0 && `+${ach.xp_reward} XP`}
+          </div>
         )}
-        {ach.xp_reward > 0 && (
-          <div style={{ fontSize: 11, fontWeight: 600, color: C.gold, marginTop: 2 }}>+{ach.xp_reward} XP</div>
-        )}
-        {!ach.geo_reward && !ach.xp_reward && (
-          <div style={{ fontSize: 11, color: C.t3 }}>—</div>
+        {!earned && (
+          <div style={{
+            fontSize: 10, color: C.t3, lineHeight: 1.4,
+            overflow: 'hidden', display: '-webkit-box',
+            WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+          }}>
+            {ach.description}
+          </div>
         )}
       </div>
     </div>
@@ -319,47 +414,45 @@ function AchievementsTab({ achievements }) {
   const all    = achievements || [];
   const earned = all.filter(a => a.earned);
   const locked = all.filter(a => !a.earned);
-  const pct    = all.length > 0 ? Math.round((earned.length / all.length) * 100) : 0;
+  const pct    = all.length ? earned.length / all.length : 0;
 
   return (
     <div>
-      {/* Progress summary */}
       {all.length > 0 && (
-        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px 16px', marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.t2 }}>Получено достижений</span>
-            <span style={{ fontSize: 14, fontWeight: 700, color: C.gold }}>{earned.length} / {all.length}</span>
+        <div style={{
+          ...cardBase, border: `1px solid ${C.b1}`,
+          padding: '16px', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 16,
+        }}>
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <RingProgress pct={pct} size={66} strokeW={5} color={C.gold} />
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 800, color: C.gold }}>
+                {Math.round(pct * 100)}%
+              </span>
+            </div>
           </div>
-          <div style={{ height: 5, background: 'rgba(255,255,255,0.07)', borderRadius: 99, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg, ${C.gold}BB, ${C.gold})`, borderRadius: 99, transition: 'width 0.8s ease' }} />
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 3 }}>
+              {earned.length} из {all.length} достижений
+            </div>
+            <div style={{ fontSize: 12, color: C.t3 }}>
+              {locked.length > 0
+                ? `Осталось ${locked.length} ${locked.length < 5 ? 'награды' : 'наград'}`
+                : 'Все получены!'}
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: C.t3, marginTop: 5, textAlign: 'right' }}>{pct}% выполнено</div>
         </div>
       )}
 
-      {earned.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, paddingBottom: 8, marginBottom: 2, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ width: 3, height: 13, background: C.gold, borderRadius: 2 }} />
-            <Trophy size={12} color={C.gold} strokeWidth={2} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.gold }}>Получены</span>
-            <span style={{ fontSize: 11, color: C.t3, marginLeft: 'auto' }}>{earned.length}</span>
-          </div>
-          {earned.map((a, i) => <AchievementCard key={a.key} ach={a} index={i} />)}
-        </div>
-      )}
-
-      {locked.length > 0 && (
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, paddingBottom: 8, marginBottom: 2, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ width: 3, height: 13, background: C.t3, borderRadius: 2 }} />
-            <Lock size={12} color={C.t3} strokeWidth={2} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: C.t3 }}>Заблокированы</span>
-            <span style={{ fontSize: 11, color: C.t3, marginLeft: 'auto' }}>{locked.length}</span>
-          </div>
-          {locked.map((a, i) => <AchievementCard key={a.key} ach={a} index={i} />)}
-        </div>
-      )}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        {[...earned, ...locked].map((a, i) => (
+          <BadgeCard key={a.key} ach={a} index={i} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -377,39 +470,56 @@ function ReferralTab({ referral }) {
     });
   }
 
-  const stats = [
-    { label: 'Приглашено',  value: referral?.totalReferrals     || 0, color: C.t1,   unit: null  },
-    { label: 'Активных',    value: referral?.activatedReferrals || 0, color: C.green, unit: null  },
-    { label: 'Заработано',  value: referral?.totalEarned        || 0, color: C.geo,  unit: 'GEO' },
-  ];
-
   return (
     <div>
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-        {stats.map(({ label, value, color, unit }) => (
-          <div key={label} style={{ ...cardBase, border: '1px solid rgba(255,255,255,0.06)', padding: '14px 8px', textAlign: 'center' }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color, lineHeight: 1, letterSpacing: -0.5 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+        {[
+          { label: 'Приглашено', value: referral?.totalReferrals || 0,     color: C.t1    },
+          { label: 'Активных',   value: referral?.activatedReferrals || 0, color: C.green },
+          { label: 'GEO',        value: referral?.totalEarned || 0,        color: C.geo   },
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{
+            ...cardBase, border: '1px solid rgba(255,255,255,0.06)',
+            padding: '14px 8px', textAlign: 'center',
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1, letterSpacing: -0.5 }}>
               {value}
             </div>
-            {unit && <div style={{ fontSize: 9, fontWeight: 700, color, opacity: 0.7, marginTop: 1 }}>{unit}</div>}
             <div style={{ fontSize: 10, color: C.t3, marginTop: 5, fontWeight: 500 }}>{label}</div>
           </div>
         ))}
       </div>
 
-      {/* Copy link */}
-      <div style={{ ...cardBase, border: `1px solid ${C.geoGl}`, padding: '16px', marginBottom: 12 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 }}>
+      {/* Invite card */}
+      <div style={{
+        borderRadius: 20,
+        background: `linear-gradient(135deg, rgba(201,123,71,0.10) 0%, rgba(201,123,71,0.04) 100%)`,
+        border: `1px solid ${C.geoGl}`,
+        padding: '18px', marginBottom: 12,
+        position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{
+          position: 'absolute', top: -28, right: -28, width: 110, height: 110, borderRadius: '50%',
+          background: `radial-gradient(circle, rgba(201,123,71,0.13) 0%, transparent 70%)`,
+          pointerEvents: 'none',
+        }} />
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.geo, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
           Реферальная ссылка
         </div>
-        <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '10px 12px', marginBottom: 12, fontSize: 13, color: C.t2, wordBreak: 'break-all', border: `1px solid ${C.b1}`, lineHeight: 1.5 }}>
+        <div style={{
+          background: 'rgba(0,0,0,0.22)', borderRadius: 10,
+          padding: '10px 12px', marginBottom: 12,
+          fontSize: 12, color: C.t2, wordBreak: 'break-all',
+          border: `1px solid rgba(255,255,255,0.07)`, lineHeight: 1.5,
+          fontFamily: 'monospace',
+        }}>
           {referral?.link || '—'}
         </div>
         <button
           onClick={copyLink}
           style={{
-            width: '100%', border: 'none', borderRadius: 12, padding: '13px',
+            width: '100%', borderRadius: 12, padding: '13px',
             background: copied ? C.greenFt : C.geo,
             border: copied ? `1px solid ${C.greenGl}` : 'none',
             color: copied ? C.green : C.bg,
@@ -423,24 +533,37 @@ function ReferralTab({ referral }) {
         </button>
       </div>
 
-      {/* How it works */}
-      <div style={{ ...cardBase, border: '1px solid rgba(255,255,255,0.06)', padding: '16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16 }}>
+      {/* Timeline steps */}
+      <div style={{ ...cardBase, border: '1px solid rgba(255,255,255,0.06)', padding: '18px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 18 }}>
           Как это работает
         </div>
-        {[
-          [Gift,       '+25 GEO вам и +10 GEO другу после первого чекина',   C.geo   ],
-          [Users,      'Друг должен сделать чекин в течение 7 дней',          C.teal  ],
-          [Zap,        'Бонус начисляется автоматически',                     C.gold  ],
-          [TrendingUp, '+5% от каждого чекина друга в течение 30 дней',       C.green ],
-        ].map(([Icon, text, color], i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: i < 3 ? 12 : 0 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 11, flexShrink: 0, background: `${color}18`, border: `1px solid ${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon size={16} color={color} strokeWidth={1.75} />
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            position: 'absolute', left: 16, top: 16, bottom: 8,
+            width: 1, background: 'rgba(255,255,255,0.06)',
+          }} />
+          {[
+            { Icon: Gift,       text: '+25 GEO вам и +10 GEO другу после первого чекина', color: C.geo   },
+            { Icon: Users,      text: 'Друг должен сделать чекин в течение 7 дней',        color: C.teal  },
+            { Icon: Zap,        text: 'Бонус начисляется автоматически',                   color: C.gold  },
+            { Icon: TrendingUp, text: '+5% от каждого чекина друга в течение 30 дней',    color: C.green },
+          ].map(({ Icon, text, color }, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: i < 3 ? 16 : 0 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                background: `${color}14`, border: `1px solid ${color}28`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative', zIndex: 1,
+              }}>
+                <Icon size={14} color={color} strokeWidth={1.75} />
+              </div>
+              <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, paddingTop: 7 }}>
+                {text}
+              </span>
             </div>
-            <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, paddingTop: 8 }}>{text}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -450,7 +573,7 @@ function ReferralTab({ referral }) {
 const TABS = [
   { key: 'tasks',        label: 'Задания',    Icon: Target  },
   { key: 'achievements', label: 'Достижения', Icon: Trophy  },
-  { key: 'referral',     label: 'Рефералы',   Icon: Gift    },
+  { key: 'referral',     label: 'Команда',    Icon: Users   },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -501,33 +624,43 @@ export default function Game() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.3s ease both' }}>
 
-      {/* ── Sticky tabs ── */}
+      {/* ── Segment tab switcher ── */}
       <div style={{
         background: 'rgba(8,16,24,0.98)',
-        borderBottom: '1px solid rgba(255,255,255,0.07)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         position: 'sticky', top: 66, zIndex: 10,
-        display: 'flex', padding: '0 16px',
+        padding: '10px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        {TABS.map(({ key, label, Icon }) => {
-          const active = tab === key;
-          return (
-            <button key={key} onClick={() => setTab(key)} style={{
-              flex: 1, background: 'none', border: 'none',
-              padding: '12px 0 10px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              cursor: 'pointer',
-              borderBottom: `2.5px solid ${active ? C.geo : 'transparent'}`,
-              transition: `border-color 0.18s ${E.smooth}`,
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-              <Icon size={14} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
-              <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? C.geo : C.t3 }}>
-                {label}
-              </span>
-            </button>
-          );
-        })}
+        <div style={{
+          background: C.surf,
+          borderRadius: 14, padding: 4,
+          display: 'flex', gap: 2,
+        }}>
+          {TABS.map(({ key, label, Icon }) => {
+            const active = tab === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                style={{
+                  flex: 1, border: 'none', cursor: 'pointer',
+                  background: active ? C.cardHi : 'transparent',
+                  borderRadius: 11,
+                  padding: '9px 6px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                  transition: `background 0.2s ${E.smooth}`,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <Icon size={13} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? C.geo : C.t3 }}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Content ── */}
@@ -540,7 +673,7 @@ export default function Game() {
           </div>
         ) : (
           <>
-            <ProgressBanner data={data} />
+            <PlayerCard data={data} />
             {tab === 'tasks'        && <TasksTab tasks={data.tasks} onClaim={handleClaim} claiming={claiming} />}
             {tab === 'achievements' && <AchievementsTab achievements={data.achievements} />}
             {tab === 'referral'     && <ReferralTab referral={data.referral} />}
