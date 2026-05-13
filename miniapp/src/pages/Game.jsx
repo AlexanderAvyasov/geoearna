@@ -28,10 +28,12 @@ function xpPct(xp, level) {
   return Math.min(1, (xp - cfg.min) / (cfg.next - cfg.min));
 }
 
-function pluralDays(n) {
-  if (n % 10 === 1 && n !== 11) return 'день';
-  if (n % 10 >= 2 && n % 10 <= 4 && (n < 10 || n > 20)) return 'дня';
-  return 'дней';
+function dayWord(n, lang, t) {
+  if (lang !== 'ru') return n === 1 ? t('game.day.one') : t('game.day.many');
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return t('game.day.one');
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return t('game.day.few');
+  return t('game.day.many');
 }
 
 // ── SVG circular progress ring ────────────────────────────────────────────────
@@ -96,7 +98,7 @@ function Skeleton() {
 
 // ── Player card ───────────────────────────────────────────────────────────────
 function PlayerCard({ data }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const lv     = data.level || 1;
   const cfg    = LV[lv] || LV[1];
   const xp     = data.xp || 0;
@@ -157,7 +159,7 @@ function PlayerCard({ data }) {
               <span style={{ fontSize: 13, fontWeight: 700, color: streak > 0 ? C.orange : C.t3 }}>
                 {streak}
               </span>
-              <span style={{ fontSize: 10, color: C.t3 }}>{pluralDays(streak)}</span>
+              <span style={{ fontSize: 10, color: C.t3 }}>{dayWord(streak, lang, t)}</span>
             </div>
             {freeze > 0 && (
               <div style={{
@@ -175,9 +177,9 @@ function PlayerCard({ data }) {
 
       {cfg.next && (
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 13, position: 'relative' }}>
-          <span style={{ fontSize: 10, color: C.t3 }}>до {lv + 1} уровня</span>
+          <span style={{ fontSize: 10, color: C.t3 }}>{t('game.to_next_level', { lv: lv + 1 })}</span>
           <span style={{ fontSize: 10, color: cfg.color, fontWeight: 600 }}>
-            ещё {(cfg.next - xp).toLocaleString('ru-RU')} XP
+            {t('game.xp_left', { xp: (cfg.next - xp).toLocaleString('ru-RU') })}
           </span>
         </div>
       )}
@@ -187,6 +189,7 @@ function PlayerCard({ data }) {
 
 // ── Task card ─────────────────────────────────────────────────────────────────
 function TaskCard({ task, onClaim, claiming }) {
+  const { t } = useLanguage();
   const req      = task.requirement || {};
   const total    = req.distinct_businesses || req.distinct_categories || req.streak_days
                 || req.checkin_count || req.referral_activated || req.withdrawal_count || 1;
@@ -269,7 +272,7 @@ function TaskCard({ task, onClaim, claiming }) {
             }}
           >
             {claiming && <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />}
-            Забрать
+            {t('game.claim_btn')}
           </button>
         )}
       </div>
@@ -279,14 +282,15 @@ function TaskCard({ task, onClaim, claiming }) {
 
 // ── Tasks tab ─────────────────────────────────────────────────────────────────
 const TASK_GROUPS = [
-  { key: 'daily',   label: 'Ежедневные',   Icon: Flame,      color: C.orange },
-  { key: 'weekly',  label: 'Еженедельные', Icon: TrendingUp, color: C.teal   },
-  { key: 'onetime', label: 'Разовые',      Icon: Star,       color: C.geo    },
+  { key: 'daily',   tKey: 'game.group.daily',   Icon: Flame,      color: C.orange },
+  { key: 'weekly',  tKey: 'game.group.weekly',  Icon: TrendingUp, color: C.teal   },
+  { key: 'onetime', tKey: 'game.group.onetime', Icon: Star,       color: C.geo    },
 ];
 
 function TasksTab({ tasks, onClaim, claiming }) {
+  const { t } = useLanguage();
   const all       = tasks || [];
-  const claimable = all.filter(t => t.completed && !t.claimed);
+  const claimable = all.filter(tk => tk.completed && !tk.claimed);
 
   return (
     <div>
@@ -299,15 +303,16 @@ function TasksTab({ tasks, onClaim, claiming }) {
         }}>
           <Star size={13} color={C.geo} strokeWidth={2} />
           <span style={{ fontSize: 13, fontWeight: 600, color: C.geo }}>
-            {claimable.length} {claimable.length === 1 ? 'задание готово' : 'задания готовы'} к получению
+            {t('game.claimable', { n: claimable.length })}
           </span>
         </div>
       )}
 
-      {TASK_GROUPS.map(({ key, label, Icon, color }) => {
-        const items        = all.filter(t => t.type === key);
+      {TASK_GROUPS.map(({ key, tKey, Icon, color }) => {
+        const label = t(tKey);
+        const items        = all.filter(tk => tk.type === key);
         if (!items.length) return null;
-        const claimedCount = items.filter(t => t.claimed).length;
+        const claimedCount = items.filter(tk => tk.claimed).length;
         const groupPct     = items.length ? claimedCount / items.length : 0;
 
         return (
@@ -411,6 +416,7 @@ function BadgeCard({ ach, index }) {
 
 // ── Achievements tab ──────────────────────────────────────────────────────────
 function AchievementsTab({ achievements }) {
+  const { t } = useLanguage();
   const all    = achievements || [];
   const earned = all.filter(a => a.earned);
   const locked = all.filter(a => !a.earned);
@@ -437,12 +443,12 @@ function AchievementsTab({ achievements }) {
           </div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 3 }}>
-              {earned.length} из {all.length} достижений
+              {t('game.ach.progress', { earned: earned.length, total: all.length })}
             </div>
             <div style={{ fontSize: 12, color: C.t3 }}>
               {locked.length > 0
-                ? `Осталось ${locked.length} ${locked.length < 5 ? 'награды' : 'наград'}`
-                : 'Все получены!'}
+                ? t('game.ach.remaining', { n: locked.length })
+                : t('game.ach.done')}
             </div>
           </div>
         </div>
@@ -459,6 +465,7 @@ function AchievementsTab({ achievements }) {
 
 // ── Referral tab ──────────────────────────────────────────────────────────────
 function ReferralTab({ referral }) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
 
   function copyLink() {
@@ -475,9 +482,9 @@ function ReferralTab({ referral }) {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
         {[
-          { label: 'Приглашено', value: referral?.totalReferrals || 0,     color: C.t1    },
-          { label: 'Активных',   value: referral?.activatedReferrals || 0, color: C.green },
-          { label: 'GEO',        value: referral?.totalEarned || 0,        color: C.geo   },
+          { label: t('game.ref.invited'), value: referral?.totalReferrals || 0,     color: C.t1    },
+          { label: t('game.ref.active'),  value: referral?.activatedReferrals || 0, color: C.green },
+          { label: t('game.ref.geo'),     value: referral?.totalEarned || 0,        color: C.geo   },
         ].map(({ label, value, color }) => (
           <div key={label} style={{
             ...cardBase, border: '1px solid rgba(255,255,255,0.06)',
@@ -505,7 +512,7 @@ function ReferralTab({ referral }) {
           pointerEvents: 'none',
         }} />
         <div style={{ fontSize: 11, fontWeight: 700, color: C.geo, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>
-          Реферальная ссылка
+          {t('game.ref.link_label')}
         </div>
         <div style={{
           background: 'rgba(0,0,0,0.22)', borderRadius: 10,
@@ -529,14 +536,14 @@ function ReferralTab({ referral }) {
           }}
         >
           {copied ? <Check size={16} strokeWidth={2.5} /> : <Copy size={16} strokeWidth={2} />}
-          {copied ? 'Скопировано!' : 'Скопировать ссылку'}
+          {copied ? t('game.ref.copied') : t('game.ref.copy')}
         </button>
       </div>
 
       {/* Timeline steps */}
       <div style={{ ...cardBase, border: '1px solid rgba(255,255,255,0.06)', padding: '18px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 18 }}>
-          Как это работает
+          {t('game.ref.how_title')}
         </div>
         <div style={{ position: 'relative' }}>
           <div style={{
@@ -544,10 +551,10 @@ function ReferralTab({ referral }) {
             width: 1, background: 'rgba(255,255,255,0.06)',
           }} />
           {[
-            { Icon: Gift,       text: '+25 GEO вам и +10 GEO другу после первого чекина', color: C.geo   },
-            { Icon: Users,      text: 'Друг должен сделать чекин в течение 7 дней',        color: C.teal  },
-            { Icon: Zap,        text: 'Бонус начисляется автоматически',                   color: C.gold  },
-            { Icon: TrendingUp, text: '+5% от каждого чекина друга в течение 30 дней',    color: C.green },
+            { Icon: Gift,       text: t('game.ref.step1'), color: C.geo   },
+            { Icon: Users,      text: t('game.ref.step2'), color: C.teal  },
+            { Icon: Zap,        text: t('game.ref.step3'), color: C.gold  },
+            { Icon: TrendingUp, text: t('game.ref.step4'), color: C.green },
           ].map(({ Icon, text, color }, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: i < 3 ? 16 : 0 }}>
               <div style={{
@@ -571,13 +578,14 @@ function ReferralTab({ referral }) {
 
 // ── Tabs config ───────────────────────────────────────────────────────────────
 const TABS = [
-  { key: 'tasks',        label: 'Задания',    Icon: Target  },
-  { key: 'achievements', label: 'Достижения', Icon: Trophy  },
-  { key: 'referral',     label: 'Команда',    Icon: Users   },
+  { key: 'tasks',        tKey: 'game.tab.tasks',        Icon: Target  },
+  { key: 'achievements', tKey: 'game.tab.achievements', Icon: Trophy  },
+  { key: 'referral',     tKey: 'game.tab.referral',     Icon: Users   },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Game() {
+  const { t } = useLanguage();
   const [data,     setData]     = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState('tasks');
@@ -604,10 +612,10 @@ export default function Game() {
       const r    = await apiFetch(`/api/me/tasks/${taskKey}/claim`, { method: 'POST' });
       const body = await r.json();
       if (!r.ok) {
-        showToast(body.error === 'ALREADY_CLAIMED' ? 'Уже получено' : 'Не удалось получить', true);
+        showToast(body.error === 'ALREADY_CLAIMED' ? t('game.err.claimed') : t('game.err.claim_fail'), true);
         return;
       }
-      showToast(`+${body.geoRewarded} GEO${body.leveledUp ? ' · Новый уровень!' : ''}`);
+      showToast(`+${body.geoRewarded} GEO${body.leveledUp ? ` · ${t('level.' + body.newLevel)}!` : ''}`);
       setData(prev => ({
         ...prev,
         tasks: prev.tasks.map(t => t.key === taskKey ? { ...t, claimed: true } : t),
@@ -615,7 +623,7 @@ export default function Game() {
         level: body.newLevel,
       }));
     } catch {
-      showToast('Ошибка соединения', true);
+      showToast(t('game.err.connection'), true);
     } finally {
       setClaiming(null);
     }
@@ -630,7 +638,7 @@ export default function Game() {
           <Skeleton />
         ) : !data ? (
           <div style={{ textAlign: 'center', paddingTop: 56 }}>
-            <div style={{ fontSize: 13, color: C.t3 }}>Не удалось загрузить данные</div>
+            <div style={{ fontSize: 13, color: C.t3 }}>{t('game.err.load')}</div>
           </div>
         ) : (
           <>
@@ -638,7 +646,7 @@ export default function Game() {
 
             {/* ── Segment tab switcher ── */}
             <div style={{ background: C.surf, borderRadius: 14, padding: 4, display: 'flex', gap: 2, marginBottom: 20 }}>
-              {TABS.map(({ key, label, Icon }) => {
+              {TABS.map(({ key, tKey, Icon }) => {
                 const active = tab === key;
                 return (
                   <button
@@ -656,7 +664,7 @@ export default function Game() {
                   >
                     <Icon size={13} color={active ? C.geo : C.t3} strokeWidth={active ? 2.25 : 1.75} />
                     <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: active ? C.geo : C.t3 }}>
-                      {label}
+                      {t(tKey)}
                     </span>
                   </button>
                 );

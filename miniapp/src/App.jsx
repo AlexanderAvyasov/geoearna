@@ -811,12 +811,13 @@ let _hdrCache = null;
 
 function GlobalHeader({ showStats = true }) {
   const [stats, setStats] = useState(_hdrCache);
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (_hdrCache) return;
     Promise.all([
       apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
-      apiFetch('/api/game').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch('/api/me/game').then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([me, game]) => {
       const s = {
         balance:    me?.user?.balance ?? 0,
@@ -862,7 +863,7 @@ function GlobalHeader({ showStats = true }) {
         </div>
         {stats ? (
           <span style={{ fontSize: 10, color: C.gold, fontWeight: 600 }}>
-            ★ {stats.tasksDone} задач
+            {t('hdr.tasks_done', { n: stats.tasksDone })}
           </span>
         ) : (
           <div className="sk" style={{ height: 12, width: 60, borderRadius: 6 }} />
@@ -872,9 +873,9 @@ function GlobalHeader({ showStats = true }) {
       {/* Stats row — only on Home */}
       {showStats && <div style={{ display: 'flex', height: 30, alignItems: 'center' }}>
         {stats ? [
-          { label: 'Баланс', val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
-          { label: 'Стрик',  val: `${stats.streak}д` },
-          { label: 'Задачи', val: `${stats.tasksDone}/${stats.tasksTotal}` },
+          { label: t('hdr.balance'), val: `${stats.balance.toLocaleString('ru-RU')} GEO` },
+          { label: t('hdr.streak'),  val: `${stats.streak}д` },
+          { label: t('hdr.tasks'),   val: `${stats.tasksDone}/${stats.tasksTotal}` },
         ].map((item, i) => (
           <div key={i} style={{
             flex: 1, display: 'flex', flexDirection: 'column',
