@@ -124,15 +124,8 @@ router.post('/api/promo/claim', validateTma, async (req, res) => {
     return res.status(429).json({ error: 'DAILY_LIMIT_REACHED' });
   }
 
-  // Award GEO
-  const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
-    p_user_id: userId,
-    p_amount:  promo.reward_amount,
-  });
-  if (geoErr) { console.error('[promo/claim] apply_checkin_bonus', geoErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
-
-  // Record claim
-  await supabase.from('promo_claims').insert({
+  // Record claim FIRST — prevents double-award if GEO step fails
+  const { error: claimErr } = await supabase.from('promo_claims').insert({
     promo_id:    promo.id,
     user_id:     userId,
     claimed_at:  now.toISOString(),
@@ -140,6 +133,16 @@ router.post('/api/promo/claim', validateTma, async (req, res) => {
     lat,
     lng,
   });
+  // Duplicate key = concurrent claim snuck through — treat as already claimed
+  if (claimErr?.code === '23505') return res.status(400).json({ error: 'ALREADY_CLAIMED' });
+  if (claimErr) { console.error('[promo/claim] insert', claimErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+
+  // Award GEO after claim is safely committed
+  const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
+    p_user_id: userId,
+    p_amount:  promo.reward_amount,
+  });
+  if (geoErr) { console.error('[promo/claim] apply_checkin_bonus', geoErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 
   // Sync claims_count from real count (handles concurrent claims better than +1)
   const { count: actualCount } = await supabase

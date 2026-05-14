@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Wallet, CreditCard, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
+import { headerCache } from '../lib/headerCache';
 import RippleButton from '../lib/RippleButton';
 import { geoToUzs, formatGeo, formatUzs, isValidCardNumber, normalizeCardNumber, formatCardNumber } from '../lib/geo';
 import { C, E, cardBase, inputStyle } from '../lib/design';
@@ -100,6 +101,7 @@ export default function Withdraw() {
       setBalance(data.totalBalance);
       setSuccessData(data);
       setSuccess(true);
+      headerCache.reset();
     } catch {
       setError(t('withdraw.err.connection'));
     } finally {

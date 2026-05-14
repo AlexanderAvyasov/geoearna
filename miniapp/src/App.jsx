@@ -5,6 +5,7 @@ import { MapPin, Activity, ScanLine, Wallet, User as UserIcon, Shield, Loader2, 
 import { C, E } from './lib/design';
 import { waitForInitData, API_BASE, apiFetch } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { headerCache } from './lib/headerCache';
 import Home       from './pages/Home';
 import Map        from './pages/Map';
 import Checkin    from './pages/Checkin';
@@ -18,12 +19,13 @@ import Legal      from './pages/Legal';
 import ChannelSub from './pages/ChannelSub';
 import Profile    from './pages/Profile';
 
-const IS_SUPER_ADMIN = user?.id === 930826522;
+const SA_TG_ID = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
+const IS_SUPER_ADMIN = SA_TG_ID > 0 && user?.id === SA_TG_ID;
 
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 
-// ─── On-screen debug log (QR troubleshooting) ────────────────────────────────
+// ─── On-screen debug log (QR troubleshooting — dev only) ─────────────────────
 const _dbuf = [];
 const _dlisteners = new Set();
 function _dpush(type, ...args) {
@@ -34,14 +36,17 @@ function _dpush(type, ...args) {
   if (_dbuf.length > 60) _dbuf.length = 60;
   _dlisteners.forEach(fn => fn([..._dbuf]));
 }
-const _clog = console.log.bind(console);
-const _cerr = console.error.bind(console);
-const _cwarn = console.warn.bind(console);
-console.log   = (...a) => { _clog(...a);   _dpush('log',   ...a); };
-console.error = (...a) => { _cerr(...a);   _dpush('error', ...a); };
-console.warn  = (...a) => { _cwarn(...a);  _dpush('warn',  ...a); };
+if (!import.meta.env.PROD) {
+  const _clog = console.log.bind(console);
+  const _cerr = console.error.bind(console);
+  const _cwarn = console.warn.bind(console);
+  console.log   = (...a) => { _clog(...a);   _dpush('log',   ...a); };
+  console.error = (...a) => { _cerr(...a);   _dpush('error', ...a); };
+  console.warn  = (...a) => { _cwarn(...a);  _dpush('warn',  ...a); };
+}
 
 function DebugOverlay() {
+  if (import.meta.env.PROD) return null;
   const [logs,    setLogs]    = useState([..._dbuf]);
   const [open,    setOpen]    = useState(false);
   const [copied,  setCopied]  = useState(false);
@@ -809,15 +814,12 @@ function BottomNav({ onQrResult, isOwner }) {
   );
 }
 
-// Module-level stats cache — avoids re-fetch on every route change
-let _hdrCache = null;
-
 function GlobalHeader({ showStats = true }) {
-  const [stats, setStats] = useState(_hdrCache);
+  const [stats, setStats] = useState(headerCache.get());
   const { t } = useLanguage();
 
   useEffect(() => {
-    if (_hdrCache) return;
+    if (headerCache.get()) return;
     Promise.all([
       apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
       apiFetch('/api/me/game').then(r => r.ok ? r.json() : null).catch(() => null),
@@ -829,7 +831,7 @@ function GlobalHeader({ showStats = true }) {
         tasksDone:  (game?.tasks || []).filter(t => t.claimed).length,
         tasksTotal: (game?.tasks || []).length,
       };
-      _hdrCache = s;
+      headerCache.set(s);
       setStats(s);
     });
   }, []);

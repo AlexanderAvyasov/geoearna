@@ -4,7 +4,7 @@ const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
-const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID;
 
 // GET /api/platform-promo/list  — list all active platform promos (no auth needed)
 router.get('/api/platform-promo/list', async (req, res) => {
@@ -87,23 +87,21 @@ router.post('/api/platform-promo/claim', validateTma, async (req, res) => {
     .maybeSingle();
   if (existing) return res.status(400).json({ error: 'ALREADY_CLAIMED' });
 
-  // Award GEO
-  const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
-    p_user_id: userId,
-    p_amount:  promo.reward_amount,
-  });
-  if (geoErr) { console.error('[platform-promo/claim] apply_checkin_bonus', geoErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
-
-  // Record claim
+  // Record claim FIRST — prevents double-award if GEO step fails
   const { error: claimErr } = await supabase.from('platform_promo_claims').insert({
     promo_id:   promo.id,
     user_id:    userId,
     claimed_at: new Date().toISOString(),
   });
-  if (claimErr && claimErr.code === '23505') {
-    return res.status(400).json({ error: 'ALREADY_CLAIMED' });
-  }
+  if (claimErr && claimErr.code === '23505') return res.status(400).json({ error: 'ALREADY_CLAIMED' });
   if (claimErr) { console.error('[platform-promo/claim] insert', claimErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+
+  // Award GEO after claim is safely committed
+  const { error: geoErr } = await supabase.rpc('apply_checkin_bonus', {
+    p_user_id: userId,
+    p_amount:  promo.reward_amount,
+  });
+  if (geoErr) { console.error('[platform-promo/claim] apply_checkin_bonus', geoErr); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 
   // Update claims_count
   const { count: actualCount } = await supabase

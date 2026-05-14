@@ -4,7 +4,7 @@ const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
-const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID;
 
 // GET /api/geohunts/active  — public: list active hunts for home screen
 router.get('/api/geohunts/active', async (_req, res) => {

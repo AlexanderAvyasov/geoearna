@@ -7,7 +7,7 @@ const { getGeoRate } = require('../lib/geoRate');
 
 const router = express.Router();
 
-const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID || '930826522';
+const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID;
 
 function requireSuperAdmin(req, res, next) {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) {
@@ -604,7 +604,7 @@ router.post('/api/superadmin/users/:id/adjust', ...SA, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { amount, note } = req.body;
-    if (!userId || typeof amount !== 'number') return res.status(400).json({ error: 'INVALID_PARAMS' });
+    if (!userId || !Number.isFinite(amount)) return res.status(400).json({ error: 'INVALID_PARAMS' });
     if (!note?.trim()) return res.status(400).json({ error: 'NOTE_REQUIRED' });
 
     const { data: userRow } = await supabase.from('users').select('balance').eq('id', userId).single();

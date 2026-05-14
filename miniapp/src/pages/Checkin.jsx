@@ -9,6 +9,7 @@ import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
 import RippleButton from '../lib/RippleButton';
 import { apiFetch, API_BASE, waitForInitData } from '../lib/api';
+import { headerCache } from '../lib/headerCache';
 import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -277,6 +278,7 @@ export default function Checkin() {
         console.log('[CHECKIN:DO_CHECKIN] SUCCESS reward:', data.reward);
         setReward(data.reward);
         setStatus('success');
+        headerCache.reset();
         setShowBurst(true);
         setShowWave(true);
         setTimeout(() => setShowBurst(false), 1400);

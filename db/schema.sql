@@ -537,6 +537,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- visit_id is nullable: NULL for the one-time activation bonus, non-NULL for ongoing income entries
+ALTER TABLE referral_earnings ALTER COLUMN visit_id DROP NOT NULL;
+
 -- ── Referral passive income (5% for 30 days) ─────────────────────────────────
 -- Idempotent: skips if already recorded for this visit.
 CREATE OR REPLACE FUNCTION process_referral_income(
@@ -648,6 +651,33 @@ ON CONFLICT (key) DO UPDATE SET
   geo_reward = EXCLUDED.geo_reward,
   xp_reward = EXCLUDED.xp_reward,
   requirement = EXCLUDED.requirement;
+
+-- ============================================================
+-- Performance indexes
+-- ============================================================
+
+-- visits: most frequently queried table
+CREATE INDEX IF NOT EXISTS idx_visits_user_biz     ON visits (user_id, business_id);
+CREATE INDEX IF NOT EXISTS idx_visits_user_created ON visits (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_visits_biz_created  ON visits (business_id, created_at DESC);
+
+-- businesses: every admin request filters by owner
+CREATE INDEX IF NOT EXISTS idx_businesses_owner    ON businesses (owner_telegram_id);
+CREATE INDEX IF NOT EXISTS idx_businesses_qr_token ON businesses (qr_token);
+
+-- campaigns: checkin lookup by qr_token
+CREATE UNIQUE INDEX IF NOT EXISTS idx_campaigns_qr_token ON campaigns (qr_token) WHERE qr_token IS NOT NULL;
+
+-- withdrawals: superadmin filters by status constantly
+CREATE INDEX IF NOT EXISTS idx_withdrawals_status  ON withdrawals (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_withdrawals_user    ON withdrawals (user_id, created_at DESC);
+
+-- verification_pins: pin lookup during checkin
+CREATE INDEX IF NOT EXISTS idx_pins_biz_pin        ON verification_pins (business_id, pin);
+
+-- referral_earnings: passive income lookups
+CREATE INDEX IF NOT EXISTS idx_ref_earnings_referrer ON referral_earnings (referrer_id);
+CREATE INDEX IF NOT EXISTS idx_ref_earnings_referred ON referral_earnings (referred_id);
 
 -- ============================================================
 -- Support messages

@@ -188,7 +188,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   const platformBonus = effectiveReward - baseReward + newPlaceBonus;
 
   // ── Atomic checkin (business pays base reward) ────────────────────────────
-  const { error: rpcError } = await supabase.rpc('process_checkin', {
+  const { data: visitId, error: rpcError } = await supabase.rpc('process_checkin', {
     p_user_id:     userId,
     p_business_id: business.id,
     p_campaign_id: campaign.id,
@@ -203,6 +203,15 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
       : 'INTERNAL_ERROR';
     console.error('checkin rpc error', rpcError);
     throw Object.assign(new Error(code), { code });
+  }
+
+  // Referral passive income: +5% of base reward to referrer for 30 days after activation
+  if (visitId) {
+    supabase.rpc('process_referral_income', {
+      p_referred_id: userId,
+      p_visit_id:    visitId,
+      p_reward:      baseReward,
+    }).catch(e => console.error('[referral] process_referral_income error', e?.message));
   }
 
   // Platform covers multiplier bonus + new-place bonus

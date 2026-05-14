@@ -15,8 +15,8 @@ import { C, G, cardBase } from '../lib/design';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const SA_ID    = 930826522;
-const isSA     = user?.id === SA_ID;
+const SA_ID    = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
+const isSA     = SA_ID > 0 && user?.id === SA_ID;
 const SA_COLOR = '#A050FF';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

@@ -60,6 +60,9 @@ app.use(cors({
 
 app.use(express.json({ limit: '64kb' }));
 
+// ── Health check (before rate limiting so Railway probes never get throttled) ──
+app.get('/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
+
 // ── Rate limits ───────────────────────────────────────────────────────────────
 
 // General API rate limit: 120 requests per minute per IP
@@ -178,10 +181,16 @@ app.use((err, req, res, next) => {
 const port = process.env.PORT || 3000;
 
 // Startup safety checks
-if (!process.env.BOT_TOKEN)           console.error('[FATAL] BOT_TOKEN is not set — Telegram auth will fail for all users');
-if (!process.env.SUPER_ADMIN_TG_ID)   console.error('[SECURITY] SUPER_ADMIN_TG_ID is not set — using hardcoded fallback ID 930826522');
-if (!process.env.WEBHOOK_SECRET)      console.warn('[WARN] WEBHOOK_SECRET not set — webhook path derived from BOT_TOKEN; set WEBHOOK_SECRET to rotate safely');
-if (!process.env.OPERATOR_SECRET)     console.warn('[WARN] OPERATOR_SECRET not set — operator topup endpoints are disabled');
+if (!process.env.BOT_TOKEN) {
+  console.error('[FATAL] BOT_TOKEN is not set — Telegram auth will fail for all users');
+  process.exit(1);
+}
+if (!process.env.SUPER_ADMIN_TG_ID) {
+  console.error('[FATAL] SUPER_ADMIN_TG_ID is not set — refusing to start without explicit admin ID');
+  process.exit(1);
+}
+if (!process.env.WEBHOOK_SECRET)  console.warn('[WARN] WEBHOOK_SECRET not set — webhook path derived from BOT_TOKEN; set WEBHOOK_SECRET to rotate safely');
+if (!process.env.OPERATOR_SECRET) console.warn('[WARN] OPERATOR_SECRET not set — operator topup endpoints are disabled');
 
 app.listen(port, () => {
   console.log(`GeoEarn server started on port ${port}`);
