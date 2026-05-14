@@ -16,6 +16,7 @@ import Onboarding from './pages/Onboarding';
 import Game       from './pages/Game';
 import Legal      from './pages/Legal';
 import ChannelSub from './pages/ChannelSub';
+import Profile    from './pages/Profile';
 
 const IS_SUPER_ADMIN = user?.id === 930826522;
 
@@ -679,7 +680,7 @@ function Toast({ message }) {
   );
 }
 
-function BottomNav({ onQrResult }) {
+function BottomNav({ onQrResult, isOwner }) {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
   const { t } = useLanguage();
@@ -692,8 +693,10 @@ function BottomNav({ onQrResult }) {
     null,
     { to: '/balance', Icon: Wallet,    label: t('nav.balance')  },
     IS_SUPER_ADMIN
-      ? { to: '/superadmin', Icon: Shield,   label: 'SA'                }
-      : { to: '/admin',      Icon: UserIcon, label: t('nav.business')   },
+      ? { to: '/superadmin', Icon: Shield,    label: 'SA'                  }
+      : isOwner
+        ? { to: '/admin',    Icon: StoreIcon, label: t('nav.business')     }
+        : { to: '/profile',  Icon: UserIcon,  label: t('nav.profile')      },
   ];
 
   // Computed before hooks — used by useLayoutEffect below
@@ -899,10 +902,17 @@ function AppLayout() {
   const location   = useLocation();
   const navigate   = useNavigate();
   const { pathname } = location;
+  const [isOwner, setIsOwner] = useState(null);
 
   // Keep navigate in a ref — stable across re-renders, safe to call from setTimeout
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
+
+  useEffect(() => {
+    apiFetch('/api/admin/business')
+      .then(r => setIsOwner(r.status === 200))
+      .catch(() => setIsOwner(false));
+  }, []);
 
   // Log every route change so we can see if BrowserRouter responds to navigation
   useEffect(() => {
@@ -953,9 +963,10 @@ function AppLayout() {
           <Route path="/superadmin"      element={<SuperAdmin />} />
           <Route path="/legal"           element={<Legal />} />
           <Route path="/channel-reward"  element={<ChannelSub />} />
+          <Route path="/profile"         element={<Profile />} />
         </Routes>
       </div>
-      <BottomNav onQrResult={handleQrResult} />
+      <BottomNav onQrResult={handleQrResult} isOwner={isOwner} />
     </div>
   );
 }

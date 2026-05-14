@@ -10,6 +10,7 @@ const ru = {
   'nav.game':     'Прогресс',
   'nav.balance':  'Кошелёк',
   'nav.business': 'Бизнес',
+  'nav.profile':  'Профиль',
 
   // splash
   'splash.tagline': 'Зарабатывай, исследуя город',
@@ -428,6 +429,7 @@ const uz = {
   'nav.game':     'Jarayon',
   'nav.balance':  'Hamyon',
   'nav.business': 'Biznes',
+  'nav.profile':  'Profil',
 
   'splash.tagline': "Shaharni o'rganib daromad oling",
 
@@ -821,6 +823,7 @@ const en = {
   'nav.game':     'Progress',
   'nav.balance':  'Wallet',
   'nav.business': 'Business',
+  'nav.profile':  'Profile',
 
   'splash.tagline': 'Earn while exploring the city',
 

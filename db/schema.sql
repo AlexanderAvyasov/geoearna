@@ -509,7 +509,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ── Referral activation ───────────────────────────────────────────────────────
--- Idempotent. Grants +1000 GEO to referrer, +500 GEO welcome bonus to new user.
+-- Idempotent. Grants +25 GEO to referrer, +10 GEO welcome bonus to new user.
 -- Only activates within 7 days of referral creation.
 CREATE OR REPLACE FUNCTION activate_referral(
   p_referred_id INTEGER
@@ -530,8 +530,8 @@ BEGIN
      SET activated = true, activated_at = NOW(), passive_until = NOW() + INTERVAL '30 days'
    WHERE referred_id = p_referred_id;
 
-  UPDATE users SET balance = balance + 1000 WHERE id = v_referrer_id;
-  UPDATE users SET balance = balance + 500  WHERE id = p_referred_id;
+  UPDATE users SET balance = balance + 25 WHERE id = v_referrer_id;
+  UPDATE users SET balance = balance + 10 WHERE id = p_referred_id;
 
   RETURN TRUE;
 END;
@@ -566,7 +566,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ── Updated process_checkin: returns visit_id ────────────────────────────────
-DROP FUNCTION IF EXISTS process_checkin(INTEGER,INTEGER,INTEGER,DECIMAL,DECIMAL,INTEGER);
+DROP FUNCTION IF EXISTS process_checkin(integer,integer,integer,numeric,numeric,integer);
 CREATE OR REPLACE FUNCTION process_checkin(
   p_user_id     INTEGER,
   p_business_id INTEGER,
