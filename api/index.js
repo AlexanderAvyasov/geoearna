@@ -17,6 +17,7 @@ const promoRoutes        = require('./routes/promo');
 const platformPromoRoutes = require('./routes/platformPromo');
 const geohuntRoutes      = require('./routes/geohunt');
 const sendQrRoutes       = require('./routes/sendQr');
+const supportRoutes      = require('./routes/support');
 
 dotenv.config();
 
@@ -163,6 +164,7 @@ app.use(promoRoutes);
 app.use(platformPromoRoutes);
 app.use(geohuntRoutes);
 app.use(sendQrRoutes);
+app.use(supportRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });

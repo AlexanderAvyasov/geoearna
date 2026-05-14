@@ -236,7 +236,7 @@ export default function Withdraw() {
                 label={t('withdraw.amount_label')}
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                placeholder={balance > 0 ? `До ${formatGeo(balance)}` : '0'}
+                placeholder={balance > 0 ? t('withdraw.amount_ph', { geo: formatGeo(balance) }) : '0'}
                 inputMode="numeric"
               />
 

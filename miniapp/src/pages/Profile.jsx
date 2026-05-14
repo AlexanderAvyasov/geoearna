@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Crown, Flame, MapPin as MapPinIcon } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Crown, Flame, MessageCircle, AlertCircle, Send, CheckCircle, X, Loader2 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { C, cardBase, E } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -45,11 +45,171 @@ function Skel({ h = 16, w = '100%', r = 8 }) {
   return <div className="sk" style={{ height: h, width: w, borderRadius: r }} />;
 }
 
+function SupportSheet({ onClose }) {
+  const { t } = useLanguage();
+  const [type,       setType]       = useState('chat');
+  const [message,    setMessage]    = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [sent,       setSent]       = useState(false);
+  const [err,        setErr]        = useState('');
+  const textareaRef = useRef(null);
+
+  useEffect(() => { setTimeout(() => textareaRef.current?.focus(), 80); }, []);
+
+  async function handleSend() {
+    if (message.trim().length < 3) { setErr(t('support.err.short')); return; }
+    setErr('');
+    setSubmitting(true);
+    try {
+      const r = await apiFetch('/api/support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, message: message.trim() }),
+      });
+      if (!r.ok) throw new Error('fail');
+      setSent(true);
+    } catch {
+      setErr(t('support.err.failed'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+          zIndex: 200, animation: 'backdropIn 0.22s ease',
+        }}
+      />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surf || C.card,
+        borderRadius: '22px 22px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        padding: '0 0 36px', zIndex: 201,
+        maxWidth: 480, margin: '0 auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 18px' }} />
+        <div style={{ padding: '0 20px' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.t1 }}>{t('support.title')}</div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.t3, padding: 4 }}>
+              <X size={18} color={C.t3} />
+            </button>
+          </div>
+
+          {sent ? (
+            <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: C.geoDim, border: `1px solid ${C.geoGl}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <CheckCircle size={32} color={C.geo} strokeWidth={2} />
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 8 }}>{t('support.sent')}</div>
+              <div style={{ fontSize: 13, color: C.t3, marginBottom: 20, lineHeight: 1.5 }}>{t('support.sent_sub')}</div>
+              <button onClick={onClose} style={{ background: C.geo, color: C.bg, border: 'none', borderRadius: 12, padding: '12px 32px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                {t('support.close')}
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Type toggle */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {[
+                  { key: 'chat',   label: t('support.type.chat'),   Icon: MessageCircle },
+                  { key: 'report', label: t('support.type.report'), Icon: AlertCircle   },
+                ].map(({ key, label, Icon }) => {
+                  const active = type === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setType(key)}
+                      style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        padding: '10px 0', borderRadius: 10,
+                        border: `1px solid ${active ? C.geo : C.b2}`,
+                        background: active ? C.geoDim : 'transparent',
+                        color: active ? C.geo : C.t3,
+                        fontSize: 13, fontWeight: active ? 700 : 500,
+                        cursor: 'pointer', transition: `all 0.15s ${E.smooth}`,
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <Icon size={14} strokeWidth={2} />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Textarea */}
+              <textarea
+                ref={textareaRef}
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                placeholder={t('support.placeholder')}
+                rows={4}
+                style={{
+                  width: '100%', boxSizing: 'border-box',
+                  padding: '12px 14px', borderRadius: 12,
+                  border: `1.5px solid ${err ? C.red : C.b2}`,
+                  background: C.card || 'rgba(255,255,255,0.04)',
+                  color: C.t1, fontSize: 14, outline: 'none',
+                  resize: 'none', lineHeight: 1.5,
+                  transition: 'border 0.15s',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <div style={{ fontSize: 11, color: C.t3, textAlign: 'right', marginTop: 3, marginBottom: 4 }}>
+                {message.length}/2000
+              </div>
+
+              {err && (
+                <div style={{ fontSize: 13, color: C.red, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <AlertCircle size={14} color={C.red} /> {err}
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                onClick={handleSend}
+                disabled={submitting || message.trim().length < 3}
+                style={{
+                  width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                  background: (submitting || message.trim().length < 3) ? C.cardHi : C.geo,
+                  color: (submitting || message.trim().length < 3) ? C.t3 : C.bg,
+                  fontSize: 15, fontWeight: 700,
+                  cursor: (submitting || message.trim().length < 3) ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  transition: `all 0.15s ${E.smooth}`,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {submitting
+                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('support.sending')}</>
+                  : <><Send size={16} strokeWidth={2} /> {t('support.send')}</>
+                }
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function Profile() {
   const { t, lang, setLang } = useLanguage();
   const [meData,   setMeData]   = useState(null);
   const [gameData, setGameData] = useState(null);
   const [loading,  setLoading]  = useState(true);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -204,7 +364,7 @@ export default function Profile() {
       </div>
 
       {/* ── Language ── */}
-      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px' }}>
+      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px', marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
           {t('lang.title')}
         </div>
@@ -232,6 +392,28 @@ export default function Profile() {
           })}
         </div>
       </div>
+
+      {/* ── Support ── */}
+      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+          {t('profile.support.title')}
+        </div>
+        <button
+          onClick={() => setSupportOpen(true)}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+            background: C.geoDim, border: `1px solid ${C.geoGl}`,
+            borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
+            WebkitTapHighlightColor: 'transparent',
+            transition: `all 0.15s ${E.smooth}`,
+          }}
+        >
+          <MessageCircle size={16} color={C.geo} strokeWidth={2} />
+          <span style={{ fontSize: 14, fontWeight: 600, color: C.geo }}>{t('profile.support.open')}</span>
+        </button>
+      </div>
+
+      {supportOpen && <SupportSheet onClose={() => setSupportOpen(false)} />}
     </div>
   );
 }

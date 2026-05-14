@@ -15,15 +15,15 @@ const RARITY_STYLE = {
   legendary: { color: '#F59E0B', bg: '#F59E0B14', border: '#F59E0B30' },
 };
 
-function activityMeta(item) {
+function activityMeta(item, t) {
   if (item.type === 'promo') {
     const r = RARITY_STYLE[item.rarity] || RARITY_STYLE.common;
-    return { Icon: QrCode, color: r.color, bg: r.bg, border: r.border, tag: `Promo · ${item.rarity || 'common'}` };
+    return { Icon: QrCode, color: r.color, bg: r.bg, border: r.border, tag: `${t('balance.tag.visit')} · Promo` };
   }
   if (item.type === 'geohunt') {
     return { Icon: Target, color: '#FF8C00', bg: '#FF8C0014', border: '#FF8C0030', tag: 'GeoHunt' };
   }
-  return { Icon: MapPin, color: C.geo, bg: C.geoDim, border: C.geoGl, tag: 'Визит' };
+  return { Icon: MapPin, color: C.geo, bg: C.geoDim, border: C.geoGl, tag: t('balance.tag.visit') };
 }
 
 function formatDate(str) {
@@ -120,7 +120,7 @@ export default function Balance() {
   if (error) return (
     <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
       <AlertCircle size={32} color={C.red} strokeWidth={1.5} />
-      <div style={{ ...MONO, fontSize: 10, color: C.red, letterSpacing: 1 }}>ОШИБКА ЗАГРУЗКИ</div>
+      <div style={{ ...MONO, fontSize: 10, color: C.red, letterSpacing: 1 }}>{t('balance.err.title')}</div>
     </div>
   );
 
@@ -133,12 +133,12 @@ export default function Balance() {
           <span style={{ ...MONO, fontSize: 8, color: C.t2, letterSpacing: 2 }}>THE VAULT — GEO WALLET</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, boxShadow: `0 0 5px ${C.green}` }} />
-            <span style={{ ...MONO, fontSize: 8, color: C.green, letterSpacing: 1 }}>SYNCED</span>
+            <span style={{ ...MONO, fontSize: 8, color: C.green, letterSpacing: 1 }}>{t('balance.synced')}</span>
           </div>
         </div>
 
         <div style={{ padding: '12px 0 16px' }}>
-          <div style={{ ...MONO, fontSize: 9, color: C.t3, letterSpacing: 1.5, marginBottom: 6 }}>TOTAL BALANCE</div>
+          <div style={{ ...MONO, fontSize: 9, color: C.t3, letterSpacing: 1.5, marginBottom: 6 }}>{t('balance.total_balance')}</div>
           {loading ? (
             <div className="sk" style={{ height: 44, width: 160, borderRadius: 3 }} />
           ) : (
@@ -166,9 +166,9 @@ export default function Balance() {
         {/* 3 action buttons */}
         <div style={{ display: 'flex', gap: 8, paddingBottom: 14 }}>
           {[
-            { label: 'SEND',    Icon: CreditCard,    to: '/withdraw', primary: true },
-            { label: 'HISTORY', Icon: TrendingUp,    tab: 'withdrawals' },
-            { label: 'RATE',    Icon: TrendingUp,    info: `${geoRate} UZS` },
+            { label: t('balance.btn.send'),    Icon: CreditCard, to: '/withdraw', primary: true },
+            { label: t('balance.btn.history'), Icon: TrendingUp, tab: 'withdrawals' },
+            { label: t('balance.btn.rate'),    Icon: TrendingUp, info: `${geoRate} UZS` },
           ].map(({ label, Icon, to, tab, primary, info }) => (
             to ? (
               <Link key={label} to={to} style={{
@@ -205,8 +205,8 @@ export default function Balance() {
       {/* ── Tab switcher ── */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         {[
-          { key: 'visits',      label: 'LEDGER' },
-          { key: 'withdrawals', label: 'WITHDRAWALS', badge: withdrawals.filter(w => w.status === 'pending').length },
+          { key: 'visits',      label: t('balance.tab.ledger') },
+          { key: 'withdrawals', label: t('balance.tab.wd_label'), badge: withdrawals.filter(w => w.status === 'pending').length },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             flex: 1, background: 'none', border: 'none', cursor: 'pointer',
@@ -252,12 +252,12 @@ export default function Balance() {
 
             {!loading && activity.length === 0 && (
               <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>NO TRANSACTIONS</div>
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>{t('balance.empty.tx')}</div>
               </div>
             )}
 
             {!loading && activity.map((item, i) => {
-              const { Icon, color, tag } = activityMeta(item);
+              const { Icon, color, tag } = activityMeta(item, t);
               return (
                 <div key={item.id} style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -312,7 +312,7 @@ export default function Balance() {
 
             {!loading && withdrawals.length === 0 && (
               <div style={{ textAlign: 'center', padding: '48px 0' }}>
-                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>NO WITHDRAWALS</div>
+                <div style={{ ...MONO, fontSize: 10, color: C.t3, letterSpacing: 2 }}>{t('balance.empty.wd.title')}</div>
               </div>
             )}
 

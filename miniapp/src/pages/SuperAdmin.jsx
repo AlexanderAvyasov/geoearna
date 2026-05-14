@@ -6,6 +6,7 @@ import {
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode, Send,
+  MessageCircle, AlertCircle, MessageCircleReply,
 } from 'lucide-react';
 import { user } from '../hooks/useTelegram';
 import { API_BASE, waitForInitData, apiFetch } from '../lib/api';
@@ -2972,6 +2973,287 @@ function GeoHuntTab() {
   );
 }
 
+// ─── Tab: Support ────────────────────────────────────────────────────────────
+
+const SUPPORT_STATUS = {
+  open:    { label: 'Открытое',  color: C.gold  },
+  replied: { label: 'Отвечено',  color: '#10B981' },
+  closed:  { label: 'Закрыто',  color: C.t3    },
+};
+
+function SupportMsgSheet({ msg, onClose, onUpdated }) {
+  const [reply,     setReply]     = useState('');
+  const [sending,   setSending]   = useState(false);
+  const [closing,   setClosing]   = useState(false);
+  const [err,       setErr]       = useState('');
+
+  const userName = msg.users?.username ? `@${msg.users.username}` : `ID ${msg.users?.telegram_id}`;
+
+  async function sendReply() {
+    if (!reply.trim()) { setErr('Введите ответ'); return; }
+    setSending(true); setErr('');
+    try {
+      await saFetch(`/api/superadmin/support/${msg.id}/reply`, {
+        method: 'POST',
+        body: JSON.stringify({ reply: reply.trim() }),
+      });
+      onUpdated();
+      onClose();
+    } catch (e) { setErr(e.message || 'Ошибка'); }
+    setSending(false);
+  }
+
+  async function closeMsg() {
+    setClosing(true);
+    try {
+      await saFetch(`/api/superadmin/support/${msg.id}/close`, { method: 'POST' });
+      onUpdated();
+      onClose();
+    } catch (e) { setErr(e.message || 'Ошибка'); }
+    setClosing(false);
+  }
+
+  const typeColor = msg.type === 'report' ? C.red : C.geo;
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 300, animation: 'backdropIn 0.22s ease',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surf, borderRadius: '24px 24px 0 0',
+        border: `1px solid ${C.b2}`, borderBottom: 'none',
+        padding: '0 0 40px', zIndex: 301,
+        maxWidth: 480, margin: '0 auto',
+        maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 16px', flexShrink: 0 }} />
+        <div style={{ padding: '0 20px', overflowY: 'auto', flex: 1 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            {msg.type === 'report'
+              ? <AlertCircle size={16} color={C.red} strokeWidth={2} />
+              : <MessageCircle size={16} color={C.geo} strokeWidth={2} />
+            }
+            <span style={{ fontSize: 15, fontWeight: 800, color: typeColor }}>
+              {msg.type === 'report' ? 'Жалоба' : 'Обращение'} #{msg.id}
+            </span>
+            <span style={{ marginLeft: 'auto' }}>
+              <Badge
+                label={SUPPORT_STATUS[msg.status]?.label || msg.status}
+                color={SUPPORT_STATUS[msg.status]?.color || C.t3}
+              />
+            </span>
+          </div>
+
+          {/* Meta */}
+          <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '12px 14px', marginBottom: 14, borderRadius: 14 }}>
+            {[
+              [User,  'Пользователь', userName,           C.t2 ],
+              [Clock, 'Дата',         fmtDate(msg.created_at), C.t3],
+            ].map(([Icon, label, val, color], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: i === 0 ? 8 : 0, marginBottom: i === 0 ? 8 : 0, borderBottom: i === 0 ? `1px solid ${C.b0}` : 'none' }}>
+                <Icon size={13} color={C.t3} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: C.t3, flexShrink: 0, minWidth: 80 }}>{label}</span>
+                <span style={{ fontSize: 13, color, fontWeight: 600 }}>{val}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Message */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Сообщение</div>
+          <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px', borderRadius: 14, marginBottom: 14 }}>
+            <p style={{ fontSize: 14, color: C.t1, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              {msg.message}
+            </p>
+          </div>
+
+          {/* Existing reply */}
+          {msg.admin_reply && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#10B981', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <MessageCircleReply size={11} /> Ответ администратора
+              </div>
+              <div style={{ ...cardBase, border: `1px solid #10B98130`, padding: '14px', borderRadius: 14, marginBottom: 14, background: '#10B98108' }}>
+                <p style={{ fontSize: 14, color: C.t1, lineHeight: 1.6, margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {msg.admin_reply}
+                </p>
+                <div style={{ fontSize: 11, color: C.t3, marginTop: 6 }}>{fmtDate(msg.replied_at)}</div>
+              </div>
+            </>
+          )}
+
+          {/* Reply form (always shown) */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+            {msg.admin_reply ? 'Новый ответ' : 'Ответить'}
+          </div>
+          <textarea
+            value={reply}
+            onChange={e => setReply(e.target.value)}
+            placeholder="Введите ответ пользователю..."
+            rows={3}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: '12px 14px', borderRadius: 12,
+              border: `1.5px solid ${err ? C.red : C.b2}`,
+              background: C.card, color: C.t1,
+              fontSize: 14, outline: 'none', resize: 'none',
+              lineHeight: 1.5, fontFamily: 'inherit',
+              marginBottom: 10,
+            }}
+          />
+
+          {err && (
+            <div style={{ fontSize: 13, color: C.red, fontWeight: 600, marginBottom: 10 }}>{err}</div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, paddingBottom: 4 }}>
+            {msg.status !== 'closed' && (
+              <Btn variant="ghost" size="md" onClick={closeMsg} loading={closing} style={{ flex: 1 }}>
+                Закрыть тикет
+              </Btn>
+            )}
+            <Btn variant="success" size="md" onClick={sendReply} loading={sending} style={{ flex: 2 }}>
+              <Send size={14} /> Отправить ответ
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SupportTab() {
+  const [messages,  setMessages]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [filter,    setFilter]    = useState('open');
+  const [selected,  setSelected]  = useState(null);
+
+  function load(status = filter) {
+    setLoading(true);
+    saFetch(`/api/superadmin/support?status=${status}`)
+      .then(d => setMessages(d.messages || []))
+      .catch(() => setMessages([]))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(filter); }, [filter]);
+
+  const openCount = messages.filter(m => m.status === 'open').length;
+
+  return (
+    <div>
+      {/* Filter bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+        {[
+          { key: 'open',    label: 'Открытые'  },
+          { key: 'replied', label: 'Отвечено'  },
+          { key: 'closed',  label: 'Закрытые'  },
+          { key: 'all',     label: 'Все'        },
+        ].map(({ key, label }) => {
+          const active = filter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              style={{
+                flex: '0 0 auto', padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                border: `1px solid ${active ? SA_COLOR : C.b2}`,
+                background: active ? `${SA_COLOR}18` : 'transparent',
+                color: active ? SA_COLOR : C.t3,
+                cursor: 'pointer', transition: 'all 0.15s',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              {label}
+              {key === 'open' && openCount > 0 && (
+                <span style={{ marginLeft: 6, background: C.red, color: '#fff', borderRadius: 6, padding: '1px 6px', fontSize: 10 }}>
+                  {openCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+        <Btn variant="ghost" size="sm" onClick={() => load(filter)} loading={loading} style={{ marginLeft: 'auto', flexShrink: 0 }}>
+          <RefreshCw size={12} />
+        </Btn>
+      </div>
+
+      {/* Loading skeletons */}
+      {loading && [1,2,3].map(i => (
+        <div key={i} style={{ ...cardBase, border: `1px solid ${C.b0}`, padding: '14px 16px', marginBottom: 8, borderRadius: 14 }}>
+          <Skel h={13} w="50%" r={6} /><div style={{ marginTop: 8 }}><Skel h={10} w="80%" r={5} /></div>
+        </div>
+      ))}
+
+      {/* Empty state */}
+      {!loading && messages.length === 0 && (
+        <Empty icon={MessageCircle} text={filter === 'open' ? 'Нет открытых обращений' : 'Нет сообщений'} />
+      )}
+
+      {/* Message list */}
+      {!loading && messages.map((msg, i) => {
+        const s = SUPPORT_STATUS[msg.status] || { label: msg.status, color: C.t3 };
+        const userName = msg.users?.username ? `@${msg.users.username}` : `ID ${msg.users?.telegram_id}`;
+        const TypeIcon = msg.type === 'report' ? AlertCircle : MessageCircle;
+        const typeColor = msg.type === 'report' ? C.red : C.geo;
+
+        return (
+          <div
+            key={msg.id}
+            onClick={() => setSelected(msg)}
+            style={{
+              ...cardBase,
+              border: `1px solid ${msg.status === 'open' ? `${typeColor}40` : C.b1}`,
+              padding: '13px 14px', marginBottom: 8, borderRadius: 14,
+              cursor: 'pointer', transition: 'all 0.15s',
+              background: msg.status === 'open' ? `${typeColor}06` : C.card,
+              animation: `fadeUp 0.25s ${i * 0.03}s ease both`,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                background: `${typeColor}14`,
+                border: `1px solid ${typeColor}30`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <TypeIcon size={14} color={typeColor} strokeWidth={2} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: C.t1 }}>{userName}</span>
+                  <Badge label={s.label} color={s.color} />
+                  {msg.type === 'report' && <Badge label="Жалоба" color={C.red} />}
+                </div>
+                <p style={{ fontSize: 13, color: C.t2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 }}>
+                  {msg.message}
+                </p>
+                <div style={{ fontSize: 11, color: C.t3, marginTop: 5 }}>#{msg.id} · {fmtDate(msg.created_at)}</div>
+              </div>
+              <ChevronRight size={14} color={C.t3} style={{ flexShrink: 0, marginTop: 2 }} />
+            </div>
+          </div>
+        );
+      })}
+
+      {selected && (
+        <SupportMsgSheet
+          msg={selected}
+          onClose={() => setSelected(null)}
+          onUpdated={() => load(filter)}
+        />
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -2984,6 +3266,7 @@ const TABS = [
   { key: 'gamification',  label: 'Геймиф.',    Icon: Trophy          },
   { key: 'promo',         label: 'Promo QR',   Icon: QrCode          },
   { key: 'geohunt',       label: 'GeoHunt',    Icon: Target          },
+  { key: 'support',       label: 'Поддержка',  Icon: MessageCircle   },
   { key: 'system',        label: 'Система',    Icon: Settings        },
 ];
 
@@ -3050,6 +3333,7 @@ export default function SuperAdmin() {
         {tab === 'gamification' && <GamificationTab />}
         {tab === 'promo'        && <PromoQRTab />}
         {tab === 'geohunt'      && <GeoHuntTab />}
+        {tab === 'support'      && <SupportTab />}
         {tab === 'system'       && <SystemTab />}
       </div>
     </div>

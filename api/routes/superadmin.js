@@ -1162,4 +1162,74 @@ router.delete('/api/superadmin/achievements/:key', ...SA, async (req, res) => {
   }
 });
 
+// ── Support messages ──────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/support', ...SA, async (req, res) => {
+  try {
+    const status = req.query.status || 'open';
+    let query = supabase
+      .from('support_messages')
+      .select('*, users(telegram_id, username)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (status !== 'all') query = query.eq('status', status);
+    const { data, error } = await query;
+    if (error) throw error;
+    return res.json({ messages: data || [] });
+  } catch (e) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/support/:id/reply', ...SA, async (req, res) => {
+  try {
+    const msgId = parseInt(req.params.id, 10);
+    const { reply } = req.body;
+    if (!reply || typeof reply !== 'string' || !reply.trim()) {
+      return res.status(400).json({ error: 'REPLY_REQUIRED' });
+    }
+
+    const { data: msg, error: fetchErr } = await supabase
+      .from('support_messages')
+      .select('*, users(telegram_id, username)')
+      .eq('id', msgId)
+      .single();
+    if (fetchErr || !msg) return res.status(404).json({ error: 'NOT_FOUND' });
+
+    const { error: updErr } = await supabase
+      .from('support_messages')
+      .update({ status: 'replied', admin_reply: reply.trim(), replied_at: new Date().toISOString() })
+      .eq('id', msgId);
+    if (updErr) throw updErr;
+
+    const userTgId = msg.users?.telegram_id;
+    if (userTgId) {
+      const typeLabel = msg.type === 'report' ? 'вашей жалобе' : 'вашему обращению';
+      await sendMessage(
+        userTgId,
+        `📨 Ответ по ${typeLabel} #${msgId}:\n\n${reply.trim()}\n\n— Команда GeoEarn`
+      ).catch(() => {});
+    }
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error('support reply error', e.message);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/support/:id/close', ...SA, async (req, res) => {
+  try {
+    const msgId = parseInt(req.params.id, 10);
+    const { error } = await supabase
+      .from('support_messages')
+      .update({ status: 'closed' })
+      .eq('id', msgId);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 module.exports = router;

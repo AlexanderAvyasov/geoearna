@@ -648,3 +648,22 @@ ON CONFLICT (key) DO UPDATE SET
   geo_reward = EXCLUDED.geo_reward,
   xp_reward = EXCLUDED.xp_reward,
   requirement = EXCLUDED.requirement;
+
+-- ============================================================
+-- Support messages
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id          SERIAL PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type        VARCHAR(20) NOT NULL DEFAULT 'chat',   -- 'chat' | 'report'
+  message     TEXT NOT NULL,
+  status      VARCHAR(20) NOT NULL DEFAULT 'open',   -- 'open' | 'replied' | 'closed'
+  admin_reply TEXT,
+  replied_at  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_messages_user_id    ON support_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_messages_status     ON support_messages(status);
+CREATE INDEX IF NOT EXISTS idx_support_messages_created_at ON support_messages(created_at DESC);
