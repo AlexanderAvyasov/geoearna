@@ -158,10 +158,9 @@ router.post('/api/promo/claim', validateTma, async (req, res) => {
     })
     .eq('id', promo.id);
 
-  // Flag suspicious multi-claims
   if ((todayClaims || 0) >= 2) {
     supabase.from('sa_audit_log').insert({
-      action: 'promo_multi_claim', target_id: userId, admin_id: null,
+      action: 'promo_multi_claim', target_id: userId,
       note: `${(todayClaims || 0) + 1} promo claims today; promo_id=${promo.id} "${promo.title}"`,
     }).catch(() => {});
   }

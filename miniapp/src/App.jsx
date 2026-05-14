@@ -44,6 +44,8 @@ if (!import.meta.env.PROD) {
   console.error = (...a) => { _cerr(...a);   _dpush('error', ...a); };
   console.warn  = (...a) => { _cwarn(...a);  _dpush('warn',  ...a); };
 }
+const clog = import.meta.env.DEV ? console.log.bind(console)   : () => {};
+const cerr = import.meta.env.DEV ? console.error.bind(console) : () => {};
 
 function DebugOverlay() {
   if (import.meta.env.PROD) return null;
@@ -158,8 +160,8 @@ class AppErrorBoundary extends Component {
   }
   componentDidCatch(error, info) {
     this.setState({ stack: info?.componentStack || '' });
-    console.error('[ERROR_BOUNDARY] caught:', error?.message);
-    console.error('[ERROR_BOUNDARY] stack:', info?.componentStack || '');
+    cerr('[ERROR_BOUNDARY] caught:', error?.message);
+    cerr('[ERROR_BOUNDARY] stack:', info?.componentStack || '');
   }
   render() {
     if (this.state.error) {
@@ -580,50 +582,50 @@ function ScanQrButton({ onToast, onQrResult }) {
   const { t } = useLanguage();
 
   function handleScan() {
-    console.log('[QR:SCAN_START] scanRef.current:', scanRef.current);
+    clog('[QR:SCAN_START] scanRef.current:', scanRef.current);
     if (scanRef.current) return;
     if (!tg?.isVersionAtLeast?.('6.4')) {
-      console.log('[QR:SCAN_START] TG version too old');
+      clog('[QR:SCAN_START] TG version too old');
       onToast(t('scan.update_tg'));
       return;
     }
     if (typeof tg.showScanQrPopup !== 'function') {
-      console.log('[QR:SCAN_START] showScanQrPopup not available');
+      clog('[QR:SCAN_START] showScanQrPopup not available');
       onToast(t('scan.unavailable'));
       return;
     }
 
     scanRef.current = true;
     setScanning(true);
-    console.log('[QR:POPUP_OPEN] showScanQrPopup called');
+    clog('[QR:POPUP_OPEN] showScanQrPopup called');
 
     try {
       tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
-        console.log('[QR:CALLBACK] raw:', scannedText?.slice(0, 80), '| length:', scannedText?.length);
+        clog('[QR:CALLBACK] raw:', scannedText?.slice(0, 80), '| length:', scannedText?.length);
         const result = parseScanResult(scannedText);
-        console.log('[QR:PARSE] result:', JSON.stringify(result));
+        clog('[QR:PARSE] result:', JSON.stringify(result));
 
         if (result) {
-          console.log('[QR:POPUP_CLOSE] calling closeScanQrPopup');
+          clog('[QR:POPUP_CLOSE] calling closeScanQrPopup');
           tg.closeScanQrPopup();
           scanRef.current = false;
           setScanning(false);
-          console.log('[QR:PASS_TO_APP] calling onQrResult with token:', result.token);
+          clog('[QR:PASS_TO_APP] calling onQrResult with token:', result.token);
           onQrResult(result);
           return true;
         }
-        console.log('[QR:UNRECOGNIZED] no result — keeping popup open');
+        clog('[QR:UNRECOGNIZED] no result — keeping popup open');
         return false;
       });
     } catch (e) {
-      console.error('[QR:POPUP_ERROR]', e.message);
+      cerr('[QR:POPUP_ERROR]', e.message);
       scanRef.current = false;
       setScanning(false);
     }
 
     setTimeout(() => {
       if (scanRef.current) {
-        console.log('[QR:TIMEOUT] 30s timeout — resetting scan state');
+        clog('[QR:TIMEOUT] 30s timeout — resetting scan state');
         scanRef.current = false;
         setScanning(false);
       }
@@ -916,22 +918,19 @@ function AppLayout() {
       .catch(() => setIsOwner(false));
   }, []);
 
-  // Log every route change so we can see if BrowserRouter responds to navigation
   useEffect(() => {
-    console.log('[ROUTER:CHANGE] pathname:', pathname, '| search:', location.search, '| hash:', window.location.hash);
+    clog('[ROUTER:CHANGE] pathname:', pathname, '| search:', location.search, '| hash:', window.location.hash);
   }, [location]);
 
-  // Owned by AppLayout — called by ScanQrButton → BottomNav → here
-  // Using navigateRef means no useEffect cleanup can ever cancel this timeout
   function handleQrResult(result) {
-    console.log('[QR:RECEIVED_BY_LAYOUT] token:', result.token, 'promo:', result.promo, 'geohunt:', result.geohunt);
+    clog('[QR:RECEIVED_BY_LAYOUT] token:', result.token, 'promo:', result.promo, 'geohunt:', result.geohunt);
     const qs = new URLSearchParams({ token: result.token });
     if (result.promo)   qs.set('promo',   '1');
     if (result.geohunt) qs.set('geohunt', '1');
     const target = `/checkin?${qs.toString()}`;
-    console.log('[QR:NAVIGATE_SCHEDULED] target:', target, '| in 400ms');
+    clog('[QR:NAVIGATE_SCHEDULED] target:', target, '| in 400ms');
     setTimeout(() => {
-      console.log('[QR:NAVIGATE_EXEC] navigate() calling with:', target, '| current pathname:', window.location.pathname);
+      clog('[QR:NAVIGATE_EXEC] navigate() calling with:', target, '| current pathname:', window.location.pathname);
       navigateRef.current(target);
     }, 400);
   }
