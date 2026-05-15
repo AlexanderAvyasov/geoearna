@@ -1681,7 +1681,7 @@ function SystemTab() {
               ['GEO Rate (env)',  `${cfg.geoRate} UZS / GEO`],
               ['Topup Card',      cfg.topupCard || '—'],
               ['Topup Bank',      cfg.topupBank || '—'],
-              ['Super Admin ID',  String(SA_ID)],
+              ['Super Admin ID',  String(import.meta.env.VITE_SUPER_ADMIN_TG_ID || '—')],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${C.b0}` }}>
                 <span style={{ fontSize: 12, color: C.t3 }}>{k}</span>
@@ -3308,7 +3308,7 @@ export default function SuperAdmin() {
           <Shield size={12} color={SA_COLOR} /> Super Admin · God View
         </div>
         <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, letterSpacing: -0.5, marginBottom: 4 }}>GeoEarn Platform</div>
-        <div style={{ fontSize: 13, color: C.t3 }}>ID {SA_ID} · Полный доступ</div>
+        <div style={{ fontSize: 13, color: C.t3 }}>Полный доступ</div>
       </div>
 
       {/* Tab bar */}
