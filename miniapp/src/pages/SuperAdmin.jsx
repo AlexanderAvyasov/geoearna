@@ -8,15 +8,12 @@ import {
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode, Send,
   MessageCircle, AlertCircle, MessageCircleReply,
 } from 'lucide-react';
-import { user } from '../hooks/useTelegram';
 import { API_BASE, waitForInitData, apiFetch } from '../lib/api';
 import { formatGeo, formatUzs, geoToUzs } from '../lib/geo';
 import { C, G, cardBase } from '../lib/design';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
-const SA_ID    = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
-const isSA     = SA_ID > 0 && user?.id === SA_ID;
 const SA_COLOR = '#A050FF';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -3273,6 +3270,22 @@ const TABS = [
 export default function SuperAdmin() {
   const [tab, setTab] = useState('overview');
   const geoRate = useGeoRate();
+  const [isSA, setIsSA] = useState(null); // null = loading, true/false = resolved
+
+  useEffect(() => {
+    apiFetch('/api/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setIsSA(d?.is_super_admin === true))
+      .catch(() => setIsSA(false));
+  }, []);
+
+  if (isSA === null) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 size={32} color={SA_COLOR} style={{ animation: 'spin 1s linear infinite' }} />
+      </div>
+    );
+  }
 
   if (!isSA) {
     return (
