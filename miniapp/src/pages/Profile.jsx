@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Crown, Flame, MessageCircle, AlertCircle, Send, CheckCircle, X, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Crown, Flame, MessageCircle, AlertCircle, Send, CheckCircle, X, Loader2, Shield } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { C, cardBase, E } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -206,6 +207,7 @@ function SupportSheet({ onClose }) {
 
 export default function Profile() {
   const { t, lang, setLang } = useLanguage();
+  const navigate = useNavigate();
   const [meData,   setMeData]   = useState(null);
   const [gameData, setGameData] = useState(null);
   const [loading,  setLoading]  = useState(true);
@@ -220,6 +222,8 @@ export default function Profile() {
       setGameData(game);
     }).finally(() => setLoading(false));
   }, []);
+
+  const isSuperAdmin = meData?.is_super_admin || false;
 
   const balance = meData?.user?.balance ?? 0;
   const visits  = meData?.user?.total_visits ?? meData?.user?.checkin_count ?? 0;
@@ -392,6 +396,28 @@ export default function Profile() {
           })}
         </div>
       </div>
+
+      {/* ── Super Admin ── */}
+      {isSuperAdmin && (
+        <div style={{ ...cardBase, border: `1px solid rgba(139,92,246,0.35)`, padding: '16px', marginBottom: 14, background: 'rgba(139,92,246,0.06)' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+            Super Admin
+          </div>
+          <button
+            onClick={() => navigate('/superadmin')}
+            style={{
+              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)',
+              borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+              transition: `all 0.15s ${E.smooth}`,
+            }}
+          >
+            <Shield size={16} color="#A78BFA" strokeWidth={2} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#A78BFA' }}>Панель Super Admin</span>
+          </button>
+        </div>
+      )}
 
       {/* ── Support ── */}
       <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px' }}>

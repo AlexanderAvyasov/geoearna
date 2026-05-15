@@ -4,6 +4,8 @@ const { supabase } = require('../../db/index');
 
 const router = express.Router();
 
+const SA_TG_ID = Number(process.env.SUPER_ADMIN_TG_ID) || 0;
+
 router.get('/api/me', validateTma, async (req, res) => {
   try {
     const { data: user, error } = await supabase
@@ -21,7 +23,8 @@ router.get('/api/me', validateTma, async (req, res) => {
       return res.status(404).json({ error: 'USER_NOT_FOUND' });
     }
 
-    return res.json({ user });
+    const is_super_admin = SA_TG_ID > 0 && Number(user.telegram_id) === SA_TG_ID;
+    return res.json({ user, is_super_admin });
   } catch (error) {
     console.error('GET /api/me error', error);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });

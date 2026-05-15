@@ -20,7 +20,6 @@ import ChannelSub from './pages/ChannelSub';
 import Profile    from './pages/Profile';
 
 const SA_TG_ID = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
-const IS_SUPER_ADMIN = SA_TG_ID > 0 && user?.id === SA_TG_ID;
 
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
@@ -687,12 +686,14 @@ function Toast({ message }) {
   );
 }
 
-function BottomNav({ onQrResult, isOwner }) {
+function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
   const { t } = useLanguage();
   const navRef = useRef(null);
   const [indicatorX, setIndicatorX] = useState(null);
+
+  const IS_SUPER_ADMIN = isSuperAdmin;
 
   const NAV_ITEMS = [
     { to: '/',        Icon: MapPin,    label: t('nav.home')     },
@@ -906,7 +907,8 @@ function AppLayout() {
   const location   = useLocation();
   const navigate   = useNavigate();
   const { pathname } = location;
-  const [isOwner, setIsOwner] = useState(null);
+  const [isOwner,      setIsOwner]      = useState(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Keep navigate in a ref — stable across re-renders, safe to call from setTimeout
   const navigateRef = useRef(navigate);
@@ -916,6 +918,10 @@ function AppLayout() {
     apiFetch('/api/admin/business')
       .then(r => setIsOwner(r.status === 200))
       .catch(() => setIsOwner(false));
+    apiFetch('/api/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => setIsSuperAdmin(d?.is_super_admin || false))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -967,7 +973,7 @@ function AppLayout() {
           <Route path="/profile"         element={<Profile />} />
         </Routes>
       </div>
-      <BottomNav onQrResult={handleQrResult} isOwner={isOwner} />
+      <BottomNav onQrResult={handleQrResult} isOwner={isOwner} isSuperAdmin={isSuperAdmin} />
     </div>
   );
 }

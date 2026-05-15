@@ -110,9 +110,9 @@ function computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt }) {
     if (h >= 12 && h < 14) boostMult = Math.max(boostMult, 2.0);
   }
 
-  // New place bonus: flat +500 GEO if business opened < 7 days ago
+  // New place bonus: flat +100 GEO if business opened < 7 days ago
   const newPlaceBonus = businessCreatedAt &&
-    Date.now() - new Date(businessCreatedAt).getTime() < 7 * 24 * 3600 * 1000 ? 500 : 0;
+    Date.now() - new Date(businessCreatedAt).getTime() < 7 * 24 * 3600 * 1000 ? 100 : 0;
 
   // Is before noon in Tashkent? (for daily_before_noon task)
   const isBeforeNoon = tNow.getUTCHours() < 12;
