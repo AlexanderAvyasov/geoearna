@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(Head 20)",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\" -Recurse -Depth 2)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\" -Recurse -Depth 2)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\User\\\\Downloads\\\\CreditMiniAPP-main\\\\CreditMiniAPP-main\" -Recurse -Filter \"*.js\" -o Name)"
     ]
   }
 }
