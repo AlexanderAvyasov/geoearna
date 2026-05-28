@@ -16,7 +16,7 @@ const LEVELS = [
   { min: 0,    level: 1,  label: 'Новичок',        bonus: 1.00 },
 ];
 
-const MILESTONE_GEO = { 7: 500, 14: 1500, 30: 5000 };
+const MILESTONE_GEO = { 7: 100, 14: 200, 30: 300 };
 
 // Returns the Tashkent "game day" as YYYY-MM-DD.
 // Visits before 02:00 Tashkent (= UTC+5) still count for the previous calendar day.
