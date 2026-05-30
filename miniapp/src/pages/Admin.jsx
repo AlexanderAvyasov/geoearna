@@ -10,7 +10,7 @@ import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
 import { C, G, E, cardBase, inputStyle } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
-import { pluralize } from '../lib/i18n';
+import { pluralize, parseTaskDesc } from '../lib/i18n';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -369,7 +369,7 @@ function CampaignDetailModal({ campaign, business, webappUrl, onClose, onStop, s
 
           {campaign.task_description && (
             <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.5, marginBottom: 16 }}>
-              {campaign.task_description}
+              {parseTaskDesc(campaign.task_description, lang)}
             </div>
           )}
 
@@ -686,19 +686,22 @@ function CampaignForm({ balance, onClose, onCreated }) {
   const [budget,      setBudget]      = useState('');
   const [visits,      setVisits]      = useState('');
   const [taskType,    setTaskType]    = useState('visit');
-  const [desc,        setDesc]        = useState('');
+  const [descRu,      setDescRu]      = useState('');
+  const [descUz,      setDescUz]      = useState('');
   const [endsAt,      setEndsAt]      = useState('');
   const [requiresPin, setRequiresPin] = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [error,       setError]       = useState('');
-  const [fBudget, setFBudget] = useState(false);
-  const [fVisits, setFVisits] = useState(false);
-  const [fDesc,   setFDesc]   = useState(false);
+  const [fBudget,  setFBudget]  = useState(false);
+  const [fVisits,  setFVisits]  = useState(false);
+  const [fDescRu,  setFDescRu]  = useState(false);
+  const [fDescUz,  setFDescUz]  = useState(false);
 
   const budgetNum = parseInt(budget, 10) || 0;
   const visitsNum = parseInt(visits, 10) || 0;
   const { reward, rewardsSum, commission, totalCost } = calcCampaign(budgetNum, visitsNum);
-  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && totalCost <= balance;
+  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && totalCost <= balance
+    && descRu.trim().length > 0 && descUz.trim().length > 0;
   const today = new Date().toISOString().split('T')[0];
 
   async function handleSubmit(e) {
@@ -712,7 +715,8 @@ function CampaignForm({ balance, onClose, onCreated }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           budget: budgetNum, max_visits: visitsNum,
-          task_type: taskType, task_description: desc || null,
+          task_type: taskType,
+          task_description: JSON.stringify({ ru: descRu.trim(), uz: descUz.trim() }),
           requires_pin: requiresPin,
           ends_at: endsAt ? new Date(endsAt + 'T23:59:59').toISOString() : null,
         }),
@@ -831,11 +835,25 @@ function CampaignForm({ balance, onClose, onCreated }) {
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <div style={labelStyle}>{t('admin.form.task_desc')}</div>
-              <textarea value={desc} onChange={e => setDesc(e.target.value)}
-                placeholder={t('admin.form.task_ph')} rows={2}
-                onFocus={() => setFDesc(true)} onBlur={() => setFDesc(false)}
-                style={{ ...inputStyle(fDesc), resize: 'none', fontFamily: 'inherit' }} />
+              <div style={labelStyle}>
+                {t('admin.form.task_desc_ru')}
+                <span style={{ color: C.red, marginLeft: 3 }}>*</span>
+              </div>
+              <textarea value={descRu} onChange={e => setDescRu(e.target.value)}
+                placeholder={t('admin.form.task_ph_ru')} rows={2}
+                onFocus={() => setFDescRu(true)} onBlur={() => setFDescRu(false)}
+                style={{ ...inputStyle(fDescRu), resize: 'none', fontFamily: 'inherit' }} />
+            </div>
+
+            <div style={{ marginBottom: 14 }}>
+              <div style={labelStyle}>
+                {t('admin.form.task_desc_uz')}
+                <span style={{ color: C.red, marginLeft: 3 }}>*</span>
+              </div>
+              <textarea value={descUz} onChange={e => setDescUz(e.target.value)}
+                placeholder={t('admin.form.task_ph_uz')} rows={2}
+                onFocus={() => setFDescUz(true)} onBlur={() => setFDescUz(false)}
+                style={{ ...inputStyle(fDescUz), resize: 'none', fontFamily: 'inherit' }} />
             </div>
 
             <div style={{ marginBottom: 14 }}>
@@ -876,6 +894,16 @@ function CampaignForm({ balance, onClose, onCreated }) {
               }}>
                 <AlertTriangle size={15} color={C.red} style={{ flexShrink: 0 }} />
                 {error}
+              </div>
+            )}
+
+            {(!descRu.trim() || !descUz.trim()) && (
+              <div style={{
+                fontSize: 12, color: C.orange, fontWeight: 600,
+                marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6,
+              }}>
+                <AlertCircle size={13} color={C.orange} strokeWidth={2} />
+                {t('admin.form.err_desc')}
               </div>
             )}
 

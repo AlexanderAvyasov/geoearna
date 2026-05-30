@@ -364,8 +364,11 @@ const ru = {
   'admin.form.increase':     'Увеличьте бюджет или уменьшите активации',
   'admin.form.need_more':    'Недостаточно GEO — нужно ещё {geo} GEO',
   'admin.form.task_type':    'Тип задания',
-  'admin.form.task_desc':    'Описание задания (необязательно)',
-  'admin.form.task_ph':      'Что должен сделать клиент...',
+  'admin.form.task_desc_ru':  'Описание задания (русский язык)',
+  'admin.form.task_ph_ru':   'Что должен сделать клиент — на русском…',
+  'admin.form.task_desc_uz':  'Описание задания (узбекский язык)',
+  'admin.form.task_ph_uz':   'Что должен сделать клиент — на узбекском…',
+  'admin.form.err_desc':     'Заполните описание на обоих языках.',
   'admin.form.end_date':     'Дата окончания (необязательно)',
   'admin.form.ends_on':      'Завершится {date}',
   'admin.form.require_pin':  'Требовать PIN',
@@ -793,8 +796,11 @@ const uz = {
   'admin.form.increase':     'Byudjetni oshiring yoki faollashtirishlarni kamaytiring',
   'admin.form.need_more':    'GEO yetarli emas — yana {geo} GEO kerak',
   'admin.form.task_type':    'Vazifa turi',
-  'admin.form.task_desc':    'Vazifa tavsifi (ixtiyoriy)',
-  'admin.form.task_ph':      'Mijoz nima qilishi kerak...',
+  'admin.form.task_desc_ru':  'Vazifa tavsifi (rus tilida)',
+  'admin.form.task_ph_ru':   'Mijoz nima qilishi kerak — rus tilida…',
+  'admin.form.task_desc_uz':  "Vazifa tavsifi (o'zbek tilida)",
+  'admin.form.task_ph_uz':   "Mijoz nima qilishi kerak — o'zbek tilida…",
+  'admin.form.err_desc':     "Ikkala tilda tavsifni to'ldiring.",
   'admin.form.end_date':     'Tugash sanasi (ixtiyoriy)',
   'admin.form.ends_on':      '{date} da tugaydi',
   'admin.form.require_pin':  'PIN talab qilish',
@@ -1215,8 +1221,11 @@ const en = {
   'admin.form.increase':     'Increase budget or reduce activations',
   'admin.form.need_more':    'Insufficient GEO — need {geo} more GEO',
   'admin.form.task_type':    'Task type',
-  'admin.form.task_desc':    'Task description (optional)',
-  'admin.form.task_ph':      'What must the customer do...',
+  'admin.form.task_desc_ru':  'Task description (Russian)',
+  'admin.form.task_ph_ru':   'What must the customer do — in Russian…',
+  'admin.form.task_desc_uz':  'Task description (Uzbek)',
+  'admin.form.task_ph_uz':   'What must the customer do — in Uzbek…',
+  'admin.form.err_desc':     'Fill in description in both languages.',
   'admin.form.end_date':     'End date (optional)',
   'admin.form.ends_on':      'Ends on {date}',
   'admin.form.require_pin':  'Require PIN',
@@ -1299,6 +1308,19 @@ const en = {
 };
 
 export const translations = { ru, uz, en };
+
+// Parse bilingual task_description field.
+// Stored as JSON {"ru":"...","uz":"..."} or legacy plain string.
+export function parseTaskDesc(raw, lang) {
+  if (!raw) return '';
+  try {
+    const obj = JSON.parse(raw);
+    if (obj && typeof obj === 'object') {
+      return obj[lang] || obj.ru || obj.uz || '';
+    }
+  } catch { /* not JSON */ }
+  return raw;
+}
 
 export function pluralize(lang, n, one, few, many) {
   if (lang !== 'ru') return `${n} ${n === 1 ? one : (many || few)}`;

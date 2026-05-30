@@ -9,6 +9,7 @@ import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
 import { C, E, cardBase, pressable } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
+import { parseTaskDesc } from '../lib/i18n';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const RYE = { fontFamily: "'Rye', serif" };
@@ -39,7 +40,7 @@ function SkeletonRow() {
 
 // ── Campaign detail sheet ──────────────────────────────────────────────────────
 function CampaignSheet({ campaign, userPos, onClose }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const dist = userPos && campaign.lat && campaign.lng
     ? haversineMeters(userPos, { lat: +campaign.lat, lng: +campaign.lng }) : null;
   const TaskIcon = TASK_ICONS[campaign.task_type] || MapPin;
@@ -87,7 +88,9 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               {t(`task.${campaign.task_type}`) || t('task.visit')}
             </div>
             {campaign.task_description && (
-              <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.55, marginTop: 6 }}>{campaign.task_description}</div>
+              <div style={{ fontSize: 14, color: C.t2, lineHeight: 1.55, marginTop: 6 }}>
+                {parseTaskDesc(campaign.task_description, lang)}
+              </div>
             )}
           </div>
           {campaign.requires_pin && (
