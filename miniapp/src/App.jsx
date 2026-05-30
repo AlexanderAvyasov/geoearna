@@ -268,10 +268,25 @@ export const GLOBAL_CSS = `
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
 
+  /* ── Page enter ── */
   @keyframes pageEnter {
-    from { opacity: 0; transform: translateY(8px); }
+    from { opacity: 0; transform: translateY(12px) scale(0.987); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Ambient ── */
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50%       { opacity: .35; }
@@ -284,29 +299,75 @@ export const GLOBAL_CSS = `
     0%, 100% { opacity: 0.5; }
     50%       { opacity: 1; }
   }
+  @keyframes breatheGlow {
+    0%, 100% { box-shadow: 0 0 10px rgba(201,123,71,0.18); }
+    50%       { box-shadow: 0 0 28px rgba(201,123,71,0.52); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%       { transform: translateY(-6px); }
+  }
+
+  /* ── Map / radar ── */
   @keyframes radarPing {
     0%   { transform: scale(0.6); opacity: 0.8; }
     100% { transform: scale(2.4); opacity: 0; }
   }
-  @keyframes shimmer {
-    0%   { opacity: 0.5; }
-    50%  { opacity: 0.9; }
-    100% { opacity: 0.5; }
+  @keyframes userPing {
+    0%, 100% { transform: scale(1);   opacity: .7; }
+    50%       { transform: scale(1.7); opacity: 0; }
   }
+  @keyframes markerPop {
+    0%   { transform: translate(-50%,-100%) scale(0);    opacity: 0; }
+    65%  { transform: translate(-50%,-100%) scale(1.18); opacity: 1; }
+    100% { transform: translate(-50%,-100%) scale(1);    opacity: 1; }
+  }
+  @keyframes markerPulse {
+    0%, 100% { box-shadow: 0 0 0 0   rgba(201,123,71,0.55); }
+    50%       { box-shadow: 0 0 0 8px rgba(201,123,71,0); }
+  }
+
+  /* ── Skeleton — gradient sweep ── */
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .sk {
+    background: linear-gradient(
+      90deg,
+      rgba(255,255,255,0.04) 0%,
+      rgba(255,255,255,0.09) 30%,
+      rgba(255,255,255,0.14) 50%,
+      rgba(255,255,255,0.09) 70%,
+      rgba(255,255,255,0.04) 100%
+    );
+    background-size: 200% 100%;
+    flex-shrink: 0;
+    animation: shimmer 1.7s ease-in-out infinite;
+  }
+
+  /* ── QR scan button ring ── */
   @keyframes scanRing {
-    0%   { box-shadow: 0 0 0 0   rgba(201,123,71,.6); }
-    60%  { box-shadow: 0 0 0 14px rgba(201,123,71,0); }
+    0%   { box-shadow: 0 0 0 0   rgba(201,123,71,.65); }
+    65%  { box-shadow: 0 0 0 18px rgba(201,123,71,0); }
     100% { box-shadow: 0 0 0 0   rgba(201,123,71,0); }
   }
+
+  /* ── Checkin success particles ── */
   @keyframes coinBurst {
     0%   { opacity: 1; transform: translate(0,0) scale(1); }
-    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0.2); }
+    100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0.15); }
   }
+
+  /* ── Pop (icons, badges) ── */
   @keyframes pop {
-    0%   { transform: scale(0.6); opacity: 0; }
-    70%  { transform: scale(1.08); }
-    100% { transform: scale(1);   opacity: 1; }
+    0%   { transform: scale(0.45); opacity: 0; }
+    55%  { transform: scale(1.12); opacity: 1; }
+    80%  { transform: scale(0.96); }
+    100% { transform: scale(1);    opacity: 1; }
   }
+
+  /* ── Ripple ── */
   @keyframes ripple {
     to { transform: scale(3); opacity: 0; }
   }
@@ -314,10 +375,22 @@ export const GLOBAL_CSS = `
     from { transform: scale(0); opacity: 0.28; }
     to   { transform: scale(3.5); opacity: 0; }
   }
+
+  /* ── Content reveals ── */
   @keyframes fadeUp {
-    from { transform: translateY(14px); opacity: 0; }
+    from { transform: translateY(20px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
   }
+  @keyframes morphIn {
+    from { transform: translateY(10px) scale(0.96); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+  }
+  @keyframes cardReveal {
+    from { transform: translateY(24px) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+  }
+
+  /* ── Modals ── */
   @keyframes slideUp {
     from { transform: translateY(100%); }
     to   { transform: translateY(0); }
@@ -326,22 +399,14 @@ export const GLOBAL_CSS = `
     from { opacity: 0; }
     to   { opacity: 1; }
   }
-  @keyframes userPing {
-    0%, 100% { transform: scale(1);   opacity: .7; }
-    50%       { transform: scale(1.7); opacity: 0; }
-  }
-  @keyframes successGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(143,174,123,.4); }
-    50%       { box-shadow: 0 0 0 22px rgba(143,174,123,0); }
-  }
+
+  /* ── Toast ── */
   @keyframes toastIn {
-    from { transform: translate(-50%, 10px); opacity: 0; }
+    from { transform: translate(-50%, 16px); opacity: 0; }
     to   { transform: translate(-50%, 0);    opacity: 1; }
   }
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-5px); }
-  }
+
+  /* ── Spinner ── */
   @keyframes spin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
@@ -354,11 +419,12 @@ export const GLOBAL_CSS = `
     100% { transform: translateY(0);    opacity: 1; }
   }
 
-  /* ── Nav icon bounce on activation ── */
+  /* ── Nav icon bounce ── */
   @keyframes iconBounce {
     0%   { transform: scale(1); }
-    28%  { transform: scale(0.8); }
-    68%  { transform: scale(1.14); }
+    25%  { transform: scale(0.74); }
+    65%  { transform: scale(1.18); }
+    85%  { transform: scale(0.95); }
     100% { transform: scale(1); }
   }
 
@@ -368,55 +434,55 @@ export const GLOBAL_CSS = `
     35%  { opacity: 1; transform: scaleY(1); transform-origin: bottom; }
     100% { opacity: 0; transform: scaleY(1); transform-origin: bottom; }
   }
+  @keyframes successGlow {
+    0%, 100% { box-shadow: 0 0 0 0   rgba(143,174,123,.4); }
+    50%       { box-shadow: 0 0 0 24px rgba(143,174,123,0); }
+  }
 
   /* ── Streak milestone rays ── */
   @keyframes rayBurst {
     0%   { transform: scaleY(0); opacity: 0; }
     40%  { transform: scaleY(1); opacity: 1; }
-    100% { transform: scaleY(1.4); opacity: 0; }
+    100% { transform: scaleY(1.45); opacity: 0; }
   }
   @keyframes streakPop {
-    0%   { transform: scale(0.3); opacity: 0; }
-    55%  { transform: scale(1.1); opacity: 1; }
+    0%   { transform: scale(0.25); opacity: 0; }
+    55%  { transform: scale(1.14); opacity: 1; }
     80%  { transform: scale(0.95); }
-    100% { transform: scale(1);   opacity: 1; }
+    100% { transform: scale(1);    opacity: 1; }
   }
 
-  /* ── Map marker entrance ── */
-  @keyframes markerPop {
-    0%   { transform: translate(-50%,-100%) scale(0); opacity: 0; }
-    65%  { transform: translate(-50%,-100%) scale(1.18); opacity: 1; }
-    100% { transform: translate(-50%,-100%) scale(1); opacity: 1; }
+  /* ── Number / counter animation ── */
+  @keyframes numberPop {
+    0%   { transform: scale(0.65); opacity: 0; }
+    60%  { transform: scale(1.10); }
+    100% { transform: scale(1);    opacity: 1; }
   }
-  @keyframes markerPulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(201,123,71,0.55); }
-    50%       { box-shadow: 0 0 0 8px rgba(201,123,71,0); }
-  }
-
-  /* ── Skeleton shimmer ── */
-  .sk {
-    background: rgba(255,255,255,0.06);
-    flex-shrink: 0;
-    animation: shimmer 1.6s ease-in-out infinite;
+  @keyframes counterRoll {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
   }
 
+  /* ── Error shake ── */
+  @keyframes shakeX {
+    0%, 100% { transform: translateX(0); }
+    15%       { transform: translateX(-7px); }
+    30%       { transform: translateX(7px); }
+    45%       { transform: translateX(-4px); }
+    60%       { transform: translateX(4px); }
+    75%       { transform: translateX(-2px); }
+    90%       { transform: translateX(2px); }
+  }
+
+  /* ── Legacy splash aliases (kept for compat) ── */
   @keyframes splashLogoIn {
     0%   { opacity: 0; transform: scale(0.72) translateY(12px); }
     60%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
-    100% { opacity: 1; transform: scale(1)    translateY(0); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
   }
   @keyframes splashWordIn {
     0%   { opacity: 0; transform: translateY(10px); }
     100% { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes splashDot {
-    0%, 80%, 100% { transform: scale(0.55); opacity: 0.25; }
-    40%            { transform: scale(1);    opacity: 1; }
-  }
-  @keyframes splashRing {
-    0%   { box-shadow: 0 0 0 0   rgba(201,123,71,0.45); }
-    70%  { box-shadow: 0 0 0 22px rgba(201,123,71,0); }
-    100% { box-shadow: 0 0 0 0   rgba(201,123,71,0); }
   }
   @keyframes splashFadeOut {
     0%   { opacity: 1; }
@@ -427,26 +493,50 @@ export const GLOBAL_CSS = `
 // ─── Splash CSS (self-contained, does not depend on GLOBAL_CSS timing) ───────
 const SPLASH_CSS = `
   @keyframes _sLogoIn {
-    0%   { opacity: 0; transform: scale(0.72) translateY(12px); }
-    60%  { opacity: 1; transform: scale(1.04) translateY(-2px); }
-    100% { opacity: 1; transform: scale(1)    translateY(0); }
+    0%   { opacity: 0; transform: scale(0.45) translateY(24px); }
+    55%  { opacity: 1; transform: scale(1.09) translateY(-4px); }
+    78%  { transform: scale(0.97) translateY(1px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
   }
-  @keyframes _sWordIn {
-    0%   { opacity: 0; transform: translateY(10px); }
-    100% { opacity: 1; transform: translateY(0); }
+  @keyframes _sGeoIn {
+    0%   { opacity: 0; transform: translateX(-28px) skewX(-8deg); }
+    65%  { opacity: 1; transform: translateX(3px) skewX(1deg); }
+    100% { opacity: 1; transform: translateX(0) skewX(0); }
   }
-  @keyframes _sDot {
-    0%, 80%, 100% { transform: scale(0.55); opacity: 0.25; }
-    40%            { transform: scale(1);    opacity: 1; }
+  @keyframes _sEarnIn {
+    0%   { opacity: 0; transform: translateX(28px) skewX(8deg); }
+    65%  { opacity: 1; transform: translateX(-3px) skewX(-1deg); }
+    100% { opacity: 1; transform: translateX(0) skewX(0); }
   }
-  @keyframes _sRing {
-    0%   { box-shadow: 0 0 0 0    rgba(201,123,71,0.40); }
-    70%  { box-shadow: 0 0 0 22px rgba(201,123,71,0); }
-    100% { box-shadow: 0 0 0 0    rgba(201,123,71,0); }
+  @keyframes _sTagIn {
+    0%   { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+    100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  }
+  @keyframes _sRingPulse {
+    0%   { box-shadow: 0 0 0 0    rgba(201,123,71,0.55), 0 24px 70px rgba(0,0,0,0.6); }
+    65%  { box-shadow: 0 0 0 26px rgba(201,123,71,0),   0 24px 70px rgba(0,0,0,0.6); }
+    100% { box-shadow: 0 0 0 0    rgba(201,123,71,0),   0 24px 70px rgba(0,0,0,0.6); }
+  }
+  @keyframes _sDotGlow {
+    0%, 100% { opacity: 0.45; transform: scale(0.7); }
+    50%       { opacity: 1;   transform: scale(1.2); }
+  }
+  @keyframes _sArcSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+  @keyframes _sOrb1 {
+    0%, 100% { transform: translate(0,0) scale(1);    opacity: 0.8; }
+    35%       { transform: translate(40px,-25px) scale(1.2); opacity: 1; }
+    70%       { transform: translate(-25px,18px) scale(0.88); opacity: 0.6; }
+  }
+  @keyframes _sOrb2 {
+    0%, 100% { transform: translate(0,0);         opacity: 0.7; }
+    50%       { transform: translate(-30px,-22px); opacity: 1; }
   }
   @keyframes _sFadeOut {
-    0%   { opacity: 1; }
-    100% { opacity: 0; }
+    0%   { opacity: 1; transform: scale(1);    filter: blur(0); }
+    100% { opacity: 0; transform: scale(1.04); filter: blur(3px); }
   }
 `;
 
@@ -462,69 +552,112 @@ function SplashScreen({ fading }) {
         background: C.bg,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        animation: fading ? '_sFadeOut 0.45s ease forwards' : 'none',
+        overflow: 'hidden',
+        animation: fading ? '_sFadeOut 0.5s cubic-bezier(0.4,0,1,1) forwards' : 'none',
       }}>
-        {/* Ambient glow */}
+
+        {/* Ambient orb 1 — orange */}
         <div style={{
-          position: 'absolute', top: '28%', left: '50%',
-          transform: 'translateX(-50%)',
-          width: 280, height: 280, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(201,123,71,0.07) 0%, transparent 70%)',
+          position: 'absolute',
+          top: '18%', left: '15%',
+          width: 260, height: 260,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(201,123,71,0.18) 0%, transparent 68%)',
+          filter: 'blur(32px)',
           pointerEvents: 'none',
+          animation: '_sOrb1 7s ease-in-out infinite',
+        }} />
+
+        {/* Ambient orb 2 — blue accent */}
+        <div style={{
+          position: 'absolute',
+          bottom: '22%', right: '10%',
+          width: 200, height: 200,
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(88,130,193,0.14) 0%, transparent 70%)',
+          filter: 'blur(28px)',
+          pointerEvents: 'none',
+          animation: '_sOrb2 9s ease-in-out 1s infinite',
         }} />
 
         {/* Logo mark */}
         <div style={{
           position: 'relative',
-          width: 88, height: 88,
-          borderRadius: 28,
-          background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
-          border: `0.5px solid rgba(201,123,71,0.30)`,
+          width: 96, height: 96,
+          borderRadius: 30,
+          background: 'linear-gradient(145deg, #0F1C2E 0%, #070E18 100%)',
+          border: '1px solid rgba(201,123,71,0.28)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          animation: '_sLogoIn 0.65s cubic-bezier(0.32,0.72,0,1) both, _sRing 2.4s ease-in-out 0.7s infinite',
-          marginBottom: 24,
+          marginBottom: 28,
+          animation: '_sLogoIn 0.75s cubic-bezier(0.34,1.56,0.64,1) both, _sRingPulse 2.2s ease-in-out 0.85s infinite',
         }}>
-          <MapPin size={40} color={C.geo} strokeWidth={1.75} />
+          <MapPin size={44} color={C.geo} strokeWidth={1.6} />
+          {/* Pulsing status dot */}
           <div style={{
-            position: 'absolute', top: 10, right: 10,
-            width: 9, height: 9, borderRadius: '50%',
-            background: C.geo,
-            boxShadow: `0 0 8px ${C.geo}`,
+            position: 'absolute', top: 11, right: 11,
+            width: 10, height: 10, borderRadius: '50%',
+            background: '#8FAE7B',
+            boxShadow: '0 0 10px rgba(143,174,123,0.9)',
+            animation: '_sDotGlow 1.8s ease-in-out infinite',
           }} />
         </div>
 
-        {/* Wordmark */}
+        {/* Split wordmark: "Geo" from left, "Earn" from right */}
         <div style={{
-          animation: '_sWordIn 0.5s ease 0.3s both',
-          textAlign: 'center',
+          display: 'flex', alignItems: 'baseline', gap: 0,
+          fontSize: 32, fontWeight: 800, letterSpacing: -1,
+          lineHeight: 1, overflow: 'hidden',
         }}>
-          <div style={{
-            fontSize: 28, fontWeight: 800, letterSpacing: -0.8,
-            color: C.t1, lineHeight: 1,
-          }}>
-            Geo<span style={{ color: C.geo }}>Earn</span>
-          </div>
-          <div style={{
-            fontSize: 13, color: C.t3, fontWeight: 500,
-            marginTop: 6, letterSpacing: 0.3,
-          }}>
-            {t('splash.tagline')}
-          </div>
+          <span style={{
+            color: C.geo,
+            display: 'inline-block',
+            animation: '_sGeoIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.25s both',
+          }}>Geo</span>
+          <span style={{
+            color: C.t1,
+            display: 'inline-block',
+            animation: '_sEarnIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.35s both',
+          }}>Earn</span>
         </div>
 
-        {/* Loading dots */}
+        {/* Tagline */}
         <div style={{
-          display: 'flex', gap: 7, marginTop: 48,
-          animation: '_sWordIn 0.5s ease 0.5s both',
+          fontSize: 13, color: C.t3, fontWeight: 500,
+          marginTop: 8, letterSpacing: 0.3, textAlign: 'center',
+          maxWidth: 220,
+          animation: '_sTagIn 0.55s ease 0.65s both',
         }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: 7, height: 7, borderRadius: '50%',
-              background: C.geo,
-              animation: `_sDot 1.3s ease-in-out ${i * 0.18}s infinite`,
-            }} />
-          ))}
+          {t('splash.tagline')}
         </div>
+
+        {/* SVG arc spinner */}
+        <div style={{
+          marginTop: 52,
+          animation: '_sTagIn 0.5s ease 0.7s both',
+        }}>
+          <svg
+            width={42} height={42}
+            viewBox="0 0 42 42"
+            style={{ animation: '_sArcSpin 1s linear infinite' }}
+          >
+            <circle
+              cx={21} cy={21} r={17}
+              fill="none"
+              stroke="rgba(201,123,71,0.15)"
+              strokeWidth={2.5}
+            />
+            <circle
+              cx={21} cy={21} r={17}
+              fill="none"
+              stroke={C.geo}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeDasharray="72 35"
+              strokeDashoffset={0}
+            />
+          </svg>
+        </div>
+
       </div>
     </>
   );
