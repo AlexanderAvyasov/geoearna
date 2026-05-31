@@ -8,7 +8,7 @@ import {
 import { API_BASE, apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
-import { C, E } from '../lib/design';
+import { C, E, FF } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 import { parseTaskDesc } from '../lib/i18n';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -555,16 +555,18 @@ function HeroHeadline({ t }) {
     <div>
       {restWords && (
         <div style={{
-          fontSize: 36, fontWeight: 800, lineHeight: 0.96,
-          letterSpacing: -1.5, color: C.t1,
+          fontSize: 36, fontWeight: 700, lineHeight: 1.0,
+          letterSpacing: 0, color: C.t1,
+          fontFamily: FF.display,
           animation: `heroReveal 0.48s ${EO} both`,
         }}>
           {restWords}
         </div>
       )}
       <div style={{
-        fontSize: 36, fontWeight: 800, lineHeight: 0.96,
-        letterSpacing: -1.5, color: C.geo,
+        fontSize: 36, fontWeight: 700, lineHeight: 1.0,
+        letterSpacing: 0, color: C.geo,
+        fontFamily: FF.display,
         marginBottom: subtitle ? 10 : 0,
         animation: `heroReveal 0.48s 0.07s ${EO} both`,
       }}>
@@ -610,15 +612,16 @@ function ActiveHeroContent({ balance, streak }) {
       </div>
 
       {/* Balance number */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
         <span style={{
-          fontSize: 48, fontWeight: 300, color: C.t1,
-          letterSpacing: -2.2, lineHeight: 1,
+          fontSize: 48, fontWeight: 600, color: C.t1,
+          letterSpacing: 0, lineHeight: 1,
+          fontFamily: FF.display,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {formatGeo(balance)}
         </span>
-        <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>
+        <span style={{ fontSize: 15, fontWeight: 600, color: C.t3, paddingBottom: 4, fontFamily: FF.display }}>
           GEO
         </span>
       </div>
@@ -652,15 +655,16 @@ function PowerHeroContent({ balance, streak, level, xp, visits }) {
   return (
     <div style={{ textAlign: 'center', padding: '0 20px', animation: `balanceFadeIn 0.4s ${EASE_OUT} both` }}>
       {/* Balance — slightly smaller to leave room for stats */}
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8, marginBottom: 10 }}>
         <span style={{
-          fontSize: 44, fontWeight: 300, color: C.t1,
-          letterSpacing: -2, lineHeight: 1,
+          fontSize: 44, fontWeight: 600, color: C.t1,
+          letterSpacing: 0, lineHeight: 1,
+          fontFamily: FF.display,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {formatGeo(balance)}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 600, color: C.geo, paddingBottom: 3 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: C.geo, paddingBottom: 3, fontFamily: FF.display }}>
           GEO
         </span>
       </div>

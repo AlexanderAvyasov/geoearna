@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
-import { C, E } from '../lib/design';
+import { C, E, FF } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LANGS } from '../lib/i18n';
 import { user } from '../hooks/useTelegram';
@@ -418,11 +418,11 @@ export default function Profile() {
         }}>
           {loading
             ? <Skel h={24} w={60} r={7} />
-            : <div style={{ fontSize: 22, fontWeight: 700, color: C.geo, letterSpacing: -0.8, lineHeight: 1 }}>
+            : <div style={{ fontSize: 22, fontWeight: 600, color: C.geo, letterSpacing: 0, lineHeight: 1, fontFamily: FF.display }}>
                 {balance.toLocaleString('ru-RU')}
               </div>
           }
-          <div style={{ fontSize: 10, fontWeight: 600, color: C.geo, opacity: 0.65, marginTop: 2 }}>GEO</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.geo, opacity: 0.65, marginTop: 2, fontFamily: FF.display }}>GEO</div>
           <div style={{ fontSize: 10, color: C.t3, marginTop: 4, fontWeight: 500 }}>{t('hdr.balance')}</div>
         </div>
 
@@ -435,7 +435,7 @@ export default function Profile() {
         }}>
           {loading
             ? <Skel h={24} w={40} r={7} />
-            : <div style={{ fontSize: 22, fontWeight: 700, color: C.teal, letterSpacing: -0.5, lineHeight: 1 }}>
+            : <div style={{ fontSize: 22, fontWeight: 600, color: C.teal, letterSpacing: 0, lineHeight: 1, fontFamily: FF.display }}>
                 {visits}
               </div>
           }
@@ -453,7 +453,7 @@ export default function Profile() {
             <Flame size={13} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} style={{ flexShrink: 0 }} />
             {loading
               ? <Skel h={24} w={30} r={7} />
-              : <div style={{ fontSize: 22, fontWeight: 700, color: streak > 0 ? C.orange : C.t3, letterSpacing: -0.5, lineHeight: 1 }}>
+              : <div style={{ fontSize: 22, fontWeight: 600, color: streak > 0 ? C.orange : C.t3, letterSpacing: 0, lineHeight: 1, fontFamily: FF.display }}>
                   {streak}
                 </div>
             }

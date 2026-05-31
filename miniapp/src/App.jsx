@@ -2,7 +2,7 @@ import { Component, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useTelegram, tg, user } from './hooks/useTelegram';
 import { MapPin, Activity, ScanLine, Wallet, User as UserIcon, Shield, Loader2, Home as HomeIcon, Star, Store as StoreIcon } from 'lucide-react';
-import { C, E } from './lib/design';
+import { C, E, FF } from './lib/design';
 import { waitForInitData, API_BASE, apiFetch } from './lib/api';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { headerCache } from './lib/headerCache';
@@ -217,7 +217,7 @@ function BrowserGate() {
         <MapPin size={44} color={C.geo} strokeWidth={1.75} />
       </div>
 
-      <div style={{ fontSize: 30, fontWeight: 800, color: C.t1, letterSpacing: -0.8, marginBottom: 6 }}>
+      <div style={{ fontSize: 30, fontWeight: 700, color: C.t1, letterSpacing: 0, marginBottom: 6, fontFamily: FF.display }}>
         Geo<span style={{ color: C.geo }}>Earn</span>
       </div>
 
@@ -248,6 +248,15 @@ function BrowserGate() {
 }
 
 export const GLOBAL_CSS = `
+  @font-face {
+    font-family: 'Ethnocentric';
+    src: url('/fonts/ethnocentric.woff2') format('woff2'),
+         url('/fonts/ethnocentric.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+
   :root {
     --geo: #C97B47;
     --bg: #081018;
@@ -260,7 +269,7 @@ export const GLOBAL_CSS = `
     margin: 0; padding: 0;
     background: ${C.bg};
     color: ${C.t1};
-    font-family: 'Inter', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Rajdhani', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior: none;

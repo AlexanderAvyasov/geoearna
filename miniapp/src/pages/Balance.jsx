@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
-import { C, E } from '../lib/design';
+import { C, E, FF } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
 // ── Easing ────────────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ export default function Balance() {
 
       {/* Page title — replaces removed GlobalHeader */}
       <div style={{ padding: '20px 20px 0', marginBottom: 4 }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: C.t1, letterSpacing: -0.6 }}>
+        <span style={{ fontSize: 22, fontWeight: 700, color: C.t1, letterSpacing: 0, fontFamily: FF.display }}>
           Кошелёк
         </span>
       </div>
@@ -369,12 +369,14 @@ export default function Balance() {
                   value={geoBalance}
                   loading={loading}
                   style={{
-                    fontSize: 50, fontWeight: 300,
-                    letterSpacing: -2, lineHeight: 1, color: C.t1,
+                    fontSize: 50, fontWeight: 600,
+                    letterSpacing: 0, lineHeight: 1, color: C.t1,
+                    fontFamily: FF.display,
                   }}
                 />
                 <span style={{
-                  fontSize: 17, fontWeight: 600, color: C.geo, letterSpacing: -0.5,
+                  fontSize: 17, fontWeight: 600, color: C.geo, letterSpacing: 0,
+                  fontFamily: FF.display,
                 }}>
                   GEO
                 </span>
