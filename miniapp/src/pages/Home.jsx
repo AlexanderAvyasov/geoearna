@@ -28,24 +28,15 @@ function ensureHomeCSS() {
       from { opacity: 0; transform: translateY(18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes particleDrift {
-      0%   { transform: translate(0,0);                    opacity: 0; }
-      8%   { opacity: 0.9; }
-      85%  { opacity: 0.35; }
-      100% { transform: translate(var(--pdx),var(--pdy));  opacity: 0; }
-    }
+    @keyframes ptFade0 { 0%,100%{opacity:0} 10%{opacity:0.85} 80%{opacity:0.3} }
+    @keyframes ptFade1 { 0%,100%{opacity:0} 10%{opacity:0.75} 80%{opacity:0.25} }
+    @keyframes ptFade2 { 0%,100%{opacity:0} 10%{opacity:0.65} 80%{opacity:0.2} }
+    @keyframes ptFade3 { 0%,100%{opacity:0} 10%{opacity:0.80} 80%{opacity:0.28} }
+    @keyframes ptFade4 { 0%,100%{opacity:0} 10%{opacity:0.60} 80%{opacity:0.18} }
+    @keyframes ptFade5 { 0%,100%{opacity:0} 10%{opacity:0.70} 80%{opacity:0.22} }
     @keyframes ambientBreath {
       0%,100% { box-shadow: 0 6px 24px rgba(201,123,71,0.28), 0 1px 0 rgba(255,255,255,0.10) inset; }
       50%      { box-shadow: 0 6px 36px rgba(201,123,71,0.48), 0 1px 0 rgba(255,255,255,0.12) inset; }
-    }
-    @keyframes nodeFlicker {
-      0%,100% { opacity: var(--nb); }
-      50%      { opacity: var(--np); }
-    }
-    @keyframes scanPulse {
-      0%   { box-shadow: 0 0 0 0   rgba(201,123,71,0.55); }
-      65%  { box-shadow: 0 0 0 16px rgba(201,123,71,0); }
-      100% { box-shadow: 0 0 0 0   rgba(201,123,71,0); }
     }
   `;
   document.head.appendChild(el);
@@ -128,19 +119,25 @@ function GlobeVisualization() {
       <circle cx="187" cy="153" r="7" fill="rgba(201,123,71,0.18)" />
       <circle cx="187" cy="153" r="3.5" fill="#C97B47" opacity="0.95" />
 
-      {/* Secondary nodes */}
-      <circle cx="138" cy="167" r="2.5" fill="#C97B47"
-        style={{ '--nb': 0.60, '--np': 1, animation: 'nodeFlicker 2.5s 0.3s ease-in-out infinite' }} />
-      <circle cx="248" cy="162" r="2.5" fill="#C97B47"
-        style={{ '--nb': 0.50, '--np': 0.9, animation: 'nodeFlicker 3.1s 1.2s ease-in-out infinite' }} />
-      <circle cx="114" cy="191" r="2"   fill="#C97B47"
-        style={{ '--nb': 0.35, '--np': 0.70, animation: 'nodeFlicker 3.6s 0.7s ease-in-out infinite' }} />
-      <circle cx="291" cy="186" r="2"   fill="#C97B47"
-        style={{ '--nb': 0.30, '--np': 0.65, animation: 'nodeFlicker 2.8s 2.1s ease-in-out infinite' }} />
-      <circle cx="165" cy="139" r="1.5" fill="#C97B47"
-        style={{ '--nb': 0.25, '--np': 0.55, animation: 'nodeFlicker 4.0s 1.6s ease-in-out infinite' }} />
-      <circle cx="216" cy="136" r="1.5" fill="#C97B47"
-        style={{ '--nb': 0.20, '--np': 0.50, animation: 'nodeFlicker 3.4s 2.6s ease-in-out infinite' }} />
+      {/* Secondary nodes — SVG SMIL animate for opacity (reliable in WebView) */}
+      <circle cx="138" cy="167" r="2.5" fill="#C97B47">
+        <animate attributeName="opacity" values="0.60;1;0.60"   dur="2.5s" begin="0.3s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="248" cy="162" r="2.5" fill="#C97B47">
+        <animate attributeName="opacity" values="0.50;0.90;0.50" dur="3.1s" begin="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="114" cy="191" r="2"   fill="#C97B47">
+        <animate attributeName="opacity" values="0.35;0.70;0.35" dur="3.6s" begin="0.7s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="291" cy="186" r="2"   fill="#C97B47">
+        <animate attributeName="opacity" values="0.30;0.65;0.30" dur="2.8s" begin="2.1s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="165" cy="139" r="1.5" fill="#C97B47">
+        <animate attributeName="opacity" values="0.25;0.55;0.25" dur="4.0s" begin="1.6s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="216" cy="136" r="1.5" fill="#C97B47">
+        <animate attributeName="opacity" values="0.20;0.50;0.20" dur="3.4s" begin="2.6s" repeatCount="indefinite"/>
+      </circle>
 
       {/* Connection lines */}
       <line x1="187" y1="153" x2="138" y2="167" stroke="rgba(201,123,71,0.14)" strokeWidth="0.5" strokeDasharray="3,5" />
@@ -157,27 +154,27 @@ function GlobeVisualization() {
   );
 }
 
-// ── Floating geo particles ────────────────────────────────────────────────────
+// ── Floating geo particles — individual named animations, no CSS custom props ──
+const PARTICLES = [
+  { x: 14, y: 55, s: 2.5, delay: 0,   dur: 4.2, anim: 'ptFade0' },
+  { x: 82, y: 40, s: 2.0, delay: 0.9, dur: 5.0, anim: 'ptFade1' },
+  { x: 28, y: 72, s: 1.5, delay: 1.6, dur: 4.6, anim: 'ptFade2' },
+  { x: 68, y: 65, s: 2.0, delay: 2.1, dur: 3.8, anim: 'ptFade3' },
+  { x: 50, y: 30, s: 1.5, delay: 3.0, dur: 5.2, anim: 'ptFade4' },
+  { x: 92, y: 50, s: 2.0, delay: 1.1, dur: 4.0, anim: 'ptFade5' },
+];
+
 function GeoParticles() {
-  const pts = [
-    { x: 14, y: 58, s: 2.5, dx:  -14, dy: -28, delay: 0,   dur: 4.2 },
-    { x: 82, y: 42, s: 2.0, dx:   10, dy: -32, delay: 0.9, dur: 5.0 },
-    { x: 28, y: 75, s: 1.5, dx:   -8, dy: -22, delay: 1.6, dur: 4.6 },
-    { x: 68, y: 68, s: 2.0, dx:   13, dy: -25, delay: 2.1, dur: 3.8 },
-    { x: 50, y: 32, s: 1.5, dx:   -6, dy: -18, delay: 3.0, dur: 5.2 },
-    { x: 92, y: 52, s: 2.0, dx:    9, dy: -30, delay: 1.1, dur: 4.0 },
-  ];
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {pts.map((p, i) => (
+      {PARTICLES.map((p, i) => (
         <div key={i} style={{
           position: 'absolute',
           left: `${p.x}%`, top: `${p.y}%`,
           width: p.s, height: p.s, borderRadius: '50%',
           background: C.geo,
-          boxShadow: `0 0 ${p.s * 2.5}px ${C.geo}`,
-          '--pdx': `${p.dx}px`, '--pdy': `${p.dy}px`,
-          animation: `particleDrift ${p.dur}s ${p.delay}s ease-in-out infinite`,
+          boxShadow: `0 0 ${p.s * 3}px ${C.geo}`,
+          animation: `${p.anim} ${p.dur}s ${p.delay}s ease-in-out infinite`,
         }} />
       ))}
     </div>
@@ -478,6 +475,39 @@ function CampaignRow({ campaign, onTap, index }) {
   );
 }
 
+// ── Hero headline — splits title into two lines, accents last word ────────────
+function HeroHeadline({ t }) {
+  const title = t('home.title') || 'Зарабатывайте GEO';
+  const words = title.trim().split(' ');
+  const lastWord = words[words.length - 1];
+  const restWords = words.slice(0, -1).join(' ');
+  const subtitle = t('home.subtitle') || '';
+
+  return (
+    <div style={{ animation: 'heroReveal 0.55s ease both' }}>
+      {restWords ? (
+        <>
+          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.t1 }}>
+            {restWords}
+          </div>
+          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo, marginBottom: 12 }}>
+            {lastWord}.
+          </div>
+        </>
+      ) : (
+        <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo, marginBottom: 12 }}>
+          {lastWord}.
+        </div>
+      )}
+      {subtitle ? (
+        <div style={{ fontSize: 14, color: C.t3, fontWeight: 400, lineHeight: 1.55, animation: 'heroReveal 0.55s 0.12s ease both' }}>
+          {subtitle}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   ensureHomeCSS();
@@ -595,27 +625,8 @@ export default function Home() {
             <LanguageSwitcher />
           </div>
 
-          {/* Headline */}
-          <div style={{ animation: 'heroReveal 0.55s ease both' }}>
-            <div style={{
-              fontSize: 42, fontWeight: 900, lineHeight: 0.92,
-              letterSpacing: -2, color: C.t1,
-            }}>
-              Explore
-            </div>
-            <div style={{
-              fontSize: 42, fontWeight: 900, lineHeight: 0.92,
-              letterSpacing: -2, color: C.geo, marginBottom: 12,
-            }}>
-              Nearby.
-            </div>
-            <div style={{
-              fontSize: 14, color: C.t3, fontWeight: 400,
-              lineHeight: 1.55, animation: 'heroReveal 0.55s 0.12s ease both',
-            }}>
-              Every place rewards you with GEO.
-            </div>
-          </div>
+          {/* Headline — uses translations */}
+          <HeroHeadline t={t} />
         </div>
       </div>
 
