@@ -505,6 +505,46 @@ function CampaignRow({ campaign, onTap, index }) {
   );
 }
 
+// ── Hero headline — shown when balance is 0/null ─────────────────────────────
+function HeroHeadline({ t }) {
+  const title     = t('home.title') || 'Зарабатывайте GEO';
+  const subtitle  = t('home.subtitle') || '';
+  const words     = title.trim().split(' ');
+  const lastWord  = words[words.length - 1];
+  const restWords = words.slice(0, -1).join(' ');
+  const EO = 'cubic-bezier(0.23,1,0.32,1)';
+
+  return (
+    <div>
+      {restWords && (
+        <div style={{
+          fontSize: 36, fontWeight: 800, lineHeight: 0.96,
+          letterSpacing: -1.5, color: C.t1,
+          animation: `heroReveal 0.48s ${EO} both`,
+        }}>
+          {restWords}
+        </div>
+      )}
+      <div style={{
+        fontSize: 36, fontWeight: 800, lineHeight: 0.96,
+        letterSpacing: -1.5, color: C.geo,
+        marginBottom: subtitle ? 10 : 0,
+        animation: `heroReveal 0.48s 0.07s ${EO} both`,
+      }}>
+        {lastWord}.
+      </div>
+      {subtitle && (
+        <div style={{
+          fontSize: 13, color: C.t3, fontWeight: 400, lineHeight: 1.5,
+          animation: `heroReveal 0.48s 0.15s ${EO} both`,
+        }}>
+          {subtitle}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   ensureHomeCSS();
@@ -648,57 +688,46 @@ export default function Home() {
           <LanguageSwitcher />
         </div>
 
-        {/* Balance stat — absolute bottom, above bottom fade */}
-        <div style={{
-          position: 'absolute', bottom: 16, left: 0, right: 0,
-          textAlign: 'center', zIndex: 3,
-          animation: `heroReveal 0.55s ${EASE_OUT} 0.15s both`,
-        }}>
-          {/* Label */}
-          <div style={{
-            fontSize: 10, fontWeight: 600, color: C.t3,
-            letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-          }}>
-            {/* Live indicator */}
-            <span style={{
-              width: 5, height: 5, borderRadius: '50%',
-              background: C.green, display: 'inline-block',
-              animation: 'liveSignal 2.2s ease-in-out infinite',
-            }} />
-            GEO Balance
-          </div>
-
-          {/* Number */}
+        {/* Hero content — balance when earned, product pitch for new users */}
+        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 3 }}>
           {balanceLoading ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 54 }}>
-              <div className="sk" style={{ width: 130, height: 44, borderRadius: 12 }} />
+            /* Loading — neutral skeleton, no "0" flash */
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 68 }}>
+              <div className="sk" style={{ width: 140, height: 46, borderRadius: 12 }} />
+            </div>
+          ) : balance > 0 ? (
+            /* Has balance — premium fintech number display */
+            <div style={{ textAlign: 'center', animation: `balanceFadeIn 0.42s ${EASE_OUT} both` }}>
+              <div style={{
+                fontSize: 10, fontWeight: 600, color: C.t3,
+                letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}>
+                <span style={{
+                  width: 5, height: 5, borderRadius: '50%',
+                  background: C.green, display: 'inline-block',
+                  animation: 'liveSignal 2.2s ease-in-out infinite',
+                }} />
+                GEO Balance
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7 }}>
+                <span style={{
+                  fontSize: 52, fontWeight: 300, color: C.t1,
+                  letterSpacing: -2.5, lineHeight: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {formatGeo(balance)}
+                </span>
+                <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>GEO</span>
+              </div>
+              <div style={{ fontSize: 11, color: C.t3, marginTop: 5, opacity: 0.65 }}>
+                {t('home.subtitle') || 'Explore nearby to earn more'}
+              </div>
             </div>
           ) : (
-            <div style={{
-              display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7,
-              animation: `balanceFadeIn 0.42s ${EASE_OUT} both`,
-            }}>
-              <span style={{
-                fontSize: 52, fontWeight: 300, color: C.t1,
-                letterSpacing: -2.5, lineHeight: 1,
-                fontVariantNumeric: 'tabular-nums',
-              }}>
-                {formatGeo(balance ?? 0)}
-              </span>
-              <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>
-                GEO
-              </span>
-            </div>
-          )}
-
-          {/* Subtitle / tagline */}
-          {!balanceLoading && (
-            <div style={{
-              fontSize: 11, color: C.t3, marginTop: 5, opacity: 0.65,
-              animation: `heroReveal 0.5s ${EASE_OUT} 0.26s both`,
-            }}>
-              {t('home.subtitle') || 'Explore nearby to earn more'}
+            /* Zero / no balance — compelling headline, never show "0" */
+            <div style={{ padding: '0 22px', animation: `heroReveal 0.5s ${EASE_OUT} 0.12s both` }}>
+              <HeroHeadline t={t} />
             </div>
           )}
         </div>
