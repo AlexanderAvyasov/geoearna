@@ -20,12 +20,13 @@ function ensureHomeCSS() {
   const el = document.createElement('style');
   el.dataset.src = 'home-page';
   el.textContent = `
+    /* Strong ease-out — instant start, settles naturally */
     @keyframes heroReveal {
-      from { opacity: 0; transform: translateY(-10px); }
+      from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes staggerIn {
-      from { opacity: 0; transform: translateY(18px); }
+      from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     @keyframes ptFade0 { 0%,100%{opacity:0} 10%{opacity:0.85} 80%{opacity:0.3} }
@@ -34,9 +35,13 @@ function ensureHomeCSS() {
     @keyframes ptFade3 { 0%,100%{opacity:0} 10%{opacity:0.80} 80%{opacity:0.28} }
     @keyframes ptFade4 { 0%,100%{opacity:0} 10%{opacity:0.60} 80%{opacity:0.18} }
     @keyframes ptFade5 { 0%,100%{opacity:0} 10%{opacity:0.70} 80%{opacity:0.22} }
-    @keyframes ambientBreath {
-      0%,100% { box-shadow: 0 6px 24px rgba(201,123,71,0.28), 0 1px 0 rgba(255,255,255,0.10) inset; }
-      50%      { box-shadow: 0 6px 36px rgba(201,123,71,0.48), 0 1px 0 rgba(255,255,255,0.12) inset; }
+    /* Ambient glow behind primary CTA — on its own layer, not on the button transform */
+    @keyframes glowPulse {
+      0%,100% { opacity: 0.55; transform: scale(1); }
+      50%      { opacity: 0.85; transform: scale(1.04); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .home-hero-reveal, .home-stagger { animation: none !important; opacity: 1 !important; transform: none !important; }
     }
   `;
   document.head.appendChild(el);
@@ -360,11 +365,14 @@ function FeaturedCard({ iconColor, iconBg, iconBorder, gradStart, Icon, title, s
         border: `1px solid ${iconBorder}`,
         borderRadius: 22, padding: '18px 16px',
         cursor: onTap ? 'pointer' : 'default',
-        transform: pressed ? 'scale(0.96)' : 'scale(1)',
-        transition: `transform 0.12s ${E.spring}`,
+        transform: pressed ? 'scale(0.97)' : 'scale(1)',
+        // Asymmetric: fast press (instant feedback), springy release (natural)
+        transition: pressed
+          ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
+          : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
         WebkitTapHighlightColor: 'transparent',
         userSelect: 'none',
-        animation: `staggerIn 0.32s ${E.smooth} ${index * 0.07}s both`,
+        animation: `staggerIn 0.30s cubic-bezier(0.23,1,0.32,1) ${index * 0.07}s both`,
         boxShadow: `0 4px 24px rgba(0,0,0,0.32), 0 1px 0 rgba(255,255,255,0.04) inset`,
       }}
     >
@@ -425,10 +433,12 @@ function CampaignRow({ campaign, onTap, index }) {
         borderBottom: '1px solid rgba(255,255,255,0.04)',
         cursor: 'pointer',
         transform: pressed ? 'scale(0.985)' : 'scale(1)',
-        transition: `transform 0.10s ${E.spring}`,
+        transition: pressed
+          ? 'transform 90ms cubic-bezier(0.23,1,0.32,1)'
+          : 'transform 160ms cubic-bezier(0.32,0.72,0,1)',
         WebkitTapHighlightColor: 'transparent',
         userSelect: 'none',
-        animation: `staggerIn 0.28s ${E.smooth} ${index * 0.045 + 0.06}s both`,
+        animation: `staggerIn 0.28s cubic-bezier(0.23,1,0.32,1) ${index * 0.045 + 0.06}s both`,
       }}
     >
       <div style={{
@@ -483,24 +493,40 @@ function HeroHeadline({ t }) {
   const restWords = words.slice(0, -1).join(' ');
   const subtitle = t('home.subtitle') || '';
 
+  // Each line animates independently with stagger — no parent wrapper animation
+  const easeOut = 'cubic-bezier(0.23,1,0.32,1)';
   return (
-    <div style={{ animation: 'heroReveal 0.55s ease both' }}>
+    <div>
       {restWords ? (
         <>
-          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.t1 }}>
+          <div className="home-hero-reveal" style={{
+            fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.t1,
+            animation: `heroReveal 0.50s ${easeOut} both`,
+          }}>
             {restWords}
           </div>
-          <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo, marginBottom: 12 }}>
+          <div className="home-hero-reveal" style={{
+            fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo,
+            marginBottom: 12,
+            animation: `heroReveal 0.50s 0.06s ${easeOut} both`,
+          }}>
             {lastWord}.
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo, marginBottom: 12 }}>
+        <div className="home-hero-reveal" style={{
+          fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo,
+          marginBottom: 12,
+          animation: `heroReveal 0.50s ${easeOut} both`,
+        }}>
           {lastWord}.
         </div>
       )}
       {subtitle ? (
-        <div style={{ fontSize: 14, color: C.t3, fontWeight: 400, lineHeight: 1.55, animation: 'heroReveal 0.55s 0.12s ease both' }}>
+        <div className="home-hero-reveal" style={{
+          fontSize: 14, color: C.t3, fontWeight: 400, lineHeight: 1.55,
+          animation: `heroReveal 0.50s 0.14s ${easeOut} both`,
+        }}>
           {subtitle}
         </div>
       ) : null}
@@ -524,6 +550,8 @@ export default function Home() {
   const [error,          setError]          = useState('');
   const [selected,       setSelected]       = useState(null);
   const [userPos,        setUserPos]        = useState(null);
+  const [pressedSort,    setPressedSort]    = useState(false);
+  const [pressedMap,     setPressedMap]     = useState(false);
 
   const loadCampaigns = () => {
     setLoading(true); setError('');
@@ -632,23 +660,50 @@ export default function Home() {
 
       {/* ── CTA BUTTONS ── */}
       <div style={{ padding: '14px 16px 0', display: 'flex', gap: 10 }}>
-        <button
-          onClick={() => getGeoPos().then(p => setUserPos(p)).catch(() => {})}
-          style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+
+        {/* Primary — ambient glow decoupled from button transform so press state works cleanly */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{
+            position: 'absolute', inset: 0, borderRadius: 16,
             background: 'linear-gradient(135deg,#D48A52 0%,#C97B47 55%,#B36835 100%)',
-            color: '#0A0E14', border: 'none', borderRadius: 16, height: 52,
-            fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: -0.2,
-            boxShadow: '0 6px 24px rgba(201,123,71,0.32), 0 1px 0 rgba(255,255,255,0.12) inset',
-            WebkitTapHighlightColor: 'transparent',
-            animation: 'ambientBreath 3.5s ease-in-out infinite',
-          }}
-        >
-          <Compass size={16} strokeWidth={2.5} />
-          По расстоянию
-        </button>
+            opacity: 0.55, filter: 'blur(10px)',
+            animation: 'glowPulse 3.5s ease-in-out infinite',
+            pointerEvents: 'none', zIndex: 0,
+          }} />
+          <button
+            onClick={() => getGeoPos().then(p => setUserPos(p)).catch(() => {})}
+            onTouchStart={() => setPressedSort(true)}
+            onTouchEnd={() => setPressedSort(false)}
+            onMouseDown={() => setPressedSort(true)}
+            onMouseUp={() => setPressedSort(false)}
+            onMouseLeave={() => setPressedSort(false)}
+            style={{
+              position: 'relative', zIndex: 1,
+              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              background: 'linear-gradient(135deg,#D48A52 0%,#C97B47 55%,#B36835 100%)',
+              color: '#0A0E14', border: 'none', borderRadius: 16, height: 52,
+              fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: -0.2,
+              boxShadow: '0 4px 20px rgba(201,123,71,0.28), 0 1px 0 rgba(255,255,255,0.14) inset',
+              WebkitTapHighlightColor: 'transparent',
+              transform: pressedSort ? 'scale(0.97)' : 'scale(1)',
+              transition: pressedSort
+                ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
+                : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
+            }}
+          >
+            <Compass size={16} strokeWidth={2.5} />
+            {t('home.sorted') || 'По расстоянию'}
+          </button>
+        </div>
+
+        {/* Secondary */}
         <button
           onClick={() => navigate('/map')}
+          onTouchStart={() => setPressedMap(true)}
+          onTouchEnd={() => setPressedMap(false)}
+          onMouseDown={() => setPressedMap(true)}
+          onMouseUp={() => setPressedMap(false)}
+          onMouseLeave={() => setPressedMap(false)}
           style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             background: 'rgba(109,139,116,0.09)',
@@ -657,10 +712,14 @@ export default function Home() {
             borderRadius: 16, height: 52,
             fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: -0.2,
             WebkitTapHighlightColor: 'transparent',
+            transform: pressedMap ? 'scale(0.97)' : 'scale(1)',
+            transition: pressedMap
+              ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
+              : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
           }}
         >
           <MapPin size={15} strokeWidth={2} />
-          Карта
+          {t('home.map') || 'Карта'}
         </button>
       </div>
 
