@@ -643,7 +643,7 @@ function SplashScreen({ fading }) {
               ? <MapPin size={66} color={C.geo} strokeWidth={1.5} />
               : <img
                   src="/logo.png" alt=""
-                  style={{ width: 114, height: 114, objectFit: 'contain', display: 'block' }}
+                  style={{ width: 136, height: 136, objectFit: 'contain', display: 'block' }}
                   onError={() => setImgErr(true)}
                 />
             }

@@ -863,7 +863,7 @@ export default function Home() {
                 ? <MapPin size={17} color={C.geo} strokeWidth={2} />
                 : <img
                     src="/logo.png" alt=""
-                    style={{ width: 30, height: 30, objectFit: 'contain', display: 'block' }}
+                    style={{ width: 34, height: 34, objectFit: 'contain', display: 'block' }}
                     onError={() => setLogoImgErr(true)}
                   />
               }
