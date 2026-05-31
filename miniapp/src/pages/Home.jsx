@@ -724,6 +724,7 @@ export default function Home() {
   const [userPos,        setUserPos]        = useState(null);
   const [pressedSort,    setPressedSort]    = useState(false);
   const [pressedMap,     setPressedMap]     = useState(false);
+  const [logoImgErr,     setLogoImgErr]     = useState(false);
 
   // Unified hero data — same /api/me source as Balance page (ensures consistency)
   const [heroData,    setHeroData]    = useState(null); // null = loading
@@ -856,8 +857,16 @@ export default function Home() {
               width: 26, height: 26, borderRadius: 8,
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
             }}>
-              <MapPin size={12} color={C.geo} strokeWidth={2.25} />
+              {logoImgErr
+                ? <MapPin size={12} color={C.geo} strokeWidth={2.25} />
+                : <img
+                    src="/logo.png" alt=""
+                    style={{ width: 20, height: 20, objectFit: 'contain', display: 'block' }}
+                    onError={() => setLogoImgErr(true)}
+                  />
+              }
             </div>
             <span style={{ fontSize: 15, fontWeight: 700, color: C.t1, letterSpacing: 0, fontFamily: FF.display }}>
               Geo<span style={{ color: C.geo }}>Earn</span>

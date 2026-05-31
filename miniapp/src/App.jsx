@@ -514,51 +514,49 @@ export const GLOBAL_CSS = `
 
 // ─── Splash CSS (self-contained, does not depend on GLOBAL_CSS timing) ───────
 const SPLASH_CSS = `
-  @keyframes _sLogoIn {
-    0%   { opacity: 0; transform: scale(0.45) translateY(24px); }
-    55%  { opacity: 1; transform: scale(1.09) translateY(-4px); }
-    78%  { transform: scale(0.97) translateY(1px); }
-    100% { opacity: 1; transform: scale(1) translateY(0); }
+  /* ── 3D logo reveal: swings in from Y-axis ── */
+  @keyframes _s3dReveal {
+    0%   { opacity: 0; transform: perspective(560px) rotateY(-62deg) scale(0.82); }
+    55%  { opacity: 1; transform: perspective(560px) rotateY(5deg) scale(1.03); }
+    78%  { transform: perspective(560px) rotateY(-1.5deg) scale(0.99); }
+    100% { opacity: 1; transform: perspective(560px) rotateY(0deg) scale(1); }
   }
-  @keyframes _sGeoIn {
-    0%   { opacity: 0; transform: translateX(-28px) skewX(-8deg); }
-    65%  { opacity: 1; transform: translateX(3px) skewX(1deg); }
-    100% { opacity: 1; transform: translateX(0) skewX(0); }
+  /* ── Continuous 3D micro-float — starts after reveal settles ── */
+  @keyframes _s3dFloat {
+    0%, 100% { transform: perspective(560px) rotateX(0deg) rotateY(0deg) translateY(0px); }
+    28%       { transform: perspective(560px) rotateX(3.5deg) rotateY(5.5deg) translateY(-6px); }
+    65%       { transform: perspective(560px) rotateX(-2deg) rotateY(-3.5deg) translateY(3px); }
   }
-  @keyframes _sEarnIn {
-    0%   { opacity: 0; transform: translateX(28px) skewX(8deg); }
-    65%  { opacity: 1; transform: translateX(-3px) skewX(-1deg); }
-    100% { opacity: 1; transform: translateX(0) skewX(0); }
-  }
-  @keyframes _sTagIn {
-    0%   { opacity: 0; transform: translateY(12px); filter: blur(6px); }
-    100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
-  }
-  @keyframes _sRingPulse {
-    0%   { box-shadow: 0 0 0 0    rgba(201,123,71,0.55), 0 24px 70px rgba(0,0,0,0.6); }
-    65%  { box-shadow: 0 0 0 26px rgba(201,123,71,0),   0 24px 70px rgba(0,0,0,0.6); }
-    100% { box-shadow: 0 0 0 0    rgba(201,123,71,0),   0 24px 70px rgba(0,0,0,0.6); }
-  }
-  @keyframes _sDotGlow {
-    0%, 100% { opacity: 0.45; transform: scale(0.7); }
-    50%       { opacity: 1;   transform: scale(1.2); }
-  }
-  @keyframes _sArcSpin {
+  /* ── Orbit ring spin — child of 3D container, tilts with it ── */
+  @keyframes _sOrbitSpin {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
   }
+  /* ── Shadow stretches opposite to float ── */
+  @keyframes _sShadowFloat {
+    0%, 100% { transform: translateX(-50%) scaleX(1);    opacity: 0.38; }
+    28%       { transform: translateX(-50%) scaleX(1.22); opacity: 0.20; }
+    65%       { transform: translateX(-50%) scaleX(0.82); opacity: 0.52; }
+  }
+  /* ── Text / spinner fade-up ── */
+  @keyframes _sTagIn {
+    0%   { opacity: 0; transform: translateY(10px); filter: blur(4px); }
+    100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  }
+  /* ── Ambient background orbs ── */
   @keyframes _sOrb1 {
-    0%, 100% { transform: translate(0,0) scale(1);    opacity: 0.8; }
-    35%       { transform: translate(40px,-25px) scale(1.2); opacity: 1; }
-    70%       { transform: translate(-25px,18px) scale(0.88); opacity: 0.6; }
+    0%, 100% { transform: translate(0,0) scale(1);    opacity: 0.6; }
+    40%       { transform: translate(32px,-20px) scale(1.18); opacity: 1; }
+    72%       { transform: translate(-18px,14px) scale(0.88); opacity: 0.45; }
   }
   @keyframes _sOrb2 {
-    0%, 100% { transform: translate(0,0);         opacity: 0.7; }
-    50%       { transform: translate(-30px,-22px); opacity: 1; }
+    0%, 100% { transform: translate(0,0);         opacity: 0.5; }
+    50%       { transform: translate(-24px,-18px); opacity: 0.85; }
   }
+  /* ── Exit ── */
   @keyframes _sFadeOut {
     0%   { opacity: 1; transform: scale(1);    filter: blur(0); }
-    100% { opacity: 0; transform: scale(1.04); filter: blur(3px); }
+    100% { opacity: 0; transform: scale(1.03); filter: blur(4px); }
   }
 `;
 
@@ -566,6 +564,8 @@ const SPLASH_CSS = `
 
 function SplashScreen({ fading }) {
   const { t } = useLanguage();
+  const [imgErr, setImgErr] = useState(false);
+
   return (
     <>
       <style>{SPLASH_CSS}</style>
@@ -575,108 +575,121 @@ function SplashScreen({ fading }) {
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         overflow: 'hidden',
-        animation: fading ? '_sFadeOut 0.5s cubic-bezier(0.4,0,1,1) forwards' : 'none',
+        animation: fading ? '_sFadeOut 0.55s cubic-bezier(0.4,0,1,1) forwards' : 'none',
       }}>
 
-        {/* Ambient orb 1 — orange */}
+        {/* Ambient orb 1 — amber */}
         <div style={{
-          position: 'absolute',
-          top: '18%', left: '15%',
-          width: 260, height: 260,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(201,123,71,0.18) 0%, transparent 68%)',
-          filter: 'blur(32px)',
-          pointerEvents: 'none',
-          animation: '_sOrb1 7s ease-in-out infinite',
+          position: 'absolute', top: '14%', left: '12%',
+          width: 280, height: 280, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(201,123,71,0.16) 0%, transparent 65%)',
+          filter: 'blur(36px)', pointerEvents: 'none',
+          animation: '_sOrb1 8s ease-in-out infinite',
         }} />
 
-        {/* Ambient orb 2 — blue accent */}
+        {/* Ambient orb 2 — cool accent */}
         <div style={{
-          position: 'absolute',
-          bottom: '22%', right: '10%',
-          width: 200, height: 200,
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(88,130,193,0.14) 0%, transparent 70%)',
-          filter: 'blur(28px)',
-          pointerEvents: 'none',
-          animation: '_sOrb2 9s ease-in-out 1s infinite',
+          position: 'absolute', bottom: '18%', right: '8%',
+          width: 220, height: 220, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(70,110,180,0.12) 0%, transparent 70%)',
+          filter: 'blur(30px)', pointerEvents: 'none',
+          animation: '_sOrb2 10s ease-in-out 1.2s infinite',
         }} />
 
-        {/* Logo mark */}
+        {/* ── 3D logo assembly ── */}
         <div style={{
           position: 'relative',
-          width: 96, height: 96,
-          borderRadius: 30,
-          background: 'linear-gradient(145deg, #0F1C2E 0%, #070E18 100%)',
-          border: '1px solid rgba(201,123,71,0.28)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          marginBottom: 28,
-          animation: '_sLogoIn 0.75s cubic-bezier(0.22,1,0.36,1) both, _sRingPulse 2.2s ease-in-out 0.85s infinite',
+          width: 104, height: 104,
+          marginBottom: 36,
+          animation: '_s3dReveal 0.82s cubic-bezier(0.22,1,0.36,1) both, _s3dFloat 5.5s ease-in-out 1s infinite',
+          willChange: 'transform',
         }}>
-          <MapPin size={44} color={C.geo} strokeWidth={1.6} />
-          {/* Pulsing status dot */}
+
+          {/* Orbit ring — spins around the logo, tilts with 3D parent */}
           <div style={{
-            position: 'absolute', top: 11, right: 11,
-            width: 10, height: 10, borderRadius: '50%',
-            background: '#8FAE7B',
-            boxShadow: '0 0 10px rgba(143,174,123,0.9)',
-            animation: '_sDotGlow 1.8s ease-in-out infinite',
+            position: 'absolute',
+            top: -22, left: -22,
+            width: 148, height: 148,
+            borderRadius: '50%',
+            border: '1px solid rgba(201,123,71,0.12)',
+            borderTopColor: 'rgba(201,123,71,0.60)',
+            borderRightColor: 'rgba(201,123,71,0.28)',
+            animation: '_sOrbitSpin 3.6s linear infinite',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Inner orbit ring — opposite direction, slower */}
+          <div style={{
+            position: 'absolute',
+            top: -10, left: -10,
+            width: 124, height: 124,
+            borderRadius: '50%',
+            border: '1px solid rgba(201,123,71,0.06)',
+            borderBottomColor: 'rgba(201,123,71,0.22)',
+            animation: '_sOrbitSpin 6s linear reverse infinite',
+            pointerEvents: 'none',
+          }} />
+
+          {/* Logo box */}
+          <div style={{
+            width: 104, height: 104,
+            borderRadius: 30,
+            background: 'linear-gradient(148deg, #0D1B2C 0%, #07101C 100%)',
+            border: '0.5px solid rgba(201,123,71,0.30)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 28px 64px rgba(0,0,0,0.72), 0 1px 0 rgba(255,255,255,0.07) inset',
+          }}>
+            {imgErr
+              ? <MapPin size={48} color={C.geo} strokeWidth={1.5} />
+              : <img
+                  src="/logo.png" alt=""
+                  style={{ width: 68, height: 68, objectFit: 'contain', display: 'block' }}
+                  onError={() => setImgErr(true)}
+                />
+            }
+          </div>
+
+          {/* Ground shadow — breathes opposite to float */}
+          <div style={{
+            position: 'absolute',
+            bottom: -20, left: '50%',
+            width: 72, height: 16,
+            borderRadius: '50%',
+            background: 'radial-gradient(ellipse, rgba(201,123,71,0.30) 0%, transparent 70%)',
+            filter: 'blur(6px)',
+            animation: '_sShadowFloat 5.5s ease-in-out 1s infinite',
+            pointerEvents: 'none',
           }} />
         </div>
 
-        {/* Split wordmark: "Geo" from left, "Earn" from right */}
+        {/* Wordmark in Ethnocentric */}
         <div style={{
-          display: 'flex', alignItems: 'baseline', gap: 0,
-          fontSize: 32, fontWeight: 800, letterSpacing: -1,
-          lineHeight: 1, overflow: 'hidden',
+          fontSize: 30, fontWeight: 700, letterSpacing: 0,
+          lineHeight: 1, fontFamily: FF.display,
+          animation: '_sTagIn 0.5s cubic-bezier(0.22,1,0.36,1) 0.5s both',
         }}>
-          <span style={{
-            color: C.geo,
-            display: 'inline-block',
-            animation: '_sGeoIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.25s both',
-          }}>Geo</span>
-          <span style={{
-            color: C.t1,
-            display: 'inline-block',
-            animation: '_sEarnIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.35s both',
-          }}>Earn</span>
+          <span style={{ color: C.t1 }}>Geo</span>
+          <span style={{ color: C.geo }}>Earn</span>
         </div>
 
         {/* Tagline */}
         <div style={{
-          fontSize: 13, color: C.t3, fontWeight: 500,
-          marginTop: 8, letterSpacing: 0.3, textAlign: 'center',
-          maxWidth: 220,
-          animation: '_sTagIn 0.55s ease 0.65s both',
+          fontSize: 12, color: C.t3, fontWeight: 500,
+          marginTop: 7, letterSpacing: 0.2, textAlign: 'center', maxWidth: 200,
+          animation: '_sTagIn 0.5s cubic-bezier(0.22,1,0.36,1) 0.68s both',
         }}>
           {t('splash.tagline')}
         </div>
 
-        {/* SVG arc spinner */}
-        <div style={{
-          marginTop: 52,
-          animation: '_sTagIn 0.5s ease 0.7s both',
-        }}>
-          <svg
-            width={42} height={42}
-            viewBox="0 0 42 42"
-            style={{ animation: '_sArcSpin 1s linear infinite' }}
-          >
-            <circle
-              cx={21} cy={21} r={17}
-              fill="none"
-              stroke="rgba(201,123,71,0.15)"
-              strokeWidth={2.5}
-            />
-            <circle
-              cx={21} cy={21} r={17}
-              fill="none"
-              stroke={C.geo}
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeDasharray="72 35"
-              strokeDashoffset={0}
-            />
+        {/* Arc spinner */}
+        <div style={{ marginTop: 50, animation: '_sTagIn 0.5s ease 0.72s both' }}>
+          <svg width={36} height={36} viewBox="0 0 36 36"
+            style={{ animation: '_sOrbitSpin 1.1s linear infinite' }}>
+            <circle cx={18} cy={18} r={14} fill="none"
+              stroke="rgba(201,123,71,0.10)" strokeWidth={1.75} />
+            <circle cx={18} cy={18} r={14} fill="none"
+              stroke={C.geo} strokeWidth={1.75}
+              strokeLinecap="round" strokeDasharray="52 36" />
           </svg>
         </div>
 
@@ -691,13 +704,13 @@ function useAppReady() {
   useEffect(() => {
     let cancelled = false;
 
-    const minDelay = new Promise(r => setTimeout(r, 1400));
+    const minDelay = new Promise(r => setTimeout(r, 2200));
     const initReady = waitForInitData(8000);
 
     Promise.all([minDelay, initReady]).then(() => {
       if (cancelled) return;
       setPhase('fading');
-      setTimeout(() => { if (!cancelled) setPhase('done'); }, 450);
+      setTimeout(() => { if (!cancelled) setPhase('done'); }, 550);
     });
 
     return () => { cancelled = true; };
