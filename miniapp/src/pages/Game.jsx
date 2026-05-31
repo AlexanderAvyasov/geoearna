@@ -630,7 +630,7 @@ export default function Game() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.3s ease both' }}>
+    <div style={{ minHeight: '100vh', background: C.bg, animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both' }}>
 
       {/* ── Content ── */}
       <div style={{ padding: '16px 16px 40px' }}>

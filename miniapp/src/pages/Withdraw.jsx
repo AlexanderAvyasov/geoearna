@@ -165,7 +165,7 @@ export default function Withdraw() {
               border: `0.5px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto 24px',
-              animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
+              animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1)',
             }}>
               <CheckCircle size={42} color={C.geo} strokeWidth={2} />
             </div>

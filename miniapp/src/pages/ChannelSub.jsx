@@ -118,7 +118,7 @@ export default function ChannelSub() {
           background: C.greenFt, border: `0.5px solid ${C.greenGl}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 24px',
-          animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275)',
+          animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1)',
         }}>
           <CheckCircle size={46} color={C.green} strokeWidth={2} />
         </div>

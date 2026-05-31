@@ -254,6 +254,13 @@ export default function Balance() {
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState('');
   const [activeTab,   setActiveTab]   = useState('visits');
+  const [tabKey,      setTabKey]      = useState(0);
+
+  function switchTab(tab) {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
+    setTabKey(k => k + 1);
+  }
 
   useEffect(() => {
     Promise.all([
@@ -295,7 +302,7 @@ export default function Balance() {
   ];
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both' }}>
 
       {/* ── Balance hero card ── */}
       <div style={{ padding: '16px 16px 0' }}>
@@ -412,7 +419,7 @@ export default function Balance() {
           <ActionBtn
             label={t('balance.btn.history')}
             Icon={BarChart3}
-            onClick={() => setActiveTab('withdrawals')}
+            onClick={() => switchTab('withdrawals')}
           />
           <ActionBtn
             label={t('balance.btn.rate')}
@@ -428,7 +435,7 @@ export default function Balance() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         {tabs.map(tab => (
-          <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
+          <button key={tab.key} onClick={() => switchTab(tab.key)} style={{
             flex: 1, background: 'none', border: 'none', cursor: 'pointer',
             padding: '11px 0',
             borderBottom: `2px solid ${activeTab === tab.key ? C.geo : 'transparent'}`,
@@ -453,8 +460,8 @@ export default function Balance() {
         ))}
       </div>
 
-      {/* ── Content ── */}
-      <div style={{ padding: '0 16px 80px' }}>
+      {/* ── Content — keyed so React remounts on tab switch, triggering staggerIn ── */}
+      <div key={tabKey} style={{ padding: '0 16px 80px', animation: 'fadeUp 0.22s cubic-bezier(0.22,1,0.36,1) both' }}>
 
         {/* Activity / Ledger */}
         {activeTab === 'visits' && (

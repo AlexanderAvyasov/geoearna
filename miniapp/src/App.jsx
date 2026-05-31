@@ -268,21 +268,21 @@ export const GLOBAL_CSS = `
   ::-webkit-scrollbar { display: none; }
   * { scrollbar-width: none; }
 
-  /* ── Page enter ── */
+  /* ── Page enter — opacity+translate only; no scale (avoids compositing cost) ── */
   @keyframes pageEnter {
-    from { opacity: 0; transform: translateY(12px) scale(0.987); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-12px); }
+    from { opacity: 0; transform: translateY(-10px); }
     to   { opacity: 1; transform: translateY(0); }
   }
   @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(24px); }
+    from { opacity: 0; transform: translateX(20px); }
     to   { opacity: 1; transform: translateX(0); }
   }
   @keyframes slideInLeft {
-    from { opacity: 0; transform: translateX(-24px); }
+    from { opacity: 0; transform: translateX(-20px); }
     to   { opacity: 1; transform: translateX(0); }
   }
 
@@ -292,8 +292,8 @@ export const GLOBAL_CSS = `
     50%       { opacity: .35; }
   }
   @keyframes glowPulse {
-    0%, 100% { opacity: .4; transform: scale(1); }
-    50%       { opacity: .8; transform: scale(1.05); }
+    0%, 100% { opacity: 0.40; transform: scale(1); }
+    50%       { opacity: 0.75; transform: scale(1.04); }
   }
   @keyframes hudPulse {
     0%, 100% { opacity: 0.5; }
@@ -301,11 +301,11 @@ export const GLOBAL_CSS = `
   }
   @keyframes breatheGlow {
     0%, 100% { box-shadow: 0 0 10px rgba(201,123,71,0.18); }
-    50%       { box-shadow: 0 0 28px rgba(201,123,71,0.52); }
+    50%       { box-shadow: 0 0 28px rgba(201,123,71,0.45); }
   }
   @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50%       { transform: translateY(-6px); }
+    50%       { transform: translateY(-5px); }
   }
 
   /* ── Map / radar ── */
@@ -318,8 +318,9 @@ export const GLOBAL_CSS = `
     50%       { transform: scale(1.7); opacity: 0; }
   }
   @keyframes markerPop {
-    0%   { transform: translate(-50%,-100%) scale(0);    opacity: 0; }
-    65%  { transform: translate(-50%,-100%) scale(1.18); opacity: 1; }
+    /* No overshoot — ease-out only via timing function */
+    0%   { transform: translate(-50%,-100%) scale(0.5); opacity: 0; }
+    60%  { transform: translate(-50%,-100%) scale(1.03); opacity: 1; }
     100% { transform: translate(-50%,-100%) scale(1);    opacity: 1; }
   }
   @keyframes markerPulse {
@@ -359,11 +360,10 @@ export const GLOBAL_CSS = `
     100% { opacity: 0; transform: translate(var(--tx),var(--ty)) scale(0.15); }
   }
 
-  /* ── Pop (icons, badges) ── */
+  /* ── Pop (icons, badges) — eased, no overshoot ── */
   @keyframes pop {
-    0%   { transform: scale(0.45); opacity: 0; }
-    55%  { transform: scale(1.12); opacity: 1; }
-    80%  { transform: scale(0.96); }
+    0%   { transform: scale(0.55); opacity: 0; }
+    65%  { transform: scale(1.03); opacity: 1; }
     100% { transform: scale(1);    opacity: 1; }
   }
 
@@ -378,24 +378,21 @@ export const GLOBAL_CSS = `
 
   /* ── Content reveals ── */
   @keyframes fadeUp {
-    from { transform: translateY(20px); opacity: 0; }
+    from { transform: translateY(14px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
   }
   @keyframes staggerIn {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  @keyframes glowPulse {
-    0%,100% { opacity: 0.35; transform: scale(1); }
-    50%      { opacity: 0.60; transform: scale(1.04); }
-  }
+  /* glowPulse defined once in Ambient section above */
   @keyframes morphIn {
-    from { transform: translateY(10px) scale(0.96); opacity: 0; }
-    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+    from { transform: translateY(10px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
   }
   @keyframes cardReveal {
-    from { transform: translateY(24px) scale(0.97); opacity: 0; }
-    to   { transform: translateY(0)    scale(1);    opacity: 1; }
+    from { transform: translateY(18px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
   }
 
   /* ── Modals ── */
@@ -427,12 +424,11 @@ export const GLOBAL_CSS = `
     100% { transform: translateY(0);    opacity: 1; }
   }
 
-  /* ── Nav icon bounce ── */
+  /* ── Nav icon activate — press-then-settle, no overshoot ── */
   @keyframes iconBounce {
     0%   { transform: scale(1); }
-    25%  { transform: scale(0.74); }
-    65%  { transform: scale(1.18); }
-    85%  { transform: scale(0.95); }
+    30%  { transform: scale(0.78); }
+    70%  { transform: scale(1.04); }
     100% { transform: scale(1); }
   }
 
@@ -454,16 +450,15 @@ export const GLOBAL_CSS = `
     100% { transform: scaleY(1.45); opacity: 0; }
   }
   @keyframes streakPop {
-    0%   { transform: scale(0.25); opacity: 0; }
-    55%  { transform: scale(1.14); opacity: 1; }
-    80%  { transform: scale(0.95); }
-    100% { transform: scale(1);    opacity: 1; }
+    0%   { transform: scale(0.3); opacity: 0; }
+    60%  { transform: scale(1.03); opacity: 1; }
+    100% { transform: scale(1);   opacity: 1; }
   }
 
   /* ── Number / counter animation ── */
   @keyframes numberPop {
     0%   { transform: scale(0.65); opacity: 0; }
-    60%  { transform: scale(1.10); }
+    65%  { transform: scale(1.03); opacity: 1; }
     100% { transform: scale(1);    opacity: 1; }
   }
   @keyframes counterRoll {
@@ -495,6 +490,16 @@ export const GLOBAL_CSS = `
   @keyframes splashFadeOut {
     0%   { opacity: 1; }
     100% { opacity: 0; }
+  }
+
+  /* ── Reduced motion — accessibility requirement ── */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+    .sk { animation: none !important; background: rgba(255,255,255,0.07) !important; }
   }
 `;
 
@@ -597,7 +602,7 @@ function SplashScreen({ fading }) {
           border: '1px solid rgba(201,123,71,0.28)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 28,
-          animation: '_sLogoIn 0.75s cubic-bezier(0.34,1.56,0.64,1) both, _sRingPulse 2.2s ease-in-out 0.85s infinite',
+          animation: '_sLogoIn 0.75s cubic-bezier(0.22,1,0.36,1) both, _sRingPulse 2.2s ease-in-out 0.85s infinite',
         }}>
           <MapPin size={44} color={C.geo} strokeWidth={1.6} />
           {/* Pulsing status dot */}
@@ -619,12 +624,12 @@ function SplashScreen({ fading }) {
           <span style={{
             color: C.geo,
             display: 'inline-block',
-            animation: '_sGeoIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.25s both',
+            animation: '_sGeoIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.25s both',
           }}>Geo</span>
           <span style={{
             color: C.t1,
             display: 'inline-block',
-            animation: '_sEarnIn 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.35s both',
+            animation: '_sEarnIn 0.6s cubic-bezier(0.22,1,0.36,1) 0.35s both',
           }}>Earn</span>
         </div>
 

@@ -37,7 +37,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         background: 'rgba(0,0,0,0.78)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        zIndex: 500, animation: 'backdropIn 0.2s ease',
+        zIndex: 500, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -47,7 +47,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         borderBottom: 'none',
         padding: '0 0 44px', zIndex: 501,
         maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.35s cubic-bezier(0.175,0.885,0.32,1.275)',
+        animation: 'slideUp 0.35s cubic-bezier(0.22,1,0.36,1)',
         boxShadow: '0 -12px 60px rgba(0,0,0,0.8)',
       }}>
         <div style={{ width: 32, height: 3, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
@@ -263,7 +263,7 @@ export default function MapPage() {
         html: `<div style="
           position:relative;
           display:flex;align-items:center;justify-content:center;
-          animation:markerPop 0.4s cubic-bezier(0.175,0.885,0.32,1.275) ${delay}ms both;
+          animation:markerPop 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms both;
         ">
           <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid rgba(201,123,71,0.4);animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
           <div style="

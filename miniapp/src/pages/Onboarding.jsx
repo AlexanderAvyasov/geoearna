@@ -39,7 +39,7 @@ function LangPhase({ onDone }) {
         border: `0.5px solid ${C.geoGl}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         marginBottom: 32,
-        animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
+        animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
       }}>
         <MapPin size={32} color={C.geo} strokeWidth={1.75} />
       </div>
@@ -191,7 +191,7 @@ function SlidePhase({ onDone }) {
           border: `0.5px solid ${s.accentGl}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 40,
-          animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
+          animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
         }}>
           <s.Icon size={48} color={s.accent} strokeWidth={1.5} />
         </div>
@@ -305,7 +305,7 @@ function ModePhase({ onChoose }) {
             border: `0.5px solid ${C.geoGl}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 18px',
-            animation: 'pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) both',
+            animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
           }}>
             <MapPin size={32} color={C.geo} strokeWidth={1.75} />
           </div>
@@ -358,7 +358,7 @@ function ModePhase({ onChoose }) {
                   width: 22, height: 22, borderRadius: '50%',
                   background: m.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   flexShrink: 0,
-                  animation: 'pop 0.3s cubic-bezier(0.175,0.885,0.32,1.275)',
+                  animation: 'pop 0.3s cubic-bezier(0.22,1,0.36,1)',
                 }}>
                   <Check size={12} color={C.bg} strokeWidth={3} />
                 </div>

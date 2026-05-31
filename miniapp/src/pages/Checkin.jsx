@@ -452,7 +452,7 @@ export default function Checkin() {
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           padding: '32px 24px',
-          animation: 'pageEnter 0.3s ease both',
+          animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both',
         }}>
           {/* Rays */}
           {Array.from({ length: 8 }, (_, i) => (
@@ -481,7 +481,7 @@ export default function Checkin() {
             fontSize: 110, fontWeight: 900, letterSpacing: -5,
             color: C.geo, lineHeight: 1,
             textShadow: `0 0 40px ${C.geoGl}, 0 0 80px ${C.geoDim}`,
-            animation: 'streakPop 0.65s cubic-bezier(0.175,0.885,0.32,1.275) both',
+            animation: 'streakPop 0.65s cubic-bezier(0.22,1,0.36,1) both',
           }}>
             {streakMilestone}
           </div>
@@ -571,7 +571,7 @@ export default function Checkin() {
             width: 80, height: 80, borderRadius: '50%', background: G.gold,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 24px', boxShadow: `0 6px 28px ${C.goldGl}`,
-            animation: 'pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275)',
+            animation: 'pop 0.45s cubic-bezier(0.22,1,0.36,1)',
           }}>
             <Lock size={38} color="#1a0800" strokeWidth={2} />
           </div>
@@ -679,7 +679,7 @@ export default function Checkin() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               marginBottom: 32,
               boxShadow: accentGlow ? `0 0 40px ${accentGlow}, 0 0 80px ${accentGlow}` : undefined,
-              animation: 'pop 0.55s cubic-bezier(0.175,0.885,0.32,1.275), successGlow 2.5s 0.6s ease-in-out infinite',
+              animation: 'pop 0.55s cubic-bezier(0.22,1,0.36,1), successGlow 2.5s 0.6s ease-in-out infinite',
             }}>
               <CheckCircle size={56} color="#fff" strokeWidth={2.5} />
             </div>
@@ -754,7 +754,7 @@ export default function Checkin() {
             width: 104, height: 104, borderRadius: '50%',
             background: C.surf, border: `1px solid rgba(239,68,68,0.2)`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            marginBottom: 24, animation: 'pop 0.45s cubic-bezier(0.175,0.885,0.32,1.275)',
+            marginBottom: 24, animation: 'pop 0.45s cubic-bezier(0.22,1,0.36,1)',
           }}>
             <errInfo.Icon size={48} color={C.red} strokeWidth={1.5} />
           </div>

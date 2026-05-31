@@ -213,7 +213,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.75)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-        zIndex: 200, animation: 'backdropIn 0.2s ease',
+        zIndex: 200, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -221,7 +221,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         borderRadius: '28px 28px 0 0',
         border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
         padding: '0 0 44px', zIndex: 201, maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.32s cubic-bezier(0.175,0.885,0.32,1)',
+        animation: 'slideUp 0.34s cubic-bezier(0.22,1,0.36,1)',
         boxShadow: '0 -8px 48px rgba(0,0,0,0.55)',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)', margin: '16px auto 24px' }} />
@@ -597,7 +597,7 @@ export default function Home() {
   const hasContent = displayed.length + featuredCount > 0;
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.3s ease both' }}>
+    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both' }}>
 
       {/* ── HERO ── */}
       <div style={{

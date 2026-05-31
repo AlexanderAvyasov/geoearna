@@ -686,7 +686,7 @@ function PlatformCampaignSheet({ onClose, onCreated }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)' }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
         background: C.surf, borderRadius: '24px 24px 0 0',
@@ -823,7 +823,7 @@ function CampaignSAEditSheet({ campaign, onClose, onSaved }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)' }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
         background: C.surf, borderRadius: '24px 24px 0 0',
@@ -1071,7 +1071,7 @@ function WithdrawalSheet({ w, geoRate, onClose, onApprove, onReject, busy }) {
       <div onClick={onClose} style={{
         position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-        zIndex: 300, animation: 'backdropIn 0.22s ease',
+        zIndex: 300, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -2089,7 +2089,7 @@ function PromoCreateSheet({ onClose, onCreated }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)' }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
         background: C.surf, borderRadius: '24px 24px 0 0',
@@ -2240,7 +2240,7 @@ function PromoResultSheet({ result, onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)' }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
         background: C.surf, borderRadius: '24px 24px 0 0',
@@ -2337,7 +2337,7 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
 
   return (
     <>
-      <div onClick={() => onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.22s ease' }} />
+      <div onClick={() => onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)', zIndex: 400, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)' }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401,
         background: C.surf, borderRadius: '24px 24px 0 0',
@@ -3018,7 +3018,7 @@ function SupportMsgSheet({ msg, onClose, onUpdated }) {
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.72)',
         backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-        zIndex: 300, animation: 'backdropIn 0.22s ease',
+        zIndex: 300, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,

@@ -47,7 +47,7 @@ function RingProgress({ pct, size = 60, strokeW = 4, color }) {
         stroke={color} strokeWidth={strokeW}
         strokeDasharray={`${circ * Math.min(pct, 1)} ${circ}`}
         strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 1s cubic-bezier(0.23,1,0.32,1) 0.2s' }} />
+        style={{ transition: 'stroke-dasharray 0.9s cubic-bezier(0.22,1,0.36,1) 0.15s' }} />
     </svg>
   );
 }
@@ -93,7 +93,7 @@ function SupportSheet({ onClose }) {
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.72)',
         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-        zIndex: 200, animation: 'backdropIn 0.2s ease',
+        zIndex: 200, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -101,7 +101,7 @@ function SupportSheet({ onClose }) {
         borderRadius: '26px 26px 0 0',
         border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
         padding: '0 0 40px', zIndex: 201, maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.32s cubic-bezier(0.175,0.885,0.32,1)',
+        animation: 'slideUp 0.34s cubic-bezier(0.22,1,0.36,1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.10)', margin: '14px auto 20px' }} />
@@ -302,7 +302,7 @@ export default function Profile() {
     <div style={{
       minHeight: '100vh', background: C.bg,
       padding: '16px 16px 80px',
-      animation: 'pageEnter 0.3s ease both',
+      animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both',
     }}>
 
       {/* ── Identity card ── */}
