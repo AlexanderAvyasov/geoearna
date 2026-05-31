@@ -599,7 +599,7 @@ function SplashScreen({ fading }) {
         {/* ── 3D logo assembly ── */}
         <div style={{
           position: 'relative',
-          width: 104, height: 104,
+          width: 120, height: 120,
           marginBottom: 36,
           animation: '_s3dReveal 0.82s cubic-bezier(0.22,1,0.36,1) both, _s3dFloat 5.5s ease-in-out 1s infinite',
           willChange: 'transform',
@@ -609,7 +609,7 @@ function SplashScreen({ fading }) {
           <div style={{
             position: 'absolute',
             top: -22, left: -22,
-            width: 148, height: 148,
+            width: 164, height: 164,
             borderRadius: '50%',
             border: '1px solid rgba(201,123,71,0.12)',
             borderTopColor: 'rgba(201,123,71,0.60)',
@@ -622,7 +622,7 @@ function SplashScreen({ fading }) {
           <div style={{
             position: 'absolute',
             top: -10, left: -10,
-            width: 124, height: 124,
+            width: 140, height: 140,
             borderRadius: '50%',
             border: '1px solid rgba(201,123,71,0.06)',
             borderBottomColor: 'rgba(201,123,71,0.22)',
@@ -632,18 +632,18 @@ function SplashScreen({ fading }) {
 
           {/* Logo box */}
           <div style={{
-            width: 104, height: 104,
-            borderRadius: 30,
+            width: 120, height: 120,
+            borderRadius: 34,
             background: 'linear-gradient(148deg, #0D1B2C 0%, #07101C 100%)',
             border: '0.5px solid rgba(201,123,71,0.30)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 28px 64px rgba(0,0,0,0.72), 0 1px 0 rgba(255,255,255,0.07) inset',
           }}>
             {imgErr
-              ? <MapPin size={48} color={C.geo} strokeWidth={1.5} />
+              ? <MapPin size={54} color={C.geo} strokeWidth={1.5} />
               : <img
                   src="/logo.png" alt=""
-                  style={{ width: 68, height: 68, objectFit: 'contain', display: 'block' }}
+                  style={{ width: 88, height: 88, objectFit: 'contain', display: 'block' }}
                   onError={() => setImgErr(true)}
                 />
             }
@@ -653,7 +653,7 @@ function SplashScreen({ fading }) {
           <div style={{
             position: 'absolute',
             bottom: -20, left: '50%',
-            width: 72, height: 16,
+            width: 80, height: 16,
             borderRadius: '50%',
             background: 'radial-gradient(ellipse, rgba(201,123,71,0.30) 0%, transparent 70%)',
             filter: 'blur(6px)',
