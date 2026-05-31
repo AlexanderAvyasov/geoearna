@@ -1,12 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, Flame, MessageCircle, AlertCircle, Send, CheckCircle, X, Loader2, Shield } from 'lucide-react';
+import {
+  Crown, Flame, MessageCircle, AlertCircle, Send,
+  CheckCircle, X, Loader2, Shield, ChevronRight,
+} from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { C, cardBase, E } from '../lib/design';
+import { formatGeo } from '../lib/geo';
+import { C, E } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LANGS } from '../lib/i18n';
 import { user } from '../hooks/useTelegram';
 
+// ── Easing ────────────────────────────────────────────────────────────────────
+const EASE_OUT = 'cubic-bezier(0.23,1,0.32,1)';
+const EASE_SPRING = 'cubic-bezier(0.32,0.72,0,1)';
+
+// ── Level config ──────────────────────────────────────────────────────────────
 const LV = {
   1:  { color: '#6B7280', bg: 'rgba(107,114,128,0.12)', min: 0,    next: 100   },
   2:  { color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  min: 100,  next: 250   },
@@ -26,26 +35,29 @@ function xpPct(xp, level) {
   return Math.min(1, (xp - cfg.min) / (cfg.next - cfg.min));
 }
 
-function RingProgress({ pct, size = 56, strokeW = 5, color }) {
+// ── Ring progress ─────────────────────────────────────────────────────────────
+function RingProgress({ pct, size = 60, strokeW = 4, color }) {
   const r    = (size - strokeW) / 2;
   const circ = 2 * Math.PI * r;
   return (
     <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', display: 'block', flexShrink: 0 }}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="rgba(255,255,255,0.08)" strokeWidth={strokeW} />
+        stroke="rgba(255,255,255,0.07)" strokeWidth={strokeW} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none"
         stroke={color} strokeWidth={strokeW}
         strokeDasharray={`${circ * Math.min(pct, 1)} ${circ}`}
         strokeLinecap="round"
-        style={{ transition: 'stroke-dasharray 0.9s cubic-bezier(0.4,0,0.2,1)' }} />
+        style={{ transition: 'stroke-dasharray 1s cubic-bezier(0.23,1,0.32,1) 0.2s' }} />
     </svg>
   );
 }
 
+// ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skel({ h = 16, w = '100%', r = 8 }) {
   return <div className="sk" style={{ height: h, width: w, borderRadius: r }} />;
 }
 
+// ── Support sheet ─────────────────────────────────────────────────────────────
 function SupportSheet({ onClose }) {
   const { t } = useLanguage();
   const [type,       setType]       = useState('chat');
@@ -59,8 +71,7 @@ function SupportSheet({ onClose }) {
 
   async function handleSend() {
     if (message.trim().length < 3) { setErr(t('support.err.short')); return; }
-    setErr('');
-    setSubmitting(true);
+    setErr(''); setSubmitting(true);
     try {
       const r = await apiFetch('/api/support', {
         method: 'POST',
@@ -78,78 +89,93 @@ function SupportSheet({ onClose }) {
 
   return (
     <>
-      <div
-        onClick={onClose}
-        style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.65)',
-          backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-          zIndex: 200, animation: 'backdropIn 0.22s ease',
-        }}
-      />
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.72)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        zIndex: 200, animation: 'backdropIn 0.2s ease',
+      }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: C.surf || C.card,
-        borderRadius: '22px 22px 0 0',
-        border: `1px solid ${C.b2}`, borderBottom: 'none',
-        padding: '0 0 36px', zIndex: 201,
-        maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
+        background: 'linear-gradient(180deg,#141E2A 0%,#101A24 100%)',
+        borderRadius: '26px 26px 0 0',
+        border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
+        padding: '0 0 40px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+        animation: 'slideUp 0.32s cubic-bezier(0.175,0.885,0.32,1)',
         boxShadow: '0 -8px 40px rgba(0,0,0,0.5)',
       }}>
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.b2, margin: '14px auto 18px' }} />
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.10)', margin: '14px auto 20px' }} />
         <div style={{ padding: '0 20px' }}>
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.t1 }}>{t('support.title')}</div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.t3, padding: 4 }}>
-              <X size={18} color={C.t3} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.t1, letterSpacing: -0.4 }}>
+              {t('support.title')}
+            </div>
+            <button onClick={onClose} style={{
+              background: 'rgba(255,255,255,0.06)', border: 'none', cursor: 'pointer',
+              width: 28, height: 28, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+              <X size={14} color={C.t3} />
             </button>
           </div>
 
           {sent ? (
-            <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: C.geoDim, border: `1px solid ${C.geoGl}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                <CheckCircle size={32} color={C.geo} strokeWidth={2} />
+            <div style={{ textAlign: 'center', padding: '20px 0 8px' }}>
+              <div style={{
+                width: 60, height: 60, borderRadius: '50%',
+                background: C.geoDim, border: `1px solid ${C.geoGl}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}>
+                <CheckCircle size={28} color={C.geo} strokeWidth={2} />
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 8 }}>{t('support.sent')}</div>
-              <div style={{ fontSize: 13, color: C.t3, marginBottom: 20, lineHeight: 1.5 }}>{t('support.sent_sub')}</div>
-              <button onClick={onClose} style={{ background: C.geo, color: C.bg, border: 'none', borderRadius: 12, padding: '12px 32px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 8, letterSpacing: -0.3 }}>
+                {t('support.sent')}
+              </div>
+              <div style={{ fontSize: 13, color: C.t3, marginBottom: 22, lineHeight: 1.55 }}>
+                {t('support.sent_sub')}
+              </div>
+              <button onClick={onClose} style={{
+                background: C.geo, color: '#0A0E14', border: 'none',
+                borderRadius: 14, padding: '13px 36px',
+                fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
                 {t('support.close')}
               </button>
             </div>
           ) : (
             <>
               {/* Type toggle */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <div style={{
+                display: 'flex', gap: 8, marginBottom: 16,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: 14, padding: 4,
+              }}>
                 {[
-                  { key: 'chat',   label: t('support.type.chat'),   Icon: MessageCircle },
-                  { key: 'report', label: t('support.type.report'), Icon: AlertCircle   },
-                ].map(({ key, label, Icon }) => {
+                  { key: 'chat',   label: t('support.type.chat') },
+                  { key: 'report', label: t('support.type.report') },
+                ].map(({ key, label }) => {
                   const active = type === key;
                   return (
-                    <button
-                      key={key}
-                      onClick={() => setType(key)}
-                      style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        padding: '10px 0', borderRadius: 10,
-                        border: `1px solid ${active ? C.geo : C.b2}`,
-                        background: active ? C.geoDim : 'transparent',
-                        color: active ? C.geo : C.t3,
-                        fontSize: 13, fontWeight: active ? 700 : 500,
-                        cursor: 'pointer', transition: `all 0.15s ${E.smooth}`,
-                        WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      <Icon size={14} strokeWidth={2} />
+                    <button key={key} onClick={() => setType(key)} style={{
+                      flex: 1, padding: '9px 0', borderRadius: 11,
+                      border: 'none',
+                      background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                      color: active ? C.t1 : C.t3,
+                      fontSize: 13, fontWeight: active ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: `background 0.15s ${EASE_OUT}, color 0.15s`,
+                      WebkitTapHighlightColor: 'transparent',
+                    }}>
                       {label}
                     </button>
                   );
                 })}
               </div>
 
-              {/* Textarea */}
               <textarea
                 ref={textareaRef}
                 value={message}
@@ -158,43 +184,50 @@ function SupportSheet({ onClose }) {
                 rows={4}
                 style={{
                   width: '100%', boxSizing: 'border-box',
-                  padding: '12px 14px', borderRadius: 12,
-                  border: `1.5px solid ${err ? C.red : C.b2}`,
-                  background: C.card || 'rgba(255,255,255,0.04)',
+                  padding: '13px 14px', borderRadius: 14,
+                  border: `1px solid ${err ? C.red : 'rgba(255,255,255,0.10)'}`,
+                  background: 'rgba(255,255,255,0.04)',
                   color: C.t1, fontSize: 14, outline: 'none',
-                  resize: 'none', lineHeight: 1.5,
-                  transition: 'border 0.15s',
+                  resize: 'none', lineHeight: 1.55,
+                  transition: 'border-color 0.15s',
                   fontFamily: 'inherit',
                 }}
               />
-              <div style={{ fontSize: 11, color: C.t3, textAlign: 'right', marginTop: 3, marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: C.t3, textAlign: 'right', marginTop: 4, marginBottom: err ? 4 : 12 }}>
                 {message.length}/2000
               </div>
 
               {err && (
-                <div style={{ fontSize: 13, color: C.red, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <AlertCircle size={14} color={C.red} /> {err}
+                <div style={{
+                  fontSize: 13, color: C.red, fontWeight: 600, marginBottom: 12,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <AlertCircle size={13} color={C.red} /> {err}
                 </div>
               )}
 
-              {/* Submit */}
               <button
                 onClick={handleSend}
                 disabled={submitting || message.trim().length < 3}
                 style={{
-                  width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                  background: (submitting || message.trim().length < 3) ? C.cardHi : C.geo,
-                  color: (submitting || message.trim().length < 3) ? C.t3 : C.bg,
-                  fontSize: 15, fontWeight: 700,
+                  width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                  background: (submitting || message.trim().length < 3)
+                    ? 'rgba(255,255,255,0.06)'
+                    : 'linear-gradient(135deg,#D48A52 0%,#C97B47 100%)',
+                  color: (submitting || message.trim().length < 3) ? C.t3 : '#0A0E14',
+                  fontSize: 14, fontWeight: 700,
                   cursor: (submitting || message.trim().length < 3) ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  transition: `all 0.15s ${E.smooth}`,
+                  transition: `all 0.18s ${EASE_OUT}`,
                   WebkitTapHighlightColor: 'transparent',
+                  boxShadow: (submitting || message.trim().length < 3)
+                    ? 'none'
+                    : '0 4px 18px rgba(201,123,71,0.28)',
                 }}
               >
                 {submitting
-                  ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> {t('support.sending')}</>
-                  : <><Send size={16} strokeWidth={2} /> {t('support.send')}</>
+                  ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> {t('support.sending')}</>
+                  : <><Send size={15} strokeWidth={2} /> {t('support.send')}</>
                 }
               </button>
             </>
@@ -205,12 +238,39 @@ function SupportSheet({ onClose }) {
   );
 }
 
+// ── Pressable row ─────────────────────────────────────────────────────────────
+function PressableRow({ onClick, children, style = {} }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onTouchStart={() => setPressed(true)}
+      onTouchEnd={() => setPressed(false)}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        transform: pressed ? 'scale(0.985)' : 'scale(1)',
+        transition: pressed
+          ? `transform 90ms ${EASE_OUT}`
+          : `transform 160ms ${EASE_SPRING}`,
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ── Main Profile page ─────────────────────────────────────────────────────────
 export default function Profile() {
   const { t, lang, setLang } = useLanguage();
   const navigate = useNavigate();
-  const [meData,   setMeData]   = useState(null);
-  const [gameData, setGameData] = useState(null);
-  const [loading,  setLoading]  = useState(true);
+  const [meData,      setMeData]      = useState(null);
+  const [gameData,    setGameData]    = useState(null);
+  const [loading,     setLoading]     = useState(true);
   const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
@@ -224,14 +284,13 @@ export default function Profile() {
   }, []);
 
   const isSuperAdmin = meData?.is_super_admin || false;
-
-  const balance = meData?.user?.balance ?? 0;
-  const visits  = meData?.user?.total_visits ?? meData?.user?.checkin_count ?? 0;
-  const level   = gameData?.level ?? 1;
-  const xp      = gameData?.xp ?? 0;
-  const streak  = gameData?.streak?.current_streak ?? 0;
-  const cfg     = LV[level] || LV[1];
-  const pct     = xpPct(xp, level);
+  const balance  = meData?.user?.balance ?? 0;
+  const visits   = meData?.user?.total_visits ?? meData?.user?.checkin_count ?? 0;
+  const level    = gameData?.level ?? 1;
+  const xp       = gameData?.xp ?? 0;
+  const streak   = gameData?.streak?.current_streak ?? 0;
+  const cfg      = LV[level] || LV[1];
+  const pct      = xpPct(xp, level);
 
   const displayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ')
@@ -240,156 +299,200 @@ export default function Profile() {
   const initials = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bg, padding: '16px 16px 40px', animation: 'pageEnter 0.3s ease both' }}>
+    <div style={{
+      minHeight: '100vh', background: C.bg,
+      padding: '16px 16px 80px',
+      animation: 'pageEnter 0.3s ease both',
+    }}>
 
-      {/* ── User hero card ── */}
+      {/* ── Identity card ── */}
       <div style={{
-        ...cardBase,
-        border: `1px solid ${cfg.color}30`,
-        background: `linear-gradient(145deg, ${cfg.color}0E 0%, ${C.card} 60%)`,
-        padding: '20px',
-        marginBottom: 14,
-        position: 'relative', overflow: 'hidden',
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 26, padding: 1.5, marginBottom: 12,
       }}>
         <div style={{
-          position: 'absolute', top: -24, right: -24,
-          width: 120, height: 120, borderRadius: '50%',
-          background: `radial-gradient(circle, ${cfg.color}10 0%, transparent 70%)`,
-          pointerEvents: 'none',
-        }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
-          {/* Avatar */}
+          background: `linear-gradient(145deg, ${cfg.color}09 0%, #0E1C2A 60%, #081018 100%)`,
+          borderRadius: 25, padding: '20px',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          {/* Subtle accent blob */}
           <div style={{
-            width: 68, height: 68, borderRadius: 20, flexShrink: 0,
-            background: cfg.bg, border: `1.5px solid ${cfg.color}40`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ fontSize: 24, fontWeight: 800, color: cfg.color }}>{initials}</span>
-          </div>
+            position: 'absolute', top: -30, right: -20,
+            width: 140, height: 140, borderRadius: '50%',
+            background: `radial-gradient(circle, ${cfg.color}10 0%, transparent 70%)`,
+            pointerEvents: 'none',
+          }} />
 
-          {/* Name + level */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {loading ? (
-              <>
-                <Skel h={18} w={130} r={8} />
-                <div style={{ marginTop: 6 }}><Skel h={12} w={80} r={6} /></div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 18, fontWeight: 700, color: C.t1, lineHeight: 1.2, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {displayName}
-                </div>
-                {username && (
-                  <div style={{ fontSize: 12, color: C.t3, marginBottom: 9 }}>{username}</div>
-                )}
-              </>
-            )}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              background: cfg.bg, border: `1px solid ${cfg.color}32`,
-              borderRadius: 8, padding: '4px 10px',
-            }}>
-              <Crown size={11} color={cfg.color} strokeWidth={2} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>
-                {t(`level.${level}`)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── XP + Streak ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-        {/* XP */}
-        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative' }}>
+            {/* Avatar with ring */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
-              <RingProgress pct={pct} size={54} strokeW={5} color={cfg.color} />
+              <RingProgress pct={pct} size={62} strokeW={3.5} color={cfg.color} />
+              {/* Level number in center of ring */}
               <div style={{
                 position: 'absolute', inset: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span style={{ fontSize: 14, fontWeight: 800, color: cfg.color }}>{level}</span>
+                <div style={{
+                  width: 46, height: 46, borderRadius: 16,
+                  background: cfg.bg, border: `1px solid ${cfg.color}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: cfg.color }}>
+                    {initials}
+                  </span>
+                </div>
               </div>
             </div>
-            <div>
-              <div style={{ fontSize: 10, color: C.t3, marginBottom: 3 }}>XP</div>
-              {loading
-                ? <Skel h={16} w={60} r={6} />
-                : <div style={{ fontSize: 15, fontWeight: 700, color: C.t1, lineHeight: 1 }}>
-                    {xp.toLocaleString('ru-RU')}
-                    {cfg.next && (
-                      <span style={{ fontSize: 10, color: C.t3, fontWeight: 400 }}>
-                        {' '}/ {cfg.next.toLocaleString('ru-RU')}
-                      </span>
-                    )}
+
+            {/* Name + level badge */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {loading ? (
+                <>
+                  <Skel h={18} w={130} r={8} />
+                  <div style={{ marginTop: 6 }}><Skel h={12} w={80} r={6} /></div>
+                </>
+              ) : (
+                <>
+                  <div style={{
+                    fontSize: 18, fontWeight: 700, color: C.t1,
+                    letterSpacing: -0.5, lineHeight: 1.2, marginBottom: 3,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {displayName}
                   </div>
-              }
+                  {username && (
+                    <div style={{ fontSize: 12, color: C.t3, marginBottom: 8 }}>{username}</div>
+                  )}
+                </>
+              )}
+
+              {/* Level badge */}
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                background: cfg.bg, border: `1px solid ${cfg.color}28`,
+                borderRadius: 8, padding: '4px 10px',
+              }}>
+                <Crown size={10} color={cfg.color} strokeWidth={2.5} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color, letterSpacing: -0.2 }}>
+                  {t(`level.${level}`)}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Streak */}
-        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <Flame size={16} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} />
-            {loading
-              ? <Skel h={24} w={40} r={6} />
-              : <span style={{ fontSize: 24, fontWeight: 800, color: streak > 0 ? C.orange : C.t3, letterSpacing: -0.5, lineHeight: 1 }}>
-                  {streak}
+          {/* XP progress bar */}
+          {!loading && cfg.next && (
+            <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7 }}>
+                <span style={{ fontSize: 10, color: C.t3, letterSpacing: 0.2 }}>XP</span>
+                <span style={{ fontSize: 10, color: C.t3 }}>
+                  {xp.toLocaleString('ru-RU')} / {cfg.next.toLocaleString('ru-RU')}
                 </span>
-            }
-          </div>
-          <div style={{ fontSize: 10, color: C.t3 }}>{t('hdr.streak')}</div>
+              </div>
+              <div style={{
+                height: 3, borderRadius: 3,
+                background: 'rgba(255,255,255,0.07)',
+                overflow: 'hidden',
+              }}>
+                <div style={{
+                  height: '100%', borderRadius: 3,
+                  background: cfg.color,
+                  width: `${pct * 100}%`,
+                  transition: 'width 1s cubic-bezier(0.23,1,0.32,1) 0.3s',
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Balance + Visits ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px' }}>
+      {/* ── Stats grid ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+        {/* Balance */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 18, padding: '14px 12px',
+          animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.05s both',
+        }}>
           {loading
-            ? <Skel h={22} w={80} r={6} />
-            : <div style={{ fontSize: 22, fontWeight: 800, color: C.geo, letterSpacing: -0.5, lineHeight: 1 }}>
+            ? <Skel h={22} w={60} r={7} />
+            : <div style={{ fontSize: 20, fontWeight: 700, color: C.geo, letterSpacing: -0.8, lineHeight: 1 }}>
                 {balance.toLocaleString('ru-RU')}
               </div>
           }
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.geo, opacity: 0.7, marginTop: 1 }}>GEO</div>
-          <div style={{ fontSize: 10, color: C.t3, marginTop: 5 }}>{t('hdr.balance')}</div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: C.geo, opacity: 0.7, marginTop: 2 }}>GEO</div>
+          <div style={{ fontSize: 9, color: C.t3, marginTop: 5, fontWeight: 500 }}>{t('hdr.balance')}</div>
         </div>
-        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '14px' }}>
+
+        {/* Visits */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 18, padding: '14px 12px',
+          animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.09s both',
+        }}>
           {loading
-            ? <Skel h={22} w={50} r={6} />
-            : <div style={{ fontSize: 22, fontWeight: 800, color: C.teal, letterSpacing: -0.5, lineHeight: 1 }}>
+            ? <Skel h={22} w={40} r={7} />
+            : <div style={{ fontSize: 20, fontWeight: 700, color: C.teal, letterSpacing: -0.5, lineHeight: 1 }}>
                 {visits}
               </div>
           }
-          <div style={{ fontSize: 10, color: C.t3, marginTop: 6 }}>{t('balance.visits')}</div>
+          <div style={{ fontSize: 9, color: C.t3, marginTop: 7, fontWeight: 500 }}>{t('balance.visits')}</div>
+        </div>
+
+        {/* Streak */}
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 18, padding: '14px 12px',
+          animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.13s both',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+            <Flame size={13} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} style={{ flexShrink: 0 }} />
+            {loading
+              ? <Skel h={22} w={30} r={7} />
+              : <div style={{ fontSize: 20, fontWeight: 700, color: streak > 0 ? C.orange : C.t3, letterSpacing: -0.5, lineHeight: 1 }}>
+                  {streak}
+                </div>
+            }
+          </div>
+          <div style={{ fontSize: 9, color: C.t3, marginTop: 5, fontWeight: 500 }}>{t('hdr.streak')}</div>
         </div>
       </div>
 
       {/* ── Language ── */}
-      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px', marginBottom: 14 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+      <div style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: 20, padding: '16px',
+        marginBottom: 10,
+        animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.17s both',
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, letterSpacing: 0.3, marginBottom: 12 }}>
           {t('lang.title')}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{
+          display: 'flex', gap: 4,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 14, padding: 4,
+        }}>
           {Object.entries(LANGS).map(([code, info]) => {
             const active = lang === code;
             return (
-              <button
-                key={code}
-                onClick={() => setLang(code)}
-                style={{
-                  flex: 1, borderRadius: 10, padding: '11px 0',
-                  border: `1px solid ${active ? C.geo : C.b2}`,
-                  background: active ? C.geoDim : 'transparent',
-                  color: active ? C.geo : C.t3,
-                  fontSize: 13, fontWeight: active ? 700 : 500,
-                  cursor: 'pointer',
-                  transition: `all 0.15s ${E.smooth}`,
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
+              <button key={code} onClick={() => setLang(code)} style={{
+                flex: 1, borderRadius: 11, padding: '10px 0',
+                border: 'none',
+                background: active ? 'rgba(255,255,255,0.09)' : 'transparent',
+                color: active ? C.t1 : C.t3,
+                fontSize: 13, fontWeight: active ? 700 : 500,
+                cursor: 'pointer',
+                transition: `background 0.18s ${EASE_OUT}, color 0.18s`,
+                WebkitTapHighlightColor: 'transparent',
+                letterSpacing: -0.2,
+              }}>
                 {info.short}
               </button>
             );
@@ -399,45 +502,68 @@ export default function Profile() {
 
       {/* ── Super Admin ── */}
       {isSuperAdmin && (
-        <div style={{ ...cardBase, border: `1px solid rgba(139,92,246,0.35)`, padding: '16px', marginBottom: 14, background: 'rgba(139,92,246,0.06)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#A78BFA', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-            Super Admin
+        <PressableRow
+          onClick={() => navigate('/superadmin')}
+          style={{ marginBottom: 10 }}
+        >
+          <div style={{
+            background: 'rgba(139,92,246,0.06)',
+            border: '1px solid rgba(139,92,246,0.25)',
+            borderRadius: 20, padding: '16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(139,92,246,0.15)',
+              border: '1px solid rgba(139,92,246,0.30)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Shield size={17} color="#A78BFA" strokeWidth={1.75} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#A78BFA', letterSpacing: -0.2 }}>
+                Super Admin
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(167,139,250,0.6)', marginTop: 2 }}>
+                Панель управления
+              </div>
+            </div>
+            <ChevronRight size={16} color="rgba(167,139,250,0.5)" strokeWidth={1.75} />
           </div>
-          <button
-            onClick={() => navigate('/superadmin')}
-            style={{
-              width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-              background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.35)',
-              borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent',
-              transition: `all 0.15s ${E.smooth}`,
-            }}
-          >
-            <Shield size={16} color="#A78BFA" strokeWidth={2} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#A78BFA' }}>Панель Super Admin</span>
-          </button>
-        </div>
+        </PressableRow>
       )}
 
       {/* ── Support ── */}
-      <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '16px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
-          {t('profile.support.title')}
-        </div>
-        <button
-          onClick={() => setSupportOpen(true)}
-          style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+      <PressableRow
+        onClick={() => setSupportOpen(true)}
+        style={{
+          animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.21s both',
+        }}
+      >
+        <div style={{
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 20, padding: '16px',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 12, flexShrink: 0,
             background: C.geoDim, border: `1px solid ${C.geoGl}`,
-            borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent',
-            transition: `all 0.15s ${E.smooth}`,
-          }}
-        >
-          <MessageCircle size={16} color={C.geo} strokeWidth={2} />
-          <span style={{ fontSize: 14, fontWeight: 600, color: C.geo }}>{t('profile.support.open')}</span>
-        </button>
-      </div>
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <MessageCircle size={17} color={C.geo} strokeWidth={1.75} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.t1, letterSpacing: -0.2 }}>
+              {t('profile.support.open')}
+            </div>
+            <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
+              {t('profile.support.title')}
+            </div>
+          </div>
+          <ChevronRight size={16} color={C.t3} strokeWidth={1.75} />
+        </div>
+      </PressableRow>
 
       {supportOpen && <SupportSheet onClose={() => setSupportOpen(false)} />}
     </div>

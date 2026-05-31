@@ -381,6 +381,14 @@ export const GLOBAL_CSS = `
     from { transform: translateY(20px); opacity: 0; }
     to   { transform: translateY(0);    opacity: 1; }
   }
+  @keyframes staggerIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes glowPulse {
+    0%,100% { opacity: 0.35; transform: scale(1); }
+    50%      { opacity: 0.60; transform: scale(1.04); }
+  }
   @keyframes morphIn {
     from { transform: translateY(10px) scale(0.96); opacity: 0; }
     to   { transform: translateY(0)    scale(1);    opacity: 1; }
@@ -765,37 +773,48 @@ function ScanQrButton({ onToast, onQrResult }) {
   }
 
   return (
-    <button
-      onClick={handleScan}
-      style={{
-        position: 'relative',
-        bottom: 18,
-        width: 54,
-        height: 54,
-        borderRadius: '50%',
-        background: scanning ? 'rgba(140,180,20,0.6)' : C.geo,
-        border: `2px solid ${C.bg}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: scanning ? 'not-allowed' : 'pointer',
-        animation: scanning ? 'none' : 'scanRing 2.4s ease-in-out infinite',
-        flexShrink: 0,
-        transition: `all 0.15s ${E.spring}`,
-        WebkitTapHighlightColor: 'transparent',
-        outline: 'none',
-        zIndex: 10,
-      }}
-      onTouchStart={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.88)'; }}
-      onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-      onMouseDown={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.88)'; }}
-      onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-    >
-      {scanning
-        ? <Loader2 size={22} strokeWidth={2} color={C.bg} style={{ animation: 'spin 1s linear infinite' }} />
-        : <ScanLine size={22} strokeWidth={2} color={C.bg} />
-      }
-    </button>
+    /* Outer glow ring — decoupled from button transform so press state is clean */
+    <div style={{ position: 'relative', bottom: 14, flexShrink: 0 }}>
+      {!scanning && (
+        <div style={{
+          position: 'absolute', inset: -2,
+          borderRadius: '50%',
+          background: C.geo,
+          opacity: 0.35,
+          filter: 'blur(8px)',
+          animation: 'glowPulse 3s ease-in-out infinite',
+          pointerEvents: 'none',
+        }} />
+      )}
+      <button
+        onClick={handleScan}
+        style={{
+          position: 'relative',
+          width: 50, height: 50,
+          borderRadius: '50%',
+          background: scanning
+            ? 'rgba(143,174,123,0.5)'
+            : 'linear-gradient(145deg,#D48A52 0%,#C97B47 100%)',
+          border: `2px solid ${C.bg}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: scanning ? 'not-allowed' : 'pointer',
+          flexShrink: 0,
+          WebkitTapHighlightColor: 'transparent',
+          outline: 'none', zIndex: 10,
+          transition: 'transform 100ms cubic-bezier(0.23,1,0.32,1)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+        }}
+        onTouchStart={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        onMouseDown={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+      >
+        {scanning
+          ? <Loader2 size={20} strokeWidth={2.25} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+          : <ScanLine size={20} strokeWidth={2.25} color="#0A0E14" />
+        }
+      </button>
+    </div>
   );
 }
 
@@ -872,24 +891,23 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
     <>
       <nav ref={navRef} style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
-        background: 'rgba(8,16,24,0.97)',
-        backdropFilter: 'blur(24px)',
-        WebkitBackdropFilter: 'blur(24px)',
-        borderTop: '1px solid rgba(255,255,255,0.07)',
+        background: 'rgba(8,16,24,0.96)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '0.5px solid rgba(255,255,255,0.08)',
         display: 'flex', alignItems: 'flex-end',
-        paddingBottom: 'env(safe-area-inset-bottom, 8px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 6px)',
         zIndex: 100,
-        height: 60,
+        height: 58,
       }}>
-        {/* Sliding indicator */}
+        {/* Sliding dot indicator */}
         {indicatorX !== null && (
           <div style={{
             position: 'absolute', top: 0,
-            left: indicatorX,
-            width: 24, height: 2.5, borderRadius: 2,
+            left: indicatorX, width: 24, height: 2,
+            borderRadius: 0,
             background: C.geo,
-            boxShadow: `0 0 10px rgba(201,123,71,0.5)`,
-            transition: `left 0.3s cubic-bezier(0.32,0.72,0,1)`,
+            transition: 'left 0.32s cubic-bezier(0.32,0.72,0,1)',
             pointerEvents: 'none',
           }} />
         )}
@@ -898,8 +916,8 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
           if (!item) {
             return (
               <div key="scan" style={{
-                flex: 1.2, display: 'flex', justifyContent: 'center',
-                alignItems: 'flex-end', paddingBottom: 6,
+                flex: 1.1, display: 'flex', justifyContent: 'center',
+                alignItems: 'flex-end', paddingBottom: 4,
               }}>
                 <ScanQrButton onToast={showToast} onQrResult={onQrResult} />
               </div>
@@ -917,27 +935,27 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
               data-tab={idx}
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', gap: 4, padding: '10px 0 9px',
+                alignItems: 'center', gap: 3, padding: '10px 0 8px',
                 textDecoration: 'none', position: 'relative',
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
               <item.Icon
                 key={isActive ? `${item.to}-on` : `${item.to}-off`}
-                size={22}
-                strokeWidth={isActive ? 2.25 : 1.75}
+                size={20}
+                strokeWidth={isActive ? 2.25 : 1.5}
                 color={isActive ? C.geo : C.t3}
                 style={{
                   display: 'block',
                   animation: isActive ? 'iconBounce 0.22s ease both' : 'none',
-                  transition: 'color 0.18s',
+                  transition: 'color 0.18s cubic-bezier(0.23,1,0.32,1)',
                 }}
               />
               <span style={{
-                fontSize: 9, fontWeight: 700, letterSpacing: 0.6,
+                fontSize: 9, fontWeight: isActive ? 700 : 500,
+                letterSpacing: 0.2,
                 color: isActive ? C.geo : C.t3,
-                transition: 'color 0.18s',
-                textTransform: 'uppercase',
+                transition: 'color 0.18s cubic-bezier(0.23,1,0.32,1)',
               }}>
                 {item.label}
               </span>
