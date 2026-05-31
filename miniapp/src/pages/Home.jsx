@@ -854,16 +854,16 @@ export default function Home() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: 10,
+              width: 38, height: 38, borderRadius: 11,
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               overflow: 'hidden',
             }}>
               {logoImgErr
-                ? <MapPin size={14} color={C.geo} strokeWidth={2} />
+                ? <MapPin size={17} color={C.geo} strokeWidth={2} />
                 : <img
                     src="/logo.png" alt=""
-                    style={{ width: 24, height: 24, objectFit: 'contain', display: 'block' }}
+                    style={{ width: 30, height: 30, objectFit: 'contain', display: 'block' }}
                     onError={() => setLogoImgErr(true)}
                   />
               }
