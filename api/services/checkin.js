@@ -207,11 +207,14 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
 
   // Referral passive income: +5% of base reward to referrer for 30 days after activation
   if (visitId) {
-    supabase.rpc('process_referral_income', {
-      p_referred_id: userId,
-      p_visit_id:    visitId,
-      p_reward:      baseReward,
-    }).catch(e => console.error('[referral] process_referral_income error', e?.message));
+    (async () => {
+      const { error } = await supabase.rpc('process_referral_income', {
+        p_referred_id: userId,
+        p_visit_id:    visitId,
+        p_reward:      baseReward,
+      });
+      if (error) console.error('[referral] process_referral_income error', error?.message);
+    })();
   }
 
   // Platform covers multiplier bonus + new-place bonus
