@@ -8,7 +8,7 @@ import {
 import { API_BASE, apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
-import { C, E, FF } from '../lib/design';
+import { C, FF } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 import { parseTaskDesc } from '../lib/i18n';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -854,16 +854,16 @@ export default function Home() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 38, height: 38, borderRadius: 11,
+              width: 52, height: 52, borderRadius: 14,
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               overflow: 'hidden',
             }}>
               {logoImgErr
-                ? <MapPin size={17} color={C.geo} strokeWidth={2} />
+                ? <MapPin size={24} color={C.geo} strokeWidth={2} />
                 : <img
                     src="/logo.png" alt=""
-                    style={{ width: 30, height: 30, objectFit: 'contain', display: 'block' }}
+                    style={{ width: 42, height: 42, objectFit: 'contain', display: 'block' }}
                     onError={() => setLogoImgErr(true)}
                   />
               }
