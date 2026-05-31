@@ -99,8 +99,8 @@ router.post('/api/admin/campaign', validateTma, async (req, res) => {
   const telegramId = req.user.telegram_id;
   const { budget, max_visits, task_type, task_description, requires_pin, ends_at } = req.body;
 
-  if (!Number.isInteger(budget) || budget < 1000) {
-    return res.status(400).json({ error: 'INVALID_PARAMS', message: 'budget must be >= 1000' });
+  if (!Number.isInteger(budget) || budget < 1) {
+    return res.status(400).json({ error: 'INVALID_PARAMS', message: 'budget must be >= 1' });
   }
   if (!Number.isInteger(max_visits) || max_visits < 1 || max_visits > 100000) {
     return res.status(400).json({ error: 'INVALID_PARAMS', message: 'max_visits must be 1–100000' });

@@ -63,7 +63,7 @@ function Skel({ h = 20, w = '100%', r = 8 }) {
 
 function Toggle({ on, onToggle }) {
   return (
-    <div onClick={onToggle} style={{
+    <div onClick={e => { e.stopPropagation(); onToggle(); }} style={{
       width: 44, height: 26, borderRadius: 13,
       background: on ? C.geo : C.b2,
       transition: 'background 0.2s',
@@ -700,7 +700,7 @@ function CampaignForm({ balance, onClose, onCreated }) {
   const budgetNum = parseInt(budget, 10) || 0;
   const visitsNum = parseInt(visits, 10) || 0;
   const { reward, rewardsSum, commission, totalCost } = calcCampaign(budgetNum, visitsNum);
-  const canSubmit = budgetNum >= 1000 && visitsNum >= 1 && reward >= 1 && totalCost <= balance
+  const canSubmit = budgetNum >= 1 && visitsNum >= 1 && reward >= 1 && totalCost <= balance
     && descRu.trim().length > 0 && descUz.trim().length > 0;
   const today = new Date().toISOString().split('T')[0];
 
