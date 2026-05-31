@@ -292,8 +292,8 @@ export const GLOBAL_CSS = `
     50%       { opacity: .35; }
   }
   @keyframes glowPulse {
-    0%, 100% { opacity: 0.40; transform: scale(1); }
-    50%       { opacity: 0.75; transform: scale(1.04); }
+    0%, 100% { opacity: 0.40; }
+    50%       { opacity: 0.78; }
   }
   @keyframes hudPulse {
     0%, 100% { opacity: 0.5; }
@@ -419,9 +419,8 @@ export const GLOBAL_CSS = `
 
   /* ── Slot machine digits ── */
   @keyframes slotDrop {
-    0%   { transform: translateY(-90%); opacity: 0; }
-    60%  { transform: translateY(5%);   opacity: 1; }
-    100% { transform: translateY(0);    opacity: 1; }
+    from { transform: translateY(-85%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
   }
 
   /* ── Nav icon activate — press-then-settle, no overshoot ── */
@@ -905,17 +904,17 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
         zIndex: 100,
         height: 58,
       }}>
-        {/* Sliding dot indicator */}
-        {indicatorX !== null && (
-          <div style={{
-            position: 'absolute', top: 0,
-            left: indicatorX, width: 24, height: 2,
-            borderRadius: 0,
-            background: C.geo,
-            transition: 'left 0.32s cubic-bezier(0.32,0.72,0,1)',
-            pointerEvents: 'none',
-          }} />
-        )}
+        {/* Sliding line indicator — transform only, GPU safe */}
+        <div style={{
+          position: 'absolute', top: 0,
+          left: 0, width: 24, height: 2,
+          borderRadius: 1,
+          background: C.geo,
+          transform: `translateX(${indicatorX ?? 0}px)`,
+          opacity: indicatorX !== null ? 1 : 0,
+          transition: 'transform 0.30s cubic-bezier(0.32,0.72,0,1), opacity 0.18s',
+          pointerEvents: 'none',
+        }} />
 
         {NAV_ITEMS.map((item, idx) => {
           if (!item) {
@@ -957,8 +956,8 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
                 }}
               />
               <span style={{
-                fontSize: 9, fontWeight: isActive ? 700 : 500,
-                letterSpacing: 0.2,
+                fontSize: 10, fontWeight: isActive ? 700 : 500,
+                letterSpacing: 0,
                 color: isActive ? C.geo : C.t3,
                 transition: 'color 0.18s cubic-bezier(0.23,1,0.32,1)',
               }}>
@@ -1097,9 +1096,8 @@ function AppLayout() {
     }, 400);
   }
 
-  const hasNav    = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
-  const hasHeader = hasNav && pathname !== '/map';
-  const isSAPage  = pathname === '/superadmin';
+  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
+  const isSAPage = pathname === '/superadmin';
 
   return (
     <div style={{
@@ -1114,7 +1112,6 @@ function AppLayout() {
         paddingBottom: hasNav ? 68 : 0,
         height: isSAPage ? 'auto' : undefined,
       }}>
-        {hasHeader && <GlobalHeader showStats={pathname === '/'} />}
         <Routes>
           <Route path="/"                element={<Home />} />
           <Route path="/map"             element={<Map />} />

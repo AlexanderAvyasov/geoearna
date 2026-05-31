@@ -301,7 +301,7 @@ export default function Profile() {
   return (
     <div style={{
       minHeight: '100vh', background: C.bg,
-      padding: '16px 16px 80px',
+      padding: '20px 16px 80px',
       animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both',
     }}>
 
@@ -309,11 +309,11 @@ export default function Profile() {
       <div style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 26, padding: 1.5, marginBottom: 12,
+        borderRadius: 20, padding: 1.5, marginBottom: 12,
       }}>
         <div style={{
           background: `linear-gradient(145deg, ${cfg.color}09 0%, #0E1C2A 60%, #081018 100%)`,
-          borderRadius: 25, padding: '20px',
+          borderRadius: 19, padding: '20px',
           position: 'relative', overflow: 'hidden',
         }}>
           {/* Subtle accent blob */}
@@ -334,11 +334,11 @@ export default function Profile() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <div style={{
-                  width: 46, height: 46, borderRadius: 16,
-                  background: cfg.bg, border: `1px solid ${cfg.color}30`,
+                  width: 46, height: 46, borderRadius: '50%',
+                  background: cfg.bg, border: `1px solid ${cfg.color}40`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: cfg.color }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: cfg.color, letterSpacing: -0.3 }}>
                     {initials}
                   </span>
                 </div>
@@ -413,52 +413,52 @@ export default function Profile() {
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 18, padding: '14px 12px',
+          borderRadius: 16, padding: '16px 12px',
           animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.05s both',
         }}>
           {loading
-            ? <Skel h={22} w={60} r={7} />
-            : <div style={{ fontSize: 20, fontWeight: 700, color: C.geo, letterSpacing: -0.8, lineHeight: 1 }}>
+            ? <Skel h={24} w={60} r={7} />
+            : <div style={{ fontSize: 22, fontWeight: 700, color: C.geo, letterSpacing: -0.8, lineHeight: 1 }}>
                 {balance.toLocaleString('ru-RU')}
               </div>
           }
-          <div style={{ fontSize: 9, fontWeight: 700, color: C.geo, opacity: 0.7, marginTop: 2 }}>GEO</div>
-          <div style={{ fontSize: 9, color: C.t3, marginTop: 5, fontWeight: 500 }}>{t('hdr.balance')}</div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.geo, opacity: 0.65, marginTop: 2 }}>GEO</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 4, fontWeight: 500 }}>{t('hdr.balance')}</div>
         </div>
 
         {/* Visits */}
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 18, padding: '14px 12px',
+          borderRadius: 16, padding: '16px 12px',
           animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.09s both',
         }}>
           {loading
-            ? <Skel h={22} w={40} r={7} />
-            : <div style={{ fontSize: 20, fontWeight: 700, color: C.teal, letterSpacing: -0.5, lineHeight: 1 }}>
+            ? <Skel h={24} w={40} r={7} />
+            : <div style={{ fontSize: 22, fontWeight: 700, color: C.teal, letterSpacing: -0.5, lineHeight: 1 }}>
                 {visits}
               </div>
           }
-          <div style={{ fontSize: 9, color: C.t3, marginTop: 7, fontWeight: 500 }}>{t('balance.visits')}</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 6, fontWeight: 500 }}>{t('balance.visits')}</div>
         </div>
 
         {/* Streak */}
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 18, padding: '14px 12px',
+          borderRadius: 16, padding: '16px 12px',
           animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.13s both',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
             <Flame size={13} color={streak > 0 ? C.orange : C.t3} strokeWidth={2} style={{ flexShrink: 0 }} />
             {loading
-              ? <Skel h={22} w={30} r={7} />
-              : <div style={{ fontSize: 20, fontWeight: 700, color: streak > 0 ? C.orange : C.t3, letterSpacing: -0.5, lineHeight: 1 }}>
+              ? <Skel h={24} w={30} r={7} />
+              : <div style={{ fontSize: 22, fontWeight: 700, color: streak > 0 ? C.orange : C.t3, letterSpacing: -0.5, lineHeight: 1 }}>
                   {streak}
                 </div>
             }
           </div>
-          <div style={{ fontSize: 9, color: C.t3, marginTop: 5, fontWeight: 500 }}>{t('hdr.streak')}</div>
+          <div style={{ fontSize: 10, color: C.t3, marginTop: 4, fontWeight: 500 }}>{t('hdr.streak')}</div>
         </div>
       </div>
 
@@ -466,11 +466,11 @@ export default function Profile() {
       <div style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 20, padding: '16px',
+        borderRadius: 16, padding: '16px',
         marginBottom: 10,
         animation: 'staggerIn 0.3s cubic-bezier(0.23,1,0.32,1) 0.17s both',
       }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, letterSpacing: 0.3, marginBottom: 12 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, marginBottom: 12 }}>
           {t('lang.title')}
         </div>
         <div style={{
@@ -543,7 +543,7 @@ export default function Profile() {
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 20, padding: '16px',
+          borderRadius: 16, padding: '16px',
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{

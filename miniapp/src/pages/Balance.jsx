@@ -304,18 +304,25 @@ export default function Balance() {
   return (
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both' }}>
 
+      {/* Page title — replaces removed GlobalHeader */}
+      <div style={{ padding: '20px 20px 0', marginBottom: 4 }}>
+        <span style={{ fontSize: 22, fontWeight: 700, color: C.t1, letterSpacing: -0.6 }}>
+          Кошелёк
+        </span>
+      </div>
+
       {/* ── Balance hero card ── */}
-      <div style={{ padding: '16px 16px 0' }}>
+      <div style={{ padding: '12px 16px 0' }}>
 
         {/* Double-bezel card */}
         <div style={{
           background: 'rgba(255,255,255,0.03)',
           border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 26, padding: 1.5, marginBottom: 14,
+          borderRadius: 20, padding: 1.5, marginBottom: 14,
         }}>
           <div style={{
             background: 'linear-gradient(145deg, #0D1B28 0%, #081018 100%)',
-            borderRadius: 25, padding: '22px 20px',
+            borderRadius: 19, padding: '22px 20px',
             position: 'relative', overflow: 'hidden',
           }}>
             {/* Ambient glow — top right corner */}
@@ -337,7 +344,6 @@ export default function Balance() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <div style={{
                   width: 6, height: 6, borderRadius: '50%', background: C.green,
-                  boxShadow: `0 0 6px ${C.green}`,
                   animation: 'pulse 2.5s ease-in-out infinite',
                 }} />
                 <span style={{ fontSize: 10, fontWeight: 600, color: C.green, letterSpacing: 0.2 }}>
