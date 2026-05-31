@@ -14,7 +14,7 @@ router.get('/api/checkin/info', async (req, res) => {
   // ── Try campaign-level QR token first ────────────────────────────────────────
   const { data: campaignRow, error: campErr } = await supabase
     .from('campaigns')
-    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits, business_id')
+    .select('*')
     .eq('qr_token', token)
     .maybeSingle();
 
@@ -69,7 +69,7 @@ router.get('/api/checkin/info', async (req, res) => {
 
   const { data: campaigns, error: campListErr } = await supabase
     .from('campaigns')
-    .select('id, reward_amount, task_type, task_description, requires_pin, active, ends_at, visits_count, max_visits')
+    .select('*')
     .eq('business_id', business.id);
 
   if (campListErr) {
