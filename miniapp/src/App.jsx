@@ -704,7 +704,7 @@ function useAppReady() {
   useEffect(() => {
     let cancelled = false;
 
-    const minDelay = new Promise(r => setTimeout(r, 2200));
+    const minDelay = new Promise(r => setTimeout(r, 1400));
     const initReady = waitForInitData(8000);
 
     Promise.all([minDelay, initReady]).then(() => {
