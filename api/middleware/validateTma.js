@@ -102,11 +102,22 @@ async function validateTma(req, res, next) {
         .single();
 
       if (insertError) {
-        console.error('validateTma insert user error', insertError);
-        return res.status(500).json({ error: 'INTERNAL_ERROR' });
+        // Race condition: concurrent request already inserted this user
+        if (insertError.code === '23505') {
+          const { data: racedUser } = await supabase
+            .from('users')
+            .select('*')
+            .eq('telegram_id', telegramId)
+            .maybeSingle();
+          user = racedUser;
+        }
+        if (!user) {
+          console.error('validateTma insert user error', insertError);
+          return res.status(500).json({ error: 'INTERNAL_ERROR' });
+        }
+      } else {
+        user = insertedUser;
       }
-
-      user = insertedUser;
     }
 
     // Banned users cannot access any API endpoint
