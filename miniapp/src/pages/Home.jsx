@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
   Tv2, Crosshair, ExternalLink, Gift, RefreshCw, Navigation,
+  Flame, Crown,
 } from 'lucide-react';
 import { API_BASE, apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -84,6 +85,42 @@ function openMaps(lat, lng) {
   const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   if (window.Telegram?.WebApp?.openLink) window.Telegram.WebApp.openLink(url);
   else window.open(url, '_blank');
+}
+
+// ── Level config (subset — color + bg only) ───────────────────────────────────
+const LV_CFG = {
+  1:  { color: '#6B7280', bg: 'rgba(107,114,128,0.12)' },
+  2:  { color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+  3:  { color: C.green,   bg: C.greenFt },
+  4:  { color: C.gold,    bg: C.goldFt },
+  5:  { color: C.orange,  bg: 'rgba(212,135,79,0.12)' },
+  6:  { color: '#F472B6', bg: 'rgba(244,114,182,0.12)' },
+  7:  { color: '#A78BFA', bg: 'rgba(167,139,250,0.12)' },
+  8:  { color: '#22D3EE', bg: 'rgba(34,211,238,0.12)' },
+  9:  { color: C.red,     bg: C.redFt },
+  10: { color: C.geo,     bg: C.geoDim },
+};
+
+// XP thresholds per level
+const XP_MIN  = [0, 0, 100, 250, 500, 1000, 2000, 3000, 3750, 4500, 5000];
+const XP_NEXT = [null, 100, 250, 500, 1000, 2000, 3000, 3750, 4500, 5000, null];
+function xpProgress(xp, level) {
+  const min  = XP_MIN[level]  ?? 0;
+  const next = XP_NEXT[level] ?? null;
+  if (!next) return 1;
+  return Math.min(1, (xp - min) / (next - min));
+}
+
+// ── User state classification ─────────────────────────────────────────────────
+// 'new'    — first-time, no visits, no balance
+// 'active' — has visited at least once or earned something
+// 'power'  — deeply engaged (10+ visits, 200+ GEO, or 5+ streak)
+function getUserState(heroData) {
+  if (!heroData) return 'loading';
+  const { balance = 0, visits = 0, streak = 0 } = heroData;
+  if (visits >= 10 || balance >= 200 || streak >= 5) return 'power';
+  if (visits >= 1  || balance > 0)                   return 'active';
+  return 'new';
 }
 
 // ── Satellite node positions ───────────────────────────────────────────────────
@@ -545,6 +582,155 @@ function HeroHeadline({ t }) {
   );
 }
 
+// ── Hero: new user — product pitch, aspirational ─────────────────────────────
+function NewHeroContent({ t }) {
+  return (
+    <div style={{ padding: '0 22px', animation: `heroReveal 0.5s ${EASE_OUT} 0.1s both` }}>
+      <HeroHeadline t={t} />
+    </div>
+  );
+}
+
+// ── Hero: active user — balance + streak ─────────────────────────────────────
+function ActiveHeroContent({ balance, streak }) {
+  return (
+    <div style={{ textAlign: 'center', animation: `balanceFadeIn 0.4s ${EASE_OUT} both` }}>
+      {/* Live label */}
+      <div style={{
+        fontSize: 10, fontWeight: 600, color: C.t3, letterSpacing: 1.4,
+        textTransform: 'uppercase', marginBottom: 7,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: '50%',
+          background: C.green, display: 'inline-block',
+          animation: 'liveSignal 2.2s ease-in-out infinite',
+        }} />
+        GEO Balance
+      </div>
+
+      {/* Balance number */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7 }}>
+        <span style={{
+          fontSize: 48, fontWeight: 300, color: C.t1,
+          letterSpacing: -2.2, lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {formatGeo(balance)}
+        </span>
+        <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>
+          GEO
+        </span>
+      </div>
+
+      {/* Streak pill — motivational, shown only when active */}
+      {streak > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 9 }}>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: 'rgba(212,135,79,0.13)',
+            border: '1px solid rgba(212,135,79,0.24)',
+            borderRadius: 20, padding: '4px 12px',
+            animation: `heroReveal 0.4s ${EASE_OUT} 0.14s both`,
+          }}>
+            <Flame size={11} color={C.orange} strokeWidth={2.5} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.orange, letterSpacing: -0.1 }}>
+              {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Hero: power user — status dashboard ──────────────────────────────────────
+function PowerHeroContent({ balance, streak, level, xp, visits }) {
+  const cfg = LV_CFG[level] || LV_CFG[1];
+  const pct = xpProgress(xp, level);
+
+  return (
+    <div style={{ textAlign: 'center', padding: '0 20px', animation: `balanceFadeIn 0.4s ${EASE_OUT} both` }}>
+      {/* Balance — slightly smaller to leave room for stats */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6, marginBottom: 10 }}>
+        <span style={{
+          fontSize: 44, fontWeight: 300, color: C.t1,
+          letterSpacing: -2, lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {formatGeo(balance)}
+        </span>
+        <span style={{ fontSize: 14, fontWeight: 600, color: C.geo, paddingBottom: 3 }}>
+          GEO
+        </span>
+      </div>
+
+      {/* Status pills row */}
+      <div style={{
+        display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 9,
+        animation: `heroReveal 0.4s ${EASE_OUT} 0.1s both`,
+      }}>
+        {/* Level */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: cfg.bg, border: `1px solid ${cfg.color}30`,
+          borderRadius: 20, padding: '4px 10px',
+        }}>
+          <Crown size={10} color={cfg.color} strokeWidth={2.5} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>
+            Lv.{level}
+          </span>
+        </div>
+
+        {/* Streak */}
+        {streak > 0 && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            background: 'rgba(212,135,79,0.13)', border: '1px solid rgba(212,135,79,0.25)',
+            borderRadius: 20, padding: '4px 10px',
+          }}>
+            <Flame size={10} color={C.orange} strokeWidth={2.5} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.orange }}>{streak}</span>
+          </div>
+        )}
+
+        {/* Visits */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: 'rgba(109,139,116,0.12)', border: '1px solid rgba(109,139,116,0.25)',
+          borderRadius: 20, padding: '4px 10px',
+        }}>
+          <MapPin size={10} color={C.teal} strokeWidth={2.5} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.teal }}>{visits}</span>
+        </div>
+      </div>
+
+      {/* XP progress bar */}
+      {XP_NEXT[level] && (
+        <div style={{
+          width: 144, margin: '0 auto',
+          animation: `heroReveal 0.4s ${EASE_OUT} 0.18s both`,
+        }}>
+          <div style={{
+            height: 2, borderRadius: 2,
+            background: 'rgba(255,255,255,0.08)', overflow: 'hidden',
+          }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              background: cfg.color,
+              width: `${pct * 100}%`,
+              transition: `width 1s ${EASE_OUT} 0.3s`,
+            }} />
+          </div>
+          <div style={{ fontSize: 9, color: C.t3, marginTop: 4, textAlign: 'right' }}>
+            {xp.toLocaleString('ru-RU')} / {XP_NEXT[level].toLocaleString('ru-RU')} XP
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   ensureHomeCSS();
@@ -563,8 +749,12 @@ export default function Home() {
   const [userPos,        setUserPos]        = useState(null);
   const [pressedSort,    setPressedSort]    = useState(false);
   const [pressedMap,     setPressedMap]     = useState(false);
-  const [balance,        setBalance]        = useState(null);
-  const [balanceLoading, setBalanceLoading] = useState(true);
+
+  // Unified hero data — same /api/me source as Balance page (ensures consistency)
+  const [heroData,    setHeroData]    = useState(null); // null = loading
+  const [heroLoading, setHeroLoading] = useState(true);
+
+  const userState = useMemo(() => getUserState(heroData), [heroData]);
 
   const loadCampaigns = () => {
     setLoading(true); setError('');
@@ -577,12 +767,24 @@ export default function Home() {
 
   useEffect(() => { loadCampaigns(); }, []);
 
+  // Fetch user identity + game state in parallel — same endpoints as Balance/Profile
+  // so both screens always show the same numbers
   useEffect(() => {
-    apiFetch('/api/balance')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.balance != null) setBalance(d.balance); })
+    Promise.all([
+      apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
+      apiFetch('/api/me/game').then(r => r.ok ? r.json() : null).catch(() => null),
+    ])
+      .then(([me, game]) => {
+        setHeroData({
+          balance: me?.user?.balance ?? 0,
+          visits:  me?.user?.total_visits ?? me?.user?.checkin_count ?? 0,
+          streak:  game?.streak?.current_streak ?? 0,
+          level:   game?.level ?? 1,
+          xp:      game?.xp ?? 0,
+        });
+      })
       .catch(() => {})
-      .finally(() => setBalanceLoading(false));
+      .finally(() => setHeroLoading(false));
   }, []);
 
   useEffect(() => {
@@ -624,12 +826,13 @@ export default function Home() {
   return (
     <div style={{ background: C.bg, minHeight: '100vh', animation: `pageEnter 0.35s ${EASE_OUT} both` }}>
 
-      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      {/* ── HERO — height grows slightly for power users ─────────────────── */}
       <div style={{
         position: 'relative',
-        height: 292,
+        height: userState === 'power' ? 316 : 292,
         overflow: 'hidden',
         background: 'linear-gradient(185deg, #040B13 0%, #071018 50%, #081018 100%)',
+        transition: `height 0.4s ${EASE_OUT}`,
       }}>
         {/* Top atmospheric gradient — static, no animation (GPU savings) */}
         <div style={{
@@ -688,46 +891,31 @@ export default function Home() {
           <LanguageSwitcher />
         </div>
 
-        {/* Hero content — balance when earned, product pitch for new users */}
-        <div style={{ position: 'absolute', bottom: 16, left: 0, right: 0, zIndex: 3 }}>
-          {balanceLoading ? (
-            /* Loading — neutral skeleton, no "0" flash */
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 68 }}>
-              <div className="sk" style={{ width: 140, height: 46, borderRadius: 12 }} />
-            </div>
-          ) : balance > 0 ? (
-            /* Has balance — premium fintech number display */
-            <div style={{ textAlign: 'center', animation: `balanceFadeIn 0.42s ${EASE_OUT} both` }}>
-              <div style={{
-                fontSize: 10, fontWeight: 600, color: C.t3,
-                letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                <span style={{
-                  width: 5, height: 5, borderRadius: '50%',
-                  background: C.green, display: 'inline-block',
-                  animation: 'liveSignal 2.2s ease-in-out infinite',
-                }} />
-                GEO Balance
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7 }}>
-                <span style={{
-                  fontSize: 52, fontWeight: 300, color: C.t1,
-                  letterSpacing: -2.5, lineHeight: 1,
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {formatGeo(balance)}
-                </span>
-                <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>GEO</span>
-              </div>
-              <div style={{ fontSize: 11, color: C.t3, marginTop: 5, opacity: 0.65 }}>
-                {t('home.subtitle') || 'Explore nearby to earn more'}
-              </div>
+        {/* Adaptive hero content — keyed by state to trigger entrance on change */}
+        <div style={{ position: 'absolute', bottom: 14, left: 0, right: 0, zIndex: 3 }}>
+          {heroLoading ? (
+            /* Skeleton — never flash "0" */
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 72 }}>
+              <div className="sk" style={{ width: 144, height: 44, borderRadius: 12 }} />
             </div>
           ) : (
-            /* Zero / no balance — compelling headline, never show "0" */
-            <div style={{ padding: '0 22px', animation: `heroReveal 0.5s ${EASE_OUT} 0.12s both` }}>
-              <HeroHeadline t={t} />
+            <div key={userState}>
+              {userState === 'new'    && <NewHeroContent t={t} />}
+              {userState === 'active' && (
+                <ActiveHeroContent
+                  balance={heroData.balance}
+                  streak={heroData.streak}
+                />
+              )}
+              {userState === 'power'  && (
+                <PowerHeroContent
+                  balance={heroData.balance}
+                  streak={heroData.streak}
+                  level={heroData.level}
+                  xp={heroData.xp}
+                  visits={heroData.visits}
+                />
+              )}
             </div>
           )}
         </div>
