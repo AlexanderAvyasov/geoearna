@@ -51,6 +51,9 @@ router.post('/api/checkin', validateTma, antifraud, async (req, res) => {
     const code = error && error.code ? error.code : 'INTERNAL_ERROR';
     const clientErrors = ['TOO_FAR', 'INVALID_PARAMS', 'INVALID_QR_TOKEN', 'NO_ACTIVE_CAMPAIGN', 'BUSINESS_INSUFFICIENT_FUNDS', 'PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'];
     const status = code === 'TOO_SOON' ? 429 : clientErrors.includes(code) ? 400 : 500;
+    if (status === 500) {
+      console.error('[checkin] 500 error | code:', code, '| message:', error?.message, '| stack:', error?.stack?.split('\n').slice(0, 4).join(' | '));
+    }
     return res.status(status).json({ error: code });
   }
 });

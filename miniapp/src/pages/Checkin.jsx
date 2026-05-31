@@ -14,9 +14,9 @@ import { formatGeo } from '../lib/geo';
 import { C, G } from '../lib/design';
 import { useLanguage } from '../contexts/LanguageContext';
 
-const clog  = import.meta.env.DEV ? console.log.bind(console)   : () => {};
-const cwarn = import.meta.env.DEV ? console.warn.bind(console)  : () => {};
-const cerr  = import.meta.env.DEV ? console.error.bind(console) : () => {};
+const clog  = console.log.bind(console);
+const cwarn = console.warn.bind(console);
+const cerr  = console.error.bind(console);
 
 // ─── Rarity config ────────────────────────────────────────────────────────────
 
@@ -93,6 +93,7 @@ export default function Checkin() {
   const [huntInfo,     setHuntInfo]     = useState(null);
   const [pin,          setPin]          = useState('');
   const [pinError,     setPinError]     = useState('');
+  const [rawErrorCode, setRawErrorCode] = useState(null);
   const [showBurst,          setShowBurst]          = useState(false);
   const [showWave,           setShowWave]           = useState(false);
   const [streakMilestone,    setStreakMilestone]    = useState(null);
@@ -267,7 +268,8 @@ export default function Checkin() {
       clog('[CHECKIN:DO_CHECKIN] response status:', r.status, '| data:', JSON.stringify(data));
       if (!r.ok) {
         const code = data?.error || 'UNKNOWN';
-        cwarn('[CHECKIN:DO_CHECKIN] error code:', code);
+        cwarn('[CHECKIN:DO_CHECKIN] error code:', code, '| status:', r.status, '| data:', JSON.stringify(data));
+        setRawErrorCode(`${r.status} ${code}`);
         if (['PIN_REQUIRED', 'INVALID_PIN', 'PIN_USED', 'PIN_EXPIRED'].includes(code)) {
           sent.current = false;
           const pinErrKey = (ERRORS[code] || {}).textKey || 'err.UNKNOWN.text';
@@ -762,6 +764,16 @@ export default function Checkin() {
           <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.6, marginBottom: 36, maxWidth: 280, whiteSpace: 'pre-line' }}>
             {t(errInfo.textKey)}
           </div>
+          {rawErrorCode && (
+            <div style={{
+              fontFamily: 'monospace', fontSize: 12, color: C.t3,
+              background: C.surf, border: `1px solid ${C.b2}`,
+              borderRadius: 8, padding: '6px 12px', marginBottom: 16,
+              userSelect: 'all',
+            }}>
+              {rawErrorCode}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
             {errInfo.showRetry && (
               <button onClick={retryGeo} style={{
