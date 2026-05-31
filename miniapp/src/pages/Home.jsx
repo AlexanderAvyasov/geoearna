@@ -4,7 +4,7 @@ import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
   Tv2, Crosshair, ExternalLink, Gift, RefreshCw, Navigation,
 } from 'lucide-react';
-import { API_BASE } from '../lib/api';
+import { API_BASE, apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
 import { getGeoPos } from '../lib/geoPos';
 import { C, E } from '../lib/design';
@@ -12,7 +12,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { parseTaskDesc } from '../lib/i18n';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
-// ── CSS injection (module-level, once) ────────────────────────────────────────
+// ── CSS (module-level, once) ───────────────────────────────────────────────────
 let _cssInjected = false;
 function ensureHomeCSS() {
   if (_cssInjected) return;
@@ -20,7 +20,6 @@ function ensureHomeCSS() {
   const el = document.createElement('style');
   el.dataset.src = 'home-page';
   el.textContent = `
-    /* Strong ease-out — instant start, settles naturally */
     @keyframes heroReveal {
       from { opacity: 0; transform: translateY(10px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -29,19 +28,39 @@ function ensureHomeCSS() {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    @keyframes ptFade0 { 0%,100%{opacity:0} 10%{opacity:0.85} 80%{opacity:0.3} }
+    @keyframes balanceFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes ptFade0 { 0%,100%{opacity:0} 10%{opacity:0.85} 80%{opacity:0.30} }
     @keyframes ptFade1 { 0%,100%{opacity:0} 10%{opacity:0.75} 80%{opacity:0.25} }
-    @keyframes ptFade2 { 0%,100%{opacity:0} 10%{opacity:0.65} 80%{opacity:0.2} }
+    @keyframes ptFade2 { 0%,100%{opacity:0} 10%{opacity:0.65} 80%{opacity:0.20} }
     @keyframes ptFade3 { 0%,100%{opacity:0} 10%{opacity:0.80} 80%{opacity:0.28} }
     @keyframes ptFade4 { 0%,100%{opacity:0} 10%{opacity:0.60} 80%{opacity:0.18} }
     @keyframes ptFade5 { 0%,100%{opacity:0} 10%{opacity:0.70} 80%{opacity:0.22} }
-    /* Ambient glow behind primary CTA — on its own layer, not on the button transform */
+    @keyframes orbBreathe {
+      0%,100% { opacity: 0.55; }
+      50%      { opacity: 1; }
+    }
+    @keyframes orbRotateSlow {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes orbPulseOpacity {
+      0%,100% { opacity: 0.28; }
+      50%      { opacity: 0.58; }
+    }
+    @keyframes liveSignal {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.30; }
+    }
     @keyframes glowPulse {
-      0%,100% { opacity: 0.55; transform: scale(1); }
-      50%      { opacity: 0.85; transform: scale(1.04); }
+      0%,100% { opacity: 0.50; }
+      50%      { opacity: 0.80; }
     }
     @media (prefers-reduced-motion: reduce) {
       .home-hero-reveal, .home-stagger { animation: none !important; opacity: 1 !important; transform: none !important; }
+      * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
   `;
   document.head.appendChild(el);
@@ -57,131 +76,120 @@ const PROMO_RARITY = {
   legendary: { label: 'LEGENDARY', color: C.gold },
 };
 
+const EASE_OUT  = 'cubic-bezier(0.22,1,0.36,1)';
+const EASE_FAST = 'cubic-bezier(0.23,1,0.32,1)';
+const EASE_SPR  = 'cubic-bezier(0.32,0.72,0,1)';
+
 function openMaps(lat, lng) {
   const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
   if (window.Telegram?.WebApp?.openLink) window.Telegram.WebApp.openLink(url);
   else window.open(url, '_blank');
 }
 
-// ── Globe SVG ─────────────────────────────────────────────────────────────────
-function GlobeVisualization() {
-  return (
-    <svg
-      viewBox="0 0 375 220"
-      style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 220, pointerEvents: 'none' }}
-      preserveAspectRatio="xMidYMax meet"
-    >
-      <defs>
-        <radialGradient id="hAtmo" cx="50%" cy="90%" r="65%">
-          <stop offset="0%" stopColor="#C97B47" stopOpacity="0.13" />
-          <stop offset="100%" stopColor="#C97B47" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="hArc1" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#C97B47" stopOpacity="0" />
-          <stop offset="18%"  stopColor="#C97B47" stopOpacity="0.40" />
-          <stop offset="82%"  stopColor="#C97B47" stopOpacity="0.40" />
-          <stop offset="100%" stopColor="#C97B47" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="hArc2" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#C97B47" stopOpacity="0" />
-          <stop offset="20%"  stopColor="#C97B47" stopOpacity="0.20" />
-          <stop offset="80%"  stopColor="#C97B47" stopOpacity="0.20" />
-          <stop offset="100%" stopColor="#C97B47" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* Atmosphere fill */}
-      <ellipse cx="187" cy="310" rx="360" ry="230" fill="url(#hAtmo)" />
-
-      {/* Latitude arcs */}
-      <path d="M -18 218 C 82 190, 292 190, 393 218"
-        fill="none" stroke="url(#hArc1)" strokeWidth="1.5" />
-      <path d="M 18 186 C 96 163, 278 163, 358 186"
-        fill="none" stroke="url(#hArc2)" strokeWidth="1" />
-      <path d="M 48 155 C 108 138, 267 138, 328 155"
-        fill="none" stroke="rgba(201,123,71,0.12)" strokeWidth="0.75" />
-      <path d="M 74 126 C 120 113, 256 113, 302 126"
-        fill="none" stroke="rgba(201,123,71,0.07)" strokeWidth="0.5" />
-
-      {/* Meridian lines */}
-      <line x1="92"  y1="230" x2="144" y2="68" stroke="rgba(201,123,71,0.06)" strokeWidth="0.5" strokeDasharray="2,6" />
-      <line x1="146" y1="230" x2="168" y2="68" stroke="rgba(201,123,71,0.07)" strokeWidth="0.5" strokeDasharray="2,6" />
-      <line x1="187" y1="230" x2="187" y2="68" stroke="rgba(201,123,71,0.09)" strokeWidth="0.5" strokeDasharray="2,6" />
-      <line x1="228" y1="230" x2="206" y2="68" stroke="rgba(201,123,71,0.07)" strokeWidth="0.5" strokeDasharray="2,6" />
-      <line x1="282" y1="230" x2="230" y2="68" stroke="rgba(201,123,71,0.06)" strokeWidth="0.5" strokeDasharray="2,6" />
-
-      {/* Radar rings (animated) */}
-      <circle cx="187" cy="153" r="7" fill="none" stroke="rgba(201,123,71,0.55)" strokeWidth="1.5">
-        <animate attributeName="r"       values="7;46;7"   dur="2.8s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.55;0;0.55" dur="2.8s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="187" cy="153" r="7" fill="none" stroke="rgba(201,123,71,0.30)" strokeWidth="1">
-        <animate attributeName="r"       values="7;68;7"   dur="2.8s" begin="0.65s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.30;0;0.30" dur="2.8s" begin="0.65s" repeatCount="indefinite" />
-      </circle>
-
-      {/* Center node */}
-      <circle cx="187" cy="153" r="7" fill="rgba(201,123,71,0.18)" />
-      <circle cx="187" cy="153" r="3.5" fill="#C97B47" opacity="0.95" />
-
-      {/* Secondary nodes — SVG SMIL animate for opacity (reliable in WebView) */}
-      <circle cx="138" cy="167" r="2.5" fill="#C97B47">
-        <animate attributeName="opacity" values="0.60;1;0.60"   dur="2.5s" begin="0.3s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="248" cy="162" r="2.5" fill="#C97B47">
-        <animate attributeName="opacity" values="0.50;0.90;0.50" dur="3.1s" begin="1.2s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="114" cy="191" r="2"   fill="#C97B47">
-        <animate attributeName="opacity" values="0.35;0.70;0.35" dur="3.6s" begin="0.7s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="291" cy="186" r="2"   fill="#C97B47">
-        <animate attributeName="opacity" values="0.30;0.65;0.30" dur="2.8s" begin="2.1s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="165" cy="139" r="1.5" fill="#C97B47">
-        <animate attributeName="opacity" values="0.25;0.55;0.25" dur="4.0s" begin="1.6s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="216" cy="136" r="1.5" fill="#C97B47">
-        <animate attributeName="opacity" values="0.20;0.50;0.20" dur="3.4s" begin="2.6s" repeatCount="indefinite"/>
-      </circle>
-
-      {/* Connection lines */}
-      <line x1="187" y1="153" x2="138" y2="167" stroke="rgba(201,123,71,0.14)" strokeWidth="0.5" strokeDasharray="3,5" />
-      <line x1="187" y1="153" x2="248" y2="162" stroke="rgba(201,123,71,0.14)" strokeWidth="0.5" strokeDasharray="3,5" />
-
-      {/* Teal signal nodes */}
-      <circle cx="74"  cy="176" r="1.5" fill="#6D8B74">
-        <animate attributeName="opacity" values="0;0.45;0" dur="3.0s" begin="0.0s" repeatCount="indefinite" />
-      </circle>
-      <circle cx="317" cy="173" r="1.5" fill="#6D8B74">
-        <animate attributeName="opacity" values="0;0.38;0" dur="2.6s" begin="1.4s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
-
-// ── Floating geo particles — individual named animations, no CSS custom props ──
-const PARTICLES = [
-  { x: 14, y: 55, s: 2.5, delay: 0,   dur: 4.2, anim: 'ptFade0' },
-  { x: 82, y: 40, s: 2.0, delay: 0.9, dur: 5.0, anim: 'ptFade1' },
-  { x: 28, y: 72, s: 1.5, delay: 1.6, dur: 4.6, anim: 'ptFade2' },
-  { x: 68, y: 65, s: 2.0, delay: 2.1, dur: 3.8, anim: 'ptFade3' },
-  { x: 50, y: 30, s: 1.5, delay: 3.0, dur: 5.2, anim: 'ptFade4' },
-  { x: 92, y: 50, s: 2.0, delay: 1.1, dur: 4.0, anim: 'ptFade5' },
+// ── Satellite node positions ───────────────────────────────────────────────────
+const ORB_NODES = [
+  { angle: 18,  r: 64, size: 3,   anim: 'ptFade0', dur: 4.2, delay: 0 },
+  { angle: 148, r: 64, size: 2.5, anim: 'ptFade1', dur: 5.0, delay: 0.9 },
+  { angle: 260, r: 64, size: 2,   anim: 'ptFade2', dur: 4.6, delay: 1.6 },
+  { angle: 60,  r: 90, size: 2,   anim: 'ptFade3', dur: 3.8, delay: 2.1 },
+  { angle: 200, r: 90, size: 1.5, anim: 'ptFade4', dur: 5.2, delay: 3.0 },
+  { angle: 322, r: 90, size: 1.5, anim: 'ptFade5', dur: 4.0, delay: 1.1 },
 ];
 
-function GeoParticles() {
+// ── GeoOrb — premium animated orb, GPU-safe ───────────────────────────────────
+function GeoOrb() {
+  const CX = 90; const CY = 90;
   return (
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}>
-      {PARTICLES.map((p, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          left: `${p.x}%`, top: `${p.y}%`,
-          width: p.s, height: p.s, borderRadius: '50%',
-          background: C.geo,
-          boxShadow: `0 0 ${p.s * 3}px ${C.geo}`,
-          animation: `${p.anim} ${p.dur}s ${p.delay}s ease-in-out infinite`,
-        }} />
-      ))}
+    <div style={{ position: 'relative', width: 180, height: 180 }}>
+      {/* Ambient glow layer — opacity-only animation, separate from rings */}
+      <div style={{
+        position: 'absolute', inset: -24,
+        borderRadius: '50%',
+        background: 'radial-gradient(ellipse at 50% 50%, rgba(201,123,71,0.22) 0%, rgba(201,123,71,0.06) 45%, transparent 70%)',
+        filter: 'blur(22px)',
+        animation: 'orbBreathe 5s ease-in-out infinite',
+        pointerEvents: 'none',
+      }} />
+
+      {/* SVG: rings + radar (SMIL reliable in WebView) */}
+      <svg
+        width="180" height="180" viewBox="0 0 180 180"
+        style={{ position: 'absolute', inset: 0, overflow: 'visible' }}
+      >
+        {/* Outer dashed ring — slow rotation */}
+        <g style={{ transformOrigin: '90px 90px', animation: 'orbRotateSlow 100s linear infinite' }}>
+          <circle cx={CX} cy={CY} r="88" fill="none"
+            stroke="rgba(201,123,71,0.09)" strokeWidth="0.5" strokeDasharray="3 10" />
+        </g>
+
+        {/* Mid ring — static */}
+        <circle cx={CX} cy={CY} r="64" fill="none"
+          stroke="rgba(201,123,71,0.16)" strokeWidth="0.5" />
+
+        {/* Inner ring — pulse opacity */}
+        <circle cx={CX} cy={CY} r="42" fill="none"
+          stroke="rgba(201,123,71,0.32)" strokeWidth="1"
+          style={{ animation: 'orbPulseOpacity 4s ease-in-out infinite' }} />
+
+        {/* Core halo fill */}
+        <circle cx={CX} cy={CY} r="18" fill="rgba(201,123,71,0.07)" />
+
+        {/* Radar expand pulses — SMIL, reliable in Telegram WebView */}
+        <circle cx={CX} cy={CY} r="8" fill="none" stroke="rgba(201,123,71,0.48)" strokeWidth="1.5">
+          <animate attributeName="r"       values="8;50;8"     dur="3s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.48;0;0.48" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <circle cx={CX} cy={CY} r="8" fill="none" stroke="rgba(201,123,71,0.24)" strokeWidth="1">
+          <animate attributeName="r"       values="8;72;8"     dur="3s" begin="0.75s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.24;0;0.24" dur="3s" begin="0.75s" repeatCount="indefinite" />
+        </circle>
+
+        {/* Connection lines to primary nodes */}
+        <line
+          x1={CX} y1={CY}
+          x2={Math.round(CX + Math.cos(18  * Math.PI / 180) * 64)}
+          y2={Math.round(CY + Math.sin(18  * Math.PI / 180) * 64)}
+          stroke="rgba(201,123,71,0.11)" strokeWidth="0.5" strokeDasharray="2 6"
+        />
+        <line
+          x1={CX} y1={CY}
+          x2={Math.round(CX + Math.cos(148 * Math.PI / 180) * 64)}
+          y2={Math.round(CY + Math.sin(148 * Math.PI / 180) * 64)}
+          stroke="rgba(201,123,71,0.11)" strokeWidth="0.5" strokeDasharray="2 6"
+        />
+
+        {/* Teal accent nodes (secondary signal) */}
+        <circle cx={Math.round(CX + Math.cos(290 * Math.PI / 180) * 90)} cy={Math.round(CY + Math.sin(290 * Math.PI / 180) * 90)} r="1.5" fill="#6D8B74">
+          <animate attributeName="opacity" values="0;0.42;0" dur="3.2s" begin="0s" repeatCount="indefinite" />
+        </circle>
+        <circle cx={Math.round(CX + Math.cos(112 * Math.PI / 180) * 90)} cy={Math.round(CY + Math.sin(112 * Math.PI / 180) * 90)} r="1.5" fill="#6D8B74">
+          <animate attributeName="opacity" values="0;0.35;0" dur="2.8s" begin="1.4s" repeatCount="indefinite" />
+        </circle>
+      </svg>
+
+      {/* Core dot — radial-gradient highlight for 3D depth */}
+      <div style={{
+        position: 'absolute',
+        left: CX - 11, top: CY - 11,
+        width: 22, height: 22, borderRadius: '50%',
+        background: 'radial-gradient(circle at 36% 30%, rgba(255,215,170,0.95), #C97B47 52%, #8B5020)',
+        boxShadow: '0 0 18px rgba(201,123,71,0.82), 0 0 36px rgba(201,123,71,0.28)',
+      }} />
+
+      {/* Satellite nodes — opacity-only animations (no custom property) */}
+      {ORB_NODES.map((n, i) => {
+        const rad = n.angle * Math.PI / 180;
+        return (
+          <div key={i} style={{
+            position: 'absolute',
+            left: CX + Math.round(Math.cos(rad) * n.r) - n.size,
+            top:  CY + Math.round(Math.sin(rad) * n.r) - n.size,
+            width: n.size * 2, height: n.size * 2, borderRadius: '50%',
+            background: '#C97B47',
+            animation: `${n.anim} ${n.dur}s ${n.delay}s ease-in-out infinite`,
+          }} />
+        );
+      })}
     </div>
   );
 }
@@ -189,13 +197,13 @@ function GeoParticles() {
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonRow() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: `1px solid ${C.b0}` }}>
       <div className="sk" style={{ width: 44, height: 44, borderRadius: 14, flexShrink: 0 }} />
       <div style={{ flex: 1 }}>
-        <div className="sk" style={{ height: 14, width: '50%', borderRadius: 7, marginBottom: 8 }} />
-        <div className="sk" style={{ height: 11, width: '28%', borderRadius: 5 }} />
+        <div className="sk" style={{ height: 14, width: '52%', borderRadius: 7, marginBottom: 8 }} />
+        <div className="sk" style={{ height: 11, width: '30%', borderRadius: 5 }} />
       </div>
-      <div className="sk" style={{ height: 22, width: 60, borderRadius: 8 }} />
+      <div className="sk" style={{ height: 20, width: 62, borderRadius: 8 }} />
     </div>
   );
 }
@@ -213,7 +221,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         position: 'fixed', inset: 0,
         background: 'rgba(0,0,0,0.75)',
         backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
-        zIndex: 200, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
+        zIndex: 200, animation: `heroReveal 0.2s ${EASE_OUT}`,
       }} />
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
@@ -221,7 +229,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
         borderRadius: '28px 28px 0 0',
         border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
         padding: '0 0 44px', zIndex: 201, maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.34s cubic-bezier(0.22,1,0.36,1)',
+        animation: `slideUp 0.34s ${EASE_OUT}`,
         boxShadow: '0 -8px 48px rgba(0,0,0,0.55)',
       }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)', margin: '16px auto 24px' }} />
@@ -241,7 +249,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             </div>
           )}
 
-          {/* Reward card */}
+          {/* Reward */}
           <div style={{
             background: 'linear-gradient(135deg,rgba(201,123,71,0.12),rgba(201,123,71,0.05))',
             border: '1px solid rgba(201,123,71,0.20)',
@@ -257,7 +265,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           </div>
 
           {/* Task */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: `0.5px solid ${C.b1}`, borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
             <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
               {t('home.task_type')}
             </div>
@@ -274,7 +282,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 
           {campaign.requires_pin && (
             <div style={{
-              background: 'rgba(232,192,104,0.08)', border: '0.5px solid rgba(232,192,104,0.20)',
+              background: 'rgba(232,192,104,0.08)', border: `0.5px solid ${C.goldGl}`,
               borderRadius: 14, padding: '12px 14px', marginBottom: 10,
               display: 'flex', alignItems: 'flex-start', gap: 10,
             }}>
@@ -287,7 +295,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           )}
 
           {/* How it works */}
-          <div style={{ background: 'rgba(255,255,255,0.03)', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '14px 16px', marginBottom: 18 }}>
+          <div style={{ background: 'rgba(255,255,255,0.03)', border: `0.5px solid ${C.b1}`, borderRadius: 16, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 }}>
               {t('home.how.title')}
             </div>
@@ -315,7 +323,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
           )}
           <button onClick={onClose} style={{
             width: '100%', background: 'rgba(255,255,255,0.04)',
-            border: '0.5px solid rgba(255,255,255,0.10)', borderRadius: 14, padding: '14px',
+            border: `0.5px solid ${C.b2}`, borderRadius: 14, padding: '14px',
             fontSize: 14, fontWeight: 600, color: C.t2, cursor: 'pointer',
           }}>
             {t('home.close')}
@@ -330,15 +338,15 @@ function CampaignSheet({ campaign, userPos, onClose }) {
 function SectionHeader({ icon: Icon, label, count, accent }) {
   const col = accent || C.t3;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '22px 0 13px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '20px 0 12px' }}>
       {Icon && <Icon size={13} color={col} strokeWidth={2.5} />}
-      <span style={{ fontSize: 11, fontWeight: 700, color: col, letterSpacing: 0.6, textTransform: 'uppercase', flex: 1 }}>
+      <span style={{ fontSize: 12, fontWeight: 600, color: col, flex: 1, letterSpacing: 0.2 }}>
         {label}
       </span>
       {count != null && (
         <span style={{
           fontSize: 11, fontWeight: 600, color: col,
-          background: `${col}15`, border: `1px solid ${col}28`,
+          background: `${col}14`, border: `1px solid ${col}24`,
           borderRadius: 8, padding: '2px 8px',
         }}>
           {count}
@@ -348,7 +356,7 @@ function SectionHeader({ icon: Icon, label, count, accent }) {
   );
 }
 
-// ── Featured card (horizontal scroll) ────────────────────────────────────────
+// ── Featured card ─────────────────────────────────────────────────────────────
 function FeaturedCard({ iconColor, iconBg, iconBorder, gradStart, Icon, title, subtitle, rewardAmount, rewardLabel = 'GEO', rewardColor, badge, onTap, index }) {
   const [pressed, setPressed] = useState(false);
   return (
@@ -360,55 +368,63 @@ function FeaturedCard({ iconColor, iconBg, iconBorder, gradStart, Icon, title, s
       onMouseUp={() => setPressed(false)}
       onMouseLeave={() => setPressed(false)}
       style={{
-        flexShrink: 0, width: 224,
-        background: `linear-gradient(145deg, ${gradStart || iconBg} 0%, #16212D 100%)`,
+        flexShrink: 0, width: 216,
+        // outer shell — double-bezel
+        background: `rgba(16,22,30,0.97)`,
         border: `1px solid ${iconBorder}`,
-        borderRadius: 22, padding: '18px 16px',
+        borderRadius: 22, padding: '1.5px',
         cursor: onTap ? 'pointer' : 'default',
-        transform: pressed ? 'scale(0.97)' : 'scale(1)',
-        // Asymmetric: fast press (instant feedback), springy release (natural)
+        transform: pressed ? 'scale(0.968)' : 'scale(1)',
         transition: pressed
-          ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
-          : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
+          ? `transform 100ms ${EASE_FAST}`
+          : `transform 180ms ${EASE_SPR}`,
         WebkitTapHighlightColor: 'transparent',
         userSelect: 'none',
-        animation: `staggerIn 0.30s cubic-bezier(0.23,1,0.32,1) ${index * 0.07}s both`,
-        boxShadow: `0 4px 24px rgba(0,0,0,0.32), 0 1px 0 rgba(255,255,255,0.04) inset`,
+        animation: `staggerIn 0.30s ${EASE_FAST} ${index * 0.07}s both`,
+        boxShadow: '0 2px 20px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.04) inset',
       }}
     >
-      {/* Icon row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{
-          width: 40, height: 40, borderRadius: 13,
-          background: iconBg, border: `1px solid ${iconBorder}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon size={19} color={iconColor} strokeWidth={1.75} />
-        </div>
-        {badge && (
-          <span style={{
-            fontSize: 9, fontWeight: 800, color: iconColor,
+      {/* inner core */}
+      <div style={{
+        background: `linear-gradient(148deg, ${gradStart || iconBg} 0%, ${C.card} 100%)`,
+        borderRadius: 21, padding: '17px 15px',
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.07)',
+      }}>
+        {/* Icon row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{
+            width: 38, height: 38, borderRadius: 12,
             background: iconBg, border: `1px solid ${iconBorder}`,
-            borderRadius: 6, padding: '3px 7px', letterSpacing: 0.6,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: `0 2px 10px ${iconColor}18`,
           }}>
-            {badge}
+            <Icon size={17} color={iconColor} strokeWidth={1.75} />
+          </div>
+          {badge && (
+            <span style={{
+              fontSize: 9, fontWeight: 800, color: iconColor,
+              background: iconBg, border: `1px solid ${iconBorder}`,
+              borderRadius: 6, padding: '3px 7px', letterSpacing: 0.5,
+            }}>
+              {badge}
+            </span>
+          )}
+        </div>
+
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.t1, marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: -0.2 }}>
+          {title}
+        </div>
+        <div style={{ fontSize: 11, color: C.t3, marginBottom: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {subtitle}
+        </div>
+
+        {/* Reward */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+          <span style={{ fontSize: 22, fontWeight: 800, color: rewardColor || iconColor, letterSpacing: -0.6, lineHeight: 1 }}>
+            +{formatGeo(rewardAmount)}
           </span>
-        )}
-      </div>
-
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.t1, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: -0.2 }}>
-        {title}
-      </div>
-      <div style={{ fontSize: 12, color: C.t3, marginBottom: 18, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {subtitle}
-      </div>
-
-      {/* Reward */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span style={{ fontSize: 24, fontWeight: 900, color: rewardColor || iconColor, letterSpacing: -0.8, lineHeight: 1 }}>
-          +{formatGeo(rewardAmount)}
-        </span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.t3 }}>{rewardLabel}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.t3 }}>{rewardLabel}</span>
+        </div>
       </div>
     </div>
   );
@@ -429,45 +445,48 @@ function CampaignRow({ campaign, onTap, index }) {
       onMouseLeave={() => setPressed(false)}
       style={{
         display: 'flex', alignItems: 'center', gap: 14,
-        padding: '13px 0',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        padding: '12px 0',
+        borderBottom: `1px solid ${C.b0}`,
         cursor: 'pointer',
         transform: pressed ? 'scale(0.985)' : 'scale(1)',
         transition: pressed
-          ? 'transform 90ms cubic-bezier(0.23,1,0.32,1)'
-          : 'transform 160ms cubic-bezier(0.32,0.72,0,1)',
+          ? `transform 90ms ${EASE_FAST}`
+          : `transform 160ms ${EASE_SPR}`,
         WebkitTapHighlightColor: 'transparent',
         userSelect: 'none',
-        animation: `staggerIn 0.28s cubic-bezier(0.23,1,0.32,1) ${index * 0.045 + 0.06}s both`,
+        animation: `staggerIn 0.28s ${EASE_FAST} ${index * 0.045 + 0.06}s both`,
       }}
     >
+      {/* Icon */}
       <div style={{
         width: 44, height: 44, borderRadius: 14, flexShrink: 0,
-        background: C.geoDim, border: `1px solid ${C.geoGl}`,
+        background: 'linear-gradient(145deg, rgba(201,123,71,0.15) 0%, rgba(201,123,71,0.08) 100%)',
+        border: `1px solid ${C.geoGl}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: `0 2px 14px rgba(201,123,71,0.09)`,
+        boxShadow: `0 2px 12px rgba(201,123,71,0.08)`,
       }}>
         <TaskIcon size={18} color={C.geo} strokeWidth={1.75} />
       </div>
 
+      {/* Info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 15, fontWeight: 700, color: C.t1, letterSpacing: -0.2,
+          fontSize: 15, fontWeight: 600, color: C.t1, letterSpacing: -0.2,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4,
         }}>
           {campaign.business_name}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           {campaign.dist !== undefined && campaign.dist !== Infinity && (
-            <span style={{ fontSize: 12, color: C.t3, fontWeight: 500 }}>
+            <span style={{ fontSize: 12, color: C.t3, fontWeight: 400 }}>
               {formatDistance(campaign.dist)}
             </span>
           )}
           {campaign.requires_pin && (
             <span style={{
-              fontSize: 10, fontWeight: 700, color: C.gold,
-              background: C.goldFt, borderRadius: 6, padding: '1px 6px',
-              border: `1px solid ${C.goldGl}`,
+              fontSize: 9, fontWeight: 700, color: C.gold,
+              background: C.goldFt, borderRadius: 5, padding: '1px 6px',
+              border: `1px solid ${C.goldGl}`, letterSpacing: 0.3,
             }}>
               PIN
             </span>
@@ -475,8 +494,9 @@ function CampaignRow({ campaign, onTap, index }) {
         </div>
       </div>
 
+      {/* Reward */}
       <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: C.geo, letterSpacing: -0.4 }}>
+        <div style={{ fontSize: 17, fontWeight: 700, color: C.geo, letterSpacing: -0.4 }}>
           +{formatGeo(campaign.reward_amount)}
         </div>
         <div style={{ fontSize: 10, color: C.t3, marginTop: 2, fontWeight: 500 }}>GEO</div>
@@ -485,61 +505,12 @@ function CampaignRow({ campaign, onTap, index }) {
   );
 }
 
-// ── Hero headline — splits title into two lines, accents last word ────────────
-function HeroHeadline({ t }) {
-  const title = t('home.title') || 'Зарабатывайте GEO';
-  const words = title.trim().split(' ');
-  const lastWord = words[words.length - 1];
-  const restWords = words.slice(0, -1).join(' ');
-  const subtitle = t('home.subtitle') || '';
-
-  // Each line animates independently with stagger — no parent wrapper animation
-  const easeOut = 'cubic-bezier(0.23,1,0.32,1)';
-  return (
-    <div>
-      {restWords ? (
-        <>
-          <div className="home-hero-reveal" style={{
-            fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.t1,
-            animation: `heroReveal 0.50s ${easeOut} both`,
-          }}>
-            {restWords}
-          </div>
-          <div className="home-hero-reveal" style={{
-            fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo,
-            marginBottom: 12,
-            animation: `heroReveal 0.50s 0.06s ${easeOut} both`,
-          }}>
-            {lastWord}.
-          </div>
-        </>
-      ) : (
-        <div className="home-hero-reveal" style={{
-          fontSize: 40, fontWeight: 900, lineHeight: 0.92, letterSpacing: -1.8, color: C.geo,
-          marginBottom: 12,
-          animation: `heroReveal 0.50s ${easeOut} both`,
-        }}>
-          {lastWord}.
-        </div>
-      )}
-      {subtitle ? (
-        <div className="home-hero-reveal" style={{
-          fontSize: 14, color: C.t3, fontWeight: 400, lineHeight: 1.55,
-          animation: `heroReveal 0.50s 0.14s ${easeOut} both`,
-        }}>
-          {subtitle}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 // ── Main Home page ────────────────────────────────────────────────────────────
 export default function Home() {
   ensureHomeCSS();
 
-  const navigate = useNavigate();
-  const { t } = useLanguage();
+  const navigate  = useNavigate();
+  const { t }     = useLanguage();
 
   const [campaigns,      setCampaigns]      = useState([]);
   const [platformPromos, setPlatformPromos] = useState([]);
@@ -552,6 +523,8 @@ export default function Home() {
   const [userPos,        setUserPos]        = useState(null);
   const [pressedSort,    setPressedSort]    = useState(false);
   const [pressedMap,     setPressedMap]     = useState(false);
+  const [balance,        setBalance]        = useState(null);
+  const [balanceLoading, setBalanceLoading] = useState(true);
 
   const loadCampaigns = () => {
     setLoading(true); setError('');
@@ -563,6 +536,15 @@ export default function Home() {
   };
 
   useEffect(() => { loadCampaigns(); }, []);
+
+  useEffect(() => {
+    apiFetch('/api/balance')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.balance != null) setBalance(d.balance); })
+      .catch(() => {})
+      .finally(() => setBalanceLoading(false));
+  }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/platform-promo/list`)
       .then(r => r.ok ? r.json() : { promos: [] })
@@ -570,18 +552,21 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setPromoLoading(false));
   }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/geohunts/active`)
       .then(r => r.ok ? r.json() : { hunts: [] })
       .then(d => setGeohunts(d.hunts || []))
       .catch(() => {});
   }, []);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/promos/active`)
       .then(r => r.ok ? r.json() : { promos: [] })
       .then(d => setPromoQrs(d.promos || []))
       .catch(() => {});
   }, []);
+
   useEffect(() => {
     getGeoPos().then(p => setUserPos(p)).catch(() => {});
   }, []);
@@ -594,79 +579,140 @@ export default function Home() {
   })();
 
   const featuredCount = platformPromos.length + geohunts.length + promoQrs.length;
-  const hasContent = displayed.length + featuredCount > 0;
+  const hasContent    = displayed.length + featuredCount > 0;
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.35s cubic-bezier(0.22,1,0.36,1) both' }}>
+    <div style={{ background: C.bg, minHeight: '100vh', animation: `pageEnter 0.35s ${EASE_OUT} both` }}>
 
-      {/* ── HERO ── */}
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <div style={{
         position: 'relative',
-        height: 280,
+        height: 292,
         overflow: 'hidden',
-        background: 'linear-gradient(180deg,#050C15 0%,#071016 55%,#081018 100%)',
+        background: 'linear-gradient(185deg, #040B13 0%, #071018 50%, #081018 100%)',
       }}>
-        {/* Top atmospheric glow */}
+        {/* Top atmospheric gradient — static, no animation (GPU savings) */}
         <div style={{
-          position: 'absolute', top: -50, left: '50%',
+          position: 'absolute', top: -40, left: '50%',
+          width: 280, height: 180,
           transform: 'translateX(-50%)',
-          width: 320, height: 200,
-          background: 'radial-gradient(ellipse,rgba(201,123,71,0.09) 0%,transparent 68%)',
+          background: 'radial-gradient(ellipse 70% 60% at 50% 0%, rgba(201,123,71,0.11) 0%, transparent 72%)',
           pointerEvents: 'none',
         }} />
 
-        {/* Globe + particles */}
-        <GlobeVisualization />
-        <GeoParticles />
-
-        {/* Bottom fade to page bg */}
+        {/* Bottom atmospheric fill behind balance text */}
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: 90,
-          background: `linear-gradient(0deg,${C.bg} 0%,transparent 100%)`,
+          position: 'absolute', bottom: 0, left: '30%', right: '30%',
+          height: 100,
+          background: 'radial-gradient(ellipse 100% 80% at 50% 100%, rgba(201,123,71,0.06) 0%, transparent 70%)',
           pointerEvents: 'none',
         }} />
 
-        {/* Safe-area top tint */}
+        {/* Orb — centered in the upper half */}
         <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 56,
-          background: 'linear-gradient(180deg,rgba(5,12,21,0.65) 0%,transparent 100%)',
-          pointerEvents: 'none',
+          position: 'absolute',
+          top: 36, left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1,
+        }}>
+          <GeoOrb />
+        </div>
+
+        {/* Bottom page blend */}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
+          background: `linear-gradient(0deg, ${C.bg} 0%, transparent 100%)`,
+          pointerEvents: 'none', zIndex: 2,
         }} />
 
-        {/* Text content */}
-        <div style={{ position: 'relative', zIndex: 2, padding: '26px 20px 0' }}>
-
-          {/* Top bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 22 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                width: 28, height: 28, borderRadius: 9,
-                background: C.geoDim, border: `1px solid ${C.geoGl}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <MapPin size={13} color={C.geo} strokeWidth={2.25} />
-              </div>
-              <span style={{ fontSize: 15, fontWeight: 800, color: C.t1, letterSpacing: -0.3 }}>
-                Geo<span style={{ color: C.geo }}>Earn</span>
-              </span>
+        {/* Top bar — always on top */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          padding: '26px 20px 0',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          zIndex: 4,
+          background: 'linear-gradient(180deg,rgba(4,11,19,0.70) 0%,transparent 100%)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 8,
+              background: C.geoDim, border: `1px solid ${C.geoGl}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <MapPin size={12} color={C.geo} strokeWidth={2.25} />
             </div>
-            <LanguageSwitcher />
+            <span style={{ fontSize: 15, fontWeight: 800, color: C.t1, letterSpacing: -0.3 }}>
+              Geo<span style={{ color: C.geo }}>Earn</span>
+            </span>
+          </div>
+          <LanguageSwitcher />
+        </div>
+
+        {/* Balance stat — absolute bottom, above bottom fade */}
+        <div style={{
+          position: 'absolute', bottom: 16, left: 0, right: 0,
+          textAlign: 'center', zIndex: 3,
+          animation: `heroReveal 0.55s ${EASE_OUT} 0.15s both`,
+        }}>
+          {/* Label */}
+          <div style={{
+            fontSize: 10, fontWeight: 600, color: C.t3,
+            letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+          }}>
+            {/* Live indicator */}
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%',
+              background: C.green, display: 'inline-block',
+              animation: 'liveSignal 2.2s ease-in-out infinite',
+            }} />
+            GEO Balance
           </div>
 
-          {/* Headline — uses translations */}
-          <HeroHeadline t={t} />
+          {/* Number */}
+          {balanceLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 54 }}>
+              <div className="sk" style={{ width: 130, height: 44, borderRadius: 12 }} />
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 7,
+              animation: `balanceFadeIn 0.42s ${EASE_OUT} both`,
+            }}>
+              <span style={{
+                fontSize: 52, fontWeight: 300, color: C.t1,
+                letterSpacing: -2.5, lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {formatGeo(balance ?? 0)}
+              </span>
+              <span style={{ fontSize: 15, fontWeight: 500, color: C.t3, paddingBottom: 4 }}>
+                GEO
+              </span>
+            </div>
+          )}
+
+          {/* Subtitle / tagline */}
+          {!balanceLoading && (
+            <div style={{
+              fontSize: 11, color: C.t3, marginTop: 5, opacity: 0.65,
+              animation: `heroReveal 0.5s ${EASE_OUT} 0.26s both`,
+            }}>
+              {t('home.subtitle') || 'Explore nearby to earn more'}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── CTA BUTTONS ── */}
-      <div style={{ padding: '14px 16px 0', display: 'flex', gap: 10 }}>
+      {/* ── CTA BUTTONS ─────────────────────────────────────────────────── */}
+      <div style={{ padding: '12px 16px 0', display: 'flex', gap: 10 }}>
 
-        {/* Primary — ambient glow decoupled from button transform so press state works cleanly */}
+        {/* Primary — ambient glow layer decoupled from button transform */}
         <div style={{ flex: 1, position: 'relative' }}>
           <div style={{
-            position: 'absolute', inset: 0, borderRadius: 16,
-            background: 'linear-gradient(135deg,#D48A52 0%,#C97B47 55%,#B36835 100%)',
-            opacity: 0.55, filter: 'blur(10px)',
+            position: 'absolute', inset: 1, borderRadius: 16,
+            background: 'linear-gradient(135deg,#D48A52,#C97B47 55%,#B36835)',
+            opacity: 0.45, filter: 'blur(11px)',
             animation: 'glowPulse 3.5s ease-in-out infinite',
             pointerEvents: 'none', zIndex: 0,
           }} />
@@ -683,12 +729,12 @@ export default function Home() {
               background: 'linear-gradient(135deg,#D48A52 0%,#C97B47 55%,#B36835 100%)',
               color: '#0A0E14', border: 'none', borderRadius: 16, height: 52,
               fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: -0.2,
-              boxShadow: '0 4px 20px rgba(201,123,71,0.28), 0 1px 0 rgba(255,255,255,0.14) inset',
+              boxShadow: '0 3px 18px rgba(201,123,71,0.25), 0 1px 0 rgba(255,255,255,0.14) inset',
               WebkitTapHighlightColor: 'transparent',
               transform: pressedSort ? 'scale(0.97)' : 'scale(1)',
               transition: pressedSort
-                ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
-                : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
+                ? `transform 100ms ${EASE_FAST}`
+                : `transform 180ms ${EASE_SPR}`,
             }}
           >
             <Compass size={16} strokeWidth={2.5} />
@@ -708,14 +754,14 @@ export default function Home() {
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             background: 'rgba(109,139,116,0.09)',
             color: C.teal,
-            border: '1px solid rgba(109,139,116,0.22)',
+            border: `1px solid rgba(109,139,116,0.22)`,
             borderRadius: 16, height: 52,
             fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: -0.2,
             WebkitTapHighlightColor: 'transparent',
             transform: pressedMap ? 'scale(0.97)' : 'scale(1)',
             transition: pressedMap
-              ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
-              : 'transform 180ms cubic-bezier(0.32,0.72,0,1)',
+              ? `transform 100ms ${EASE_FAST}`
+              : `transform 180ms ${EASE_SPR}`,
           }}
         >
           <MapPin size={15} strokeWidth={2} />
@@ -723,7 +769,7 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ── CONTENT ── */}
+      {/* ── CONTENT ─────────────────────────────────────────────────────── */}
       <div style={{ padding: '0 16px 80px' }}>
 
         {/* Featured horizontal scroll */}
@@ -741,7 +787,7 @@ export default function Home() {
                   key={h.id} index={i}
                   Icon={Crosshair}
                   iconColor={C.gold} iconBg={C.goldFt} iconBorder={C.goldGl}
-                  gradStart="rgba(232,192,104,0.11)"
+                  gradStart="rgba(232,192,104,0.10)"
                   title={h.title}
                   subtitle={`${h.total_codes - h.claimed_codes}/${h.total_codes} осталось`}
                   badge="GEOHUNT"
@@ -755,7 +801,7 @@ export default function Home() {
                   key={p.id} index={geohunts.length + i}
                   Icon={Tv2}
                   iconColor={C.green} iconBg={C.greenFt} iconBorder={C.greenGl}
-                  gradStart="rgba(143,174,123,0.11)"
+                  gradStart="rgba(143,174,123,0.10)"
                   title={p.title}
                   subtitle={p.channel_username || 'Акция платформы'}
                   badge="PLATFORM"
@@ -771,7 +817,7 @@ export default function Home() {
                     key={p.id} index={geohunts.length + platformPromos.length + i}
                     Icon={Gift}
                     iconColor={rr.color} iconBg={`${rr.color}18`} iconBorder={`${rr.color}30`}
-                    gradStart={`${rr.color}0F`}
+                    gradStart={`${rr.color}0E`}
                     title={p.title}
                     subtitle={p.max_claims - p.claims_count > 0 ? `${p.max_claims - p.claims_count} доступно` : 'Закончилось'}
                     badge={rr.label}
@@ -780,13 +826,12 @@ export default function Home() {
                   />
                 );
               })}
-              {/* Right padding sentinel */}
               <div style={{ flexShrink: 0, width: 2 }} />
             </div>
           </div>
         )}
 
-        {/* Nearby campaigns */}
+        {/* Nearby section */}
         <SectionHeader
           icon={MapPin}
           label="Рядом с вами"
@@ -815,15 +860,15 @@ export default function Home() {
         {!loading && !error && displayed.length === 0 && !hasContent && (
           <div style={{ textAlign: 'center', padding: '40px 0 24px' }}>
             <div style={{
-              width: 56, height: 56, borderRadius: 18,
+              width: 52, height: 52, borderRadius: 16,
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 16px',
-              boxShadow: `0 0 32px ${C.geoGl}`,
+              margin: '0 auto 14px',
+              boxShadow: `0 0 24px ${C.geoGl}`,
             }}>
-              <MapPin size={26} color={C.geo} strokeWidth={1.75} />
+              <MapPin size={24} color={C.geo} strokeWidth={1.75} />
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.t2, marginBottom: 8, letterSpacing: -0.3 }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: C.t2, marginBottom: 6, letterSpacing: -0.3 }}>
               Кампаний пока нет
             </div>
             <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.6 }}>
@@ -836,25 +881,25 @@ export default function Home() {
           <CampaignRow key={c.id} campaign={c} onTap={setSelected} index={i} />
         ))}
 
-        {/* How it works — only when no content */}
+        {/* How it works — only when empty */}
         {!loading && !error && !hasContent && displayed.length === 0 && (
           <div style={{
-            marginTop: 24, padding: '20px',
+            marginTop: 22, padding: '18px',
             background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.05)',
-            borderRadius: 20,
+            border: `1px solid ${C.b0}`,
+            borderRadius: 18,
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 18 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.t3, letterSpacing: 0.3, marginBottom: 16 }}>
               Как это работает
             </div>
             {[[ScanLine, t('home.how.1')], [MapPin, t('home.how.2')], [Wallet, t('home.how.3')]].map(([Icon, text], i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: i < 2 ? 16 : 0 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: i < 2 ? 14 : 0 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 11, flexShrink: 0,
+                  width: 34, height: 34, borderRadius: 10, flexShrink: 0,
                   background: C.geoDim, border: `1px solid ${C.geoGl}`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={15} color={C.geo} strokeWidth={2} />
+                  <Icon size={14} color={C.geo} strokeWidth={2} />
                 </div>
                 <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.55 }}>{text}</span>
               </div>
@@ -863,7 +908,7 @@ export default function Home() {
         )}
 
         {/* Legal */}
-        <div style={{ display: 'flex', gap: 16, paddingTop: 28 }}>
+        <div style={{ display: 'flex', gap: 16, paddingTop: 26 }}>
           {[[t('home.terms'), '/legal'], [t('home.privacy'), '/legal?tab=privacy']].map(([label, path]) => (
             <button key={path} onClick={() => navigate(path)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
