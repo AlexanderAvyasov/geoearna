@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import {
   MapPin, Clock, ClipboardList, Link2, Lock, Key, Ban, Timer,
   XCircle, Wifi, CheckCircle, AlertTriangle, PauseCircle, Gem,
-  Shield, Zap, Star,
+  Shield, Zap, Star, Flame,
 } from 'lucide-react';
 import { useLocation } from '../hooks/useLocation';
 import { tg } from '../hooks/useTelegram';
@@ -485,8 +485,9 @@ export default function Checkin() {
           }}>
             {streakMilestone}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4, animation: 'fadeUp 0.4s 0.3s ease both' }}>
-            DAYS STREAK 🔥
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4, animation: 'fadeUp 0.4s 0.3s ease both', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            DAYS STREAK
+            <Flame size={13} color={C.orange} strokeWidth={2} />
           </div>
 
           {/* Bonus card */}

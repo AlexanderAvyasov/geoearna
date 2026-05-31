@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   MapPin, Compass, ScanLine, Wallet, Lock, ShoppingBag, Star, AlertCircle,
   Tv2, Crosshair, ExternalLink, Gift, RefreshCw, Navigation,
-  Flame, Crown,
+  Flame,
 } from 'lucide-react';
 import { API_BASE, apiFetch } from '../lib/api';
 import { haversineMeters, formatDistance, formatGeo } from '../lib/geo';
@@ -295,7 +295,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
             <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
               {t('home.reward')}
             </div>
-            <div style={{ fontSize: 48, fontWeight: 900, letterSpacing: -2, color: C.geo, lineHeight: 1 }}>
+            <div style={{ fontSize: 48, fontWeight: 600, letterSpacing: 0, color: C.geo, lineHeight: 1, fontFamily: FF.display }}>
               +{formatGeo(campaign.reward_amount)}
               <span style={{ fontSize: 16, fontWeight: 600, color: C.t3, marginLeft: 8 }}>GEO</span>
             </div>
@@ -457,7 +457,7 @@ function FeaturedCard({ iconColor, iconBg, iconBorder, gradStart, Icon, title, s
 
         {/* Reward */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: rewardColor || iconColor, letterSpacing: -0.6, lineHeight: 1 }}>
+          <span style={{ fontSize: 22, fontWeight: 600, color: rewardColor || iconColor, letterSpacing: 0, lineHeight: 1, fontFamily: FF.display }}>
             +{formatGeo(rewardAmount)}
           </span>
           <span style={{ fontSize: 11, fontWeight: 600, color: C.t3 }}>{rewardLabel}</span>
@@ -533,10 +533,10 @@ function CampaignRow({ campaign, onTap, index }) {
 
       {/* Reward */}
       <div style={{ flexShrink: 0, textAlign: 'right' }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: C.geo, letterSpacing: -0.4 }}>
+        <div style={{ fontSize: 17, fontWeight: 600, color: C.geo, letterSpacing: 0, fontFamily: FF.display }}>
           +{formatGeo(campaign.reward_amount)}
         </div>
-        <div style={{ fontSize: 10, color: C.t3, marginTop: 2, fontWeight: 500 }}>GEO</div>
+        <div style={{ fontSize: 10, color: C.t3, marginTop: 2, fontWeight: 500, fontFamily: FF.display }}>GEO</div>
       </div>
     </div>
   );
@@ -626,21 +626,17 @@ function ActiveHeroContent({ balance, streak }) {
         </span>
       </div>
 
-      {/* Streak pill — motivational, shown only when active */}
+      {/* Streak — quiet meta line, no pill */}
       {streak > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 9 }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            background: 'rgba(212,135,79,0.13)',
-            border: '1px solid rgba(212,135,79,0.24)',
-            borderRadius: 20, padding: '4px 12px',
-            animation: `heroReveal 0.4s ${EASE_OUT} 0.14s both`,
-          }}>
-            <Flame size={11} color={C.orange} strokeWidth={2.5} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.orange, letterSpacing: -0.1 }}>
-              {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд
-            </span>
-          </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+          marginTop: 8,
+          animation: `heroReveal 0.4s ${EASE_OUT} 0.14s both`,
+        }}>
+          <Flame size={10} color={C.orange} strokeWidth={1.75} style={{ opacity: 0.75 }} />
+          <span style={{ fontSize: 11, fontWeight: 500, color: C.t3 }}>
+            {streak} {streak === 1 ? 'день' : streak < 5 ? 'дня' : 'дней'} подряд
+          </span>
         </div>
       )}
     </div>
@@ -669,65 +665,40 @@ function PowerHeroContent({ balance, streak, level, xp, visits }) {
         </span>
       </div>
 
-      {/* Status pills row */}
+      {/* Single quiet stat line — no pills, no competing colors */}
       <div style={{
-        display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 9,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        marginBottom: XP_NEXT[level] ? 10 : 0,
         animation: `heroReveal 0.4s ${EASE_OUT} 0.1s both`,
       }}>
-        {/* Level */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          background: cfg.bg, border: `1px solid ${cfg.color}30`,
-          borderRadius: 20, padding: '4px 10px',
-        }}>
-          <Crown size={10} color={cfg.color} strokeWidth={2.5} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: cfg.color }}>
-            Lv.{level}
-          </span>
-        </div>
-
-        {/* Streak */}
+        <span style={{ fontSize: 11, color: C.t3, fontWeight: 500 }}>Lv.{level}</span>
         {streak > 0 && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            background: 'rgba(212,135,79,0.13)', border: '1px solid rgba(212,135,79,0.25)',
-            borderRadius: 20, padding: '4px 10px',
-          }}>
-            <Flame size={10} color={C.orange} strokeWidth={2.5} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.orange }}>{streak}</span>
-          </div>
+          <>
+            <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.t3, opacity: 0.35, display: 'inline-block', flexShrink: 0 }} />
+            <span style={{ fontSize: 11, color: C.t3, fontWeight: 500 }}>{streak} дн.</span>
+          </>
         )}
-
-        {/* Visits */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          background: 'rgba(109,139,116,0.12)', border: '1px solid rgba(109,139,116,0.25)',
-          borderRadius: 20, padding: '4px 10px',
-        }}>
-          <MapPin size={10} color={C.teal} strokeWidth={2.5} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: C.teal }}>{visits}</span>
-        </div>
+        <span style={{ width: 2, height: 2, borderRadius: '50%', background: C.t3, opacity: 0.35, display: 'inline-block', flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: C.t3, fontWeight: 500 }}>{visits} мест</span>
       </div>
 
-      {/* XP progress bar */}
+      {/* Progress bar — visual momentum indicator, no number label */}
       {XP_NEXT[level] && (
         <div style={{
-          width: 144, margin: '0 auto',
+          width: 110, margin: '0 auto',
           animation: `heroReveal 0.4s ${EASE_OUT} 0.18s both`,
         }}>
           <div style={{
-            height: 2, borderRadius: 2,
-            background: 'rgba(255,255,255,0.08)', overflow: 'hidden',
+            height: 1.5, borderRadius: 2,
+            background: 'rgba(255,255,255,0.07)', overflow: 'hidden',
           }}>
             <div style={{
               height: '100%', borderRadius: 2,
               background: cfg.color,
               width: `${pct * 100}%`,
-              transition: `width 1s ${EASE_OUT} 0.3s`,
+              opacity: 0.65,
+              transition: `width 1.2s ${EASE_OUT} 0.3s`,
             }} />
-          </div>
-          <div style={{ fontSize: 9, color: C.t3, marginTop: 4, textAlign: 'right' }}>
-            {xp.toLocaleString('ru-RU')} / {XP_NEXT[level].toLocaleString('ru-RU')} XP
           </div>
         </div>
       )}
@@ -888,7 +859,7 @@ export default function Home() {
             }}>
               <MapPin size={12} color={C.geo} strokeWidth={2.25} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 800, color: C.t1, letterSpacing: -0.3 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.t1, letterSpacing: 0, fontFamily: FF.display }}>
               Geo<span style={{ color: C.geo }}>Earn</span>
             </span>
           </div>
