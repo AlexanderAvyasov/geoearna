@@ -251,7 +251,8 @@ export const GLOBAL_CSS = `
   @font-face {
     font-family: 'Ethnocentric';
     src: url('/fonts/ethnocentric.woff2') format('woff2'),
-         url('/fonts/ethnocentric.woff') format('woff');
+         url('/fonts/ethnocentric.woff') format('woff'),
+         url('/fonts/ethnocentric.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
