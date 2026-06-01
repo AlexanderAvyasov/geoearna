@@ -197,7 +197,7 @@ export default function MapPage() {
           preferCanvas: true,
         });
 
-        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
+        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom: 19, subdomains: 'abcd',
         });
         let tileLoaded = false;
