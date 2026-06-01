@@ -89,11 +89,19 @@ async function sendMainMenu(ctx, user) {
     } else {
       checkinUrl = `${base}/checkin?token=${encodeURIComponent(qrToken)}`;
     }
-    const kb = new InlineKeyboard().webApp('📍 Выполнить чекин', checkinUrl);
-    return ctx.reply(
-      'Найден QR-код заведения. Нажмите кнопку ниже для чекина:',
-      { reply_markup: kb }
-    );
+    let replyText, btnLabel;
+    if (qrToken.startsWith('gh_')) {
+      replyText = '🗺 Найден QR-код GeoHunt! Нажмите кнопку, чтобы забрать награду:';
+      btnLabel  = '🗺 Забрать награду';
+    } else if (qrToken.startsWith('promo_')) {
+      replyText = '🎁 Найден промо QR-код! Нажмите кнопку для получения бонуса:';
+      btnLabel  = '🎁 Получить бонус';
+    } else {
+      replyText = '📍 Найден QR-код заведения. Нажмите кнопку для чекина:';
+      btnLabel  = '📍 Выполнить чекин';
+    }
+    const kb = new InlineKeyboard().webApp(btnLabel, checkinUrl);
+    return ctx.reply(replyText, { reply_markup: kb });
   }
 
   // Check business ownership
