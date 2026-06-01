@@ -24,6 +24,18 @@ const SA_TG_ID = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 
+// Rewrite URL before BrowserRouter initialises so startapp deep links
+// open directly on the checkin route — no flash of home screen.
+;(() => {
+  const sp = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+  if (!sp || !/^[A-Za-z0-9_-]{8,64}$/.test(sp)) return;
+  const qs = new URLSearchParams();
+  if (sp.startsWith('gh_'))    { qs.set('token', sp.slice(3)); qs.set('geohunt', '1'); }
+  else if (sp.startsWith('promo_')) { qs.set('token', sp); qs.set('promo', '1'); }
+  else                              { qs.set('token', sp); }
+  window.history.replaceState(null, '', `/checkin?${qs.toString()}`);
+})();
+
 // ─── On-screen debug log (QR troubleshooting — dev only) ─────────────────────
 const _dbuf = [];
 const _dlisteners = new Set();
@@ -1122,23 +1134,6 @@ function AppLayout() {
     clog('[ROUTER:CHANGE] pathname:', pathname, '| search:', location.search, '| hash:', window.location.hash);
   }, [location]);
 
-  // Handle Telegram startapp deep link — camera scans QR → Telegram opens Mini App directly
-  useEffect(() => {
-    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
-    if (!startParam || !/^[A-Za-z0-9_-]{8,64}$/.test(startParam)) return;
-    const qs = new URLSearchParams();
-    if (startParam.startsWith('gh_')) {
-      qs.set('token', startParam.slice(3));   // strip gh_ → raw geohunt token
-      qs.set('geohunt', '1');
-    } else if (startParam.startsWith('promo_')) {
-      qs.set('token', startParam);
-      qs.set('promo', '1');
-    } else {
-      qs.set('token', startParam);
-    }
-    clog('[START_PARAM] deep-link checkin:', startParam);
-    navigateRef.current(`/checkin?${qs.toString()}`);
-  }, []);
 
   function handleQrResult(result) {
     clog('[QR:RECEIVED_BY_LAYOUT] token:', result.token, 'promo:', result.promo, 'geohunt:', result.geohunt);
