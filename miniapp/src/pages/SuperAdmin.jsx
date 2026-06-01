@@ -3493,10 +3493,283 @@ function SupportTab() {
   );
 }
 
+// ─── Business Applications Tab ────────────────────────────────────────────────
+
+function ApplicationsTab() {
+  const [filter,  setFilter]  = useState('pending');
+  const [items,   setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionId, setActionId] = useState(null); // ID currently being actioned
+  const [rejectNote, setRejectNote] = useState('');
+  const [rejectTarget, setRejectTarget] = useState(null); // app to reject
+
+  function load(status) {
+    setLoading(true);
+    apiFetch(`/api/superadmin/business-applications?status=${status}`)
+      .then(r => r.ok ? r.json() : { applications: [] })
+      .then(d => setItems(d.applications || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(filter); }, [filter]);
+
+  async function handleApprove(app) {
+    if (!window.confirm(`Одобрить заявку "${app.name}" от @${app.users?.username || app.owner_telegram_id}?`)) return;
+    setActionId(app.id);
+    try {
+      const r = await apiFetch(`/api/superadmin/business-applications/${app.id}/approve`, { method: 'POST' });
+      if (!r.ok) { const d = await r.json(); alert(d.error || 'Ошибка'); return; }
+      load(filter);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function handleRejectConfirm() {
+    if (!rejectTarget) return;
+    setActionId(rejectTarget.id);
+    try {
+      const r = await apiFetch(`/api/superadmin/business-applications/${rejectTarget.id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: rejectNote.trim() || undefined }),
+      });
+      if (!r.ok) { const d = await r.json(); alert(d.error || 'Ошибка'); return; }
+      setRejectTarget(null);
+      setRejectNote('');
+      load(filter);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  const FILTERS = [
+    { k: 'pending',  label: 'Ожидают' },
+    { k: 'approved', label: 'Одобрены' },
+    { k: 'rejected', label: 'Отклонены' },
+  ];
+
+  const statusCfg = {
+    pending:  { color: '#E8C068', bg: 'rgba(232,192,104,0.10)', label: 'На рассмотрении' },
+    approved: { color: '#8FAE7B', bg: 'rgba(143,174,123,0.10)', label: 'Одобрена' },
+    rejected: { color: '#C0544C', bg: 'rgba(192,84,76,0.10)',   label: 'Отклонена' },
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: C.t1, marginBottom: 16 }}>
+        Заявки на бизнес
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 18 }}>
+        {FILTERS.map(f => (
+          <button key={f.k} onClick={() => setFilter(f.k)} style={{
+            flex: 1, padding: '8px 0', borderRadius: 10,
+            border: `1px solid ${filter === f.k ? SA_COLOR : C.b1}`,
+            background: filter === f.k ? `${SA_COLOR}15` : 'transparent',
+            color: filter === f.k ? SA_COLOR : C.t3,
+            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+          <Loader2 size={24} color={SA_COLOR} style={{ animation: 'spin 1s linear infinite' }} />
+        </div>
+      )}
+
+      {!loading && items.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: C.t3, fontSize: 14 }}>
+          Нет заявок
+        </div>
+      )}
+
+      {!loading && items.map(app => {
+        const scfg = statusCfg[app.status] || statusCfg.pending;
+        const isActioning = actionId === app.id;
+        return (
+          <div key={app.id} style={{
+            ...cardBase,
+            padding: '16px',
+            marginBottom: 12,
+            animation: 'staggerIn 0.2s ease both',
+          }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.t1, marginBottom: 2 }}>{app.name}</div>
+                <div style={{ fontSize: 12, color: C.t3 }}>
+                  @{app.users?.username || '—'} · tg:{app.owner_telegram_id}
+                </div>
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                padding: '3px 8px', borderRadius: 6,
+                color: scfg.color, background: scfg.bg,
+                flexShrink: 0,
+              }}>
+                {scfg.label}
+              </span>
+            </div>
+
+            {/* Details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+              {app.address && (
+                <div style={{ fontSize: 12, color: C.t2 }}>
+                  <span style={{ color: C.t3 }}>Адрес: </span>{app.address}
+                </div>
+              )}
+              {app.category && (
+                <div style={{ fontSize: 12, color: C.t2 }}>
+                  <span style={{ color: C.t3 }}>Категория: </span>{app.category}
+                </div>
+              )}
+              {app.contact_phone && (
+                <div style={{ fontSize: 12, color: C.t2 }}>
+                  <span style={{ color: C.t3 }}>Телефон: </span>{app.contact_phone}
+                </div>
+              )}
+              {app.review_note && (
+                <div style={{ fontSize: 12, color: C.red }}>
+                  <span style={{ color: C.t3 }}>Причина: </span>{app.review_note}
+                </div>
+              )}
+              <div style={{ fontSize: 11, color: C.t3 }}>
+                Заявка №{app.id} · {fmtDate(app.created_at)}
+              </div>
+            </div>
+
+            {/* Actions (only for pending) */}
+            {app.status === 'pending' && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => handleApprove(app)}
+                  disabled={isActioning}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10,
+                    background: 'rgba(143,174,123,0.12)',
+                    border: '1px solid rgba(143,174,123,0.30)',
+                    color: '#8FAE7B',
+                    fontSize: 13, fontWeight: 700, cursor: isActioning ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: isActioning ? 0.6 : 1,
+                  }}
+                >
+                  {isActioning
+                    ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                    : <Check size={14} strokeWidth={2.5} />
+                  }
+                  Одобрить
+                </button>
+                <button
+                  onClick={() => setRejectTarget(app)}
+                  disabled={isActioning}
+                  style={{
+                    flex: 1, padding: '10px 0', borderRadius: 10,
+                    background: 'rgba(192,84,76,0.10)',
+                    border: '1px solid rgba(192,84,76,0.25)',
+                    color: C.red,
+                    fontSize: 13, fontWeight: 700, cursor: isActioning ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    opacity: isActioning ? 0.6 : 1,
+                  }}
+                >
+                  <X size={14} strokeWidth={2.5} />
+                  Отклонить
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Reject sheet */}
+      {rejectTarget && (
+        <>
+          <div
+            onClick={() => { setRejectTarget(null); setRejectNote(''); }}
+            style={{
+              position: 'fixed', inset: 0,
+              background: 'rgba(0,0,0,0.72)',
+              backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 200, animation: 'backdropIn 0.2s ease',
+            }}
+          />
+          <div style={{
+            position: 'fixed', bottom: 0, left: 0, right: 0,
+            background: '#141E2A', borderRadius: '24px 24px 0 0',
+            border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
+            padding: '0 20px 40px', zIndex: 201, maxWidth: 480, margin: '0 auto',
+            animation: 'slideUp 0.3s cubic-bezier(0.22,1,0.36,1)',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.10)', margin: '14px auto 20px' }} />
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.t1, marginBottom: 16 }}>
+              Отклонить заявку
+            </div>
+            <div style={{ fontSize: 13, color: C.t2, marginBottom: 4 }}>
+              <strong style={{ color: C.t1 }}>{rejectTarget.name}</strong> · @{rejectTarget.users?.username || rejectTarget.owner_telegram_id}
+            </div>
+            <div style={{ fontSize: 12, color: C.t3, marginBottom: 16 }}>Причина (опционально, будет отправлена пользователю)</div>
+            <textarea
+              value={rejectNote}
+              onChange={e => setRejectNote(e.target.value)}
+              placeholder="Например: не хватает информации об адресе"
+              rows={3}
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)',
+                borderRadius: 12, padding: '12px 14px',
+                color: C.t1, fontSize: 14, resize: 'none', outline: 'none',
+                fontFamily: 'inherit', marginBottom: 16,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { setRejectTarget(null); setRejectNote(''); }}
+                style={{
+                  flex: 1, padding: '13px 0', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.10)',
+                  color: C.t2, fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleRejectConfirm}
+                disabled={!!actionId}
+                style={{
+                  flex: 1, padding: '13px 0', borderRadius: 12,
+                  background: 'rgba(192,84,76,0.15)', border: '1px solid rgba(192,84,76,0.30)',
+                  color: C.red, fontSize: 14, fontWeight: 700, cursor: actionId ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  opacity: actionId ? 0.6 : 1,
+                }}
+              >
+                {actionId
+                  ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                  : <XCircle size={15} strokeWidth={2} />
+                }
+                Отклонить
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 const TABS = [
   { key: 'overview',      label: 'Обзор',      Icon: LayoutDashboard },
+  { key: 'applications',  label: 'Заявки',     Icon: FileText        },
   { key: 'fraud',         label: 'Фрод',       Icon: ShieldAlert     },
   { key: 'businesses',    label: 'Бизнесы',    Icon: Store           },
   { key: 'campaigns',     label: 'Кампании',   Icon: Megaphone       },
@@ -3590,6 +3863,7 @@ export default function SuperAdmin() {
         {tab === 'geohunt'      && <GeoHuntTab />}
         {tab === 'support'      && <SupportTab />}
         {tab === 'system'       && <SystemTab />}
+        {tab === 'applications' && <ApplicationsTab />}
       </div>
     </div>
   );

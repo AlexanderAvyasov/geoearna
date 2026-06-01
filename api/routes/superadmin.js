@@ -1379,4 +1379,122 @@ router.put('/api/superadmin/platform-settings/:key', ...SA, async (req, res) => 
   res.json({ ok: true, key, value: num });
 });
 
+// ─── Business Applications ────────────────────────────────────────────────────
+
+router.get('/api/superadmin/business-applications', ...SA, async (req, res) => {
+  try {
+    const status = req.query.status || 'pending';
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'INVALID_STATUS' });
+    }
+
+    const { data, error } = await supabase
+      .from('business_applications')
+      .select(`
+        id, name, address, lat, lng, category, contact_phone,
+        status, review_note, created_at, reviewed_at, reviewed_by,
+        owner_telegram_id,
+        users!business_applications_owner_telegram_id_fkey (
+          id, username, phone, balance, created_at
+        )
+      `)
+      .eq('status', status)
+      .order('created_at', { ascending: status === 'pending' });
+
+    if (error) {
+      console.error('GET /api/superadmin/business-applications error', error);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+
+    return res.json({ applications: data || [] });
+  } catch (err) {
+    console.error('GET /api/superadmin/business-applications error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/business-applications/:id/approve', ...SA, async (req, res) => {
+  try {
+    const appId = Number(req.params.id);
+    if (!Number.isInteger(appId) || appId <= 0) {
+      return res.status(400).json({ error: 'INVALID_ID' });
+    }
+
+    const { data: biz, error } = await supabase
+      .rpc('approve_business_application', {
+        p_app_id: appId,
+        p_reviewer_id: Number(req.user.telegram_id),
+      })
+      .single();
+
+    if (error) {
+      if (error.message?.includes('APPLICATION_NOT_FOUND_OR_NOT_PENDING')) {
+        return res.status(404).json({ error: 'APPLICATION_NOT_FOUND_OR_NOT_PENDING' });
+      }
+      if (error.message?.includes('USER_ALREADY_HAS_BUSINESS')) {
+        return res.status(409).json({ error: 'USER_ALREADY_HAS_BUSINESS' });
+      }
+      console.error('POST /api/superadmin/business-applications/:id/approve error', error);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+
+    // Fetch application to get owner telegram_id for notification
+    const { data: app } = await supabase
+      .from('business_applications')
+      .select('owner_telegram_id, name')
+      .eq('id', appId)
+      .single();
+
+    if (app?.owner_telegram_id) {
+      await sendMessage(
+        app.owner_telegram_id,
+        `✅ Ваша заявка на бизнес-аккаунт "${app.name}" одобрена!\n\nТеперь вы можете создавать кампании и принимать чекины.`
+      ).catch(() => {});
+    }
+
+    return res.json({ ok: true, business: biz });
+  } catch (err) {
+    console.error('POST /api/superadmin/business-applications/:id/approve error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/business-applications/:id/reject', ...SA, async (req, res) => {
+  try {
+    const appId = Number(req.params.id);
+    if (!Number.isInteger(appId) || appId <= 0) {
+      return res.status(400).json({ error: 'INVALID_ID' });
+    }
+
+    const { note } = req.body;
+
+    const { data: app, error } = await supabase
+      .from('business_applications')
+      .update({
+        status: 'rejected',
+        review_note: note?.trim() || null,
+        reviewed_by: Number(req.user.telegram_id),
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', appId)
+      .eq('status', 'pending')
+      .select('owner_telegram_id, name')
+      .single();
+
+    if (error || !app) {
+      return res.status(404).json({ error: 'APPLICATION_NOT_FOUND_OR_NOT_PENDING' });
+    }
+
+    await sendMessage(
+      app.owner_telegram_id,
+      `❌ Ваша заявка на бизнес-аккаунт "${app.name}" отклонена.${note ? `\n\nПричина: ${note}` : ''}`
+    ).catch(() => {});
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/superadmin/business-applications/:id/reject error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 module.exports = router;

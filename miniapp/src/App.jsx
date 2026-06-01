@@ -17,7 +17,8 @@ import Onboarding from './pages/Onboarding';
 import Game       from './pages/Game';
 import Legal      from './pages/Legal';
 import ChannelSub from './pages/ChannelSub';
-import Profile    from './pages/Profile';
+import Profile       from './pages/Profile';
+import BusinessApply from './pages/BusinessApply';
 
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
@@ -914,8 +915,9 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
 
   // Computed before hooks — used by useLayoutEffect below
   const shouldHide =
-    pathname === '/checkin' || pathname === '/withdraw' ||
-    pathname === '/legal'   || pathname === '/channel-reward' ||
+    pathname === '/checkin'        || pathname === '/withdraw' ||
+    pathname === '/legal'          || pathname === '/channel-reward' ||
+    pathname === '/apply-business' ||
     (IS_SUPER_ADMIN && pathname === '/admin');
 
   const activeIdx = shouldHide ? -1 : NAV_ITEMS.findIndex(item =>
@@ -1146,7 +1148,7 @@ function AppLayout() {
     }, 400);
   }
 
-  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward';
+  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward' && pathname !== '/apply-business';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -1174,6 +1176,7 @@ function AppLayout() {
           <Route path="/legal"           element={<Legal />} />
           <Route path="/channel-reward"  element={<ChannelSub />} />
           <Route path="/profile"         element={<Profile />} />
+          <Route path="/apply-business"  element={<BusinessApply />} />
         </Routes>
       </div>
       <BottomNav onQrResult={handleQrResult} isOwner={isOwner} isSuperAdmin={isSuperAdmin} />

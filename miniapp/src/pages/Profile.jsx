@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Crown, Flame, MessageCircle, AlertCircle, Send,
-  CheckCircle, X, Loader2, Shield, ChevronRight,
+  CheckCircle, X, Loader2, Shield, ChevronRight, Store,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { formatGeo } from '../lib/geo';
@@ -273,6 +273,8 @@ export default function Profile() {
   const [loading,     setLoading]     = useState(true);
   const [supportOpen, setSupportOpen] = useState(false);
 
+  const [isOwner, setIsOwner] = useState(false);
+
   useEffect(() => {
     Promise.all([
       apiFetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null),
@@ -281,6 +283,10 @@ export default function Profile() {
       setMeData(me);
       setGameData(game);
     }).finally(() => setLoading(false));
+
+    apiFetch('/api/admin/business')
+      .then(r => setIsOwner(r.status === 200))
+      .catch(() => {});
   }, []);
 
   const isSuperAdmin = meData?.is_super_admin || false;
@@ -529,6 +535,39 @@ export default function Profile() {
               </div>
             </div>
             <ChevronRight size={16} color="rgba(167,139,250,0.5)" strokeWidth={1.75} />
+          </div>
+        </PressableRow>
+      )}
+
+      {/* ── Become a partner ── */}
+      {!isSuperAdmin && !isOwner && (
+        <PressableRow
+          onClick={() => navigate('/apply-business')}
+          style={{ marginBottom: 10 }}
+        >
+          <div style={{
+            background: C.geoDim,
+            border: `1px solid ${C.geoGl}`,
+            borderRadius: 20, padding: '16px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 38, height: 38, borderRadius: 12, flexShrink: 0,
+              background: 'rgba(201,123,71,0.15)',
+              border: `1px solid rgba(201,123,71,0.30)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Store size={17} color={C.geo} strokeWidth={1.75} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.geo, letterSpacing: -0.2 }}>
+                Стать партнёром
+              </div>
+              <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
+                Подать заявку на бизнес-аккаунт
+              </div>
+            </div>
+            <ChevronRight size={16} color={C.t3} strokeWidth={1.75} />
           </div>
         </PressableRow>
       )}

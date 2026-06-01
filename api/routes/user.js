@@ -155,4 +155,88 @@ router.get('/api/activity', validateTma, async (req, res) => {
   }
 });
 
+// ─── Business Application ─────────────────────────────────────────────────────
+
+router.post('/api/user/apply-business', validateTma, async (req, res) => {
+  try {
+    const telegramId = req.user.telegram_id;
+    const { name, address, lat, lng, category, contact_phone } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length < 2) {
+      return res.status(400).json({ error: 'INVALID_NAME' });
+    }
+    if (lat !== undefined && (typeof lat !== 'number' || lat < -90 || lat > 90)) {
+      return res.status(400).json({ error: 'INVALID_LAT' });
+    }
+    if (lng !== undefined && (typeof lng !== 'number' || lng < -180 || lng > 180)) {
+      return res.status(400).json({ error: 'INVALID_LNG' });
+    }
+
+    // Already a business owner?
+    const { data: existing } = await supabase
+      .from('businesses')
+      .select('id')
+      .eq('owner_telegram_id', telegramId)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(409).json({ error: 'ALREADY_BUSINESS_OWNER' });
+    }
+
+    // Already has a pending application? (unique index will also catch this)
+    const { data: pending } = await supabase
+      .from('business_applications')
+      .select('id, created_at')
+      .eq('owner_telegram_id', telegramId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (pending) {
+      return res.status(409).json({ error: 'APPLICATION_ALREADY_PENDING', application_id: pending.id });
+    }
+
+    const { data: app, error } = await supabase
+      .from('business_applications')
+      .insert({
+        owner_telegram_id: telegramId,
+        name: name.trim(),
+        address: address?.trim() || null,
+        lat: lat ?? null,
+        lng: lng ?? null,
+        category: category?.trim() || null,
+        contact_phone: contact_phone?.trim() || null,
+      })
+      .select('id, status, created_at')
+      .single();
+
+    if (error) {
+      console.error('POST /api/user/apply-business insert error', error);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+
+    return res.status(201).json({ application: app });
+  } catch (err) {
+    console.error('POST /api/user/apply-business error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+// Get own application status
+router.get('/api/user/apply-business', validateTma, async (req, res) => {
+  try {
+    const { data: app } = await supabase
+      .from('business_applications')
+      .select('id, status, review_note, created_at, reviewed_at')
+      .eq('owner_telegram_id', req.user.telegram_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return res.json({ application: app || null });
+  } catch (err) {
+    console.error('GET /api/user/apply-business error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 module.exports = router;
