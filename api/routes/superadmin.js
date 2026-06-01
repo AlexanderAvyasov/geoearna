@@ -824,6 +824,7 @@ router.post('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
         cooldown_hours: Number.isInteger(cooldown_hours) && cooldown_hours >= 0 ? cooldown_hours : 0,
         image_url:      image_url?.trim() || null,
         created_by:     Number(SUPER_ADMIN_ID),
+        active:         true,
       })
       .select()
       .single();

@@ -786,7 +786,16 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    getGeoPos().then(p => setUserPos(p)).catch(() => {});
+    // Retry up to 3 times with growing delay — first call may fail if the
+    // Telegram WebView location permission dialog hasn't been answered yet.
+    let cancelled = false;
+    const attempt = (n) => {
+      getGeoPos({ forceRefresh: n > 0 })
+        .then(p => { if (!cancelled) setUserPos(p); })
+        .catch(() => { if (!cancelled && n < 2) setTimeout(() => attempt(n + 1), 1200 * (n + 1)); });
+    };
+    attempt(0);
+    return () => { cancelled = true; };
   }, []);
 
   const displayed = (() => {
