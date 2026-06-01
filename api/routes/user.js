@@ -100,11 +100,10 @@ router.get('/api/activity', validateTma, async (req, res) => {
         .order('created_at', { ascending: false })
         .limit(20),
       supabase.from('user_tasks')
-        .select('task_key, geo_reward, updated_at')
+        .select('task_key, period_date, task_definitions(title, geo_reward)')
         .eq('user_id', userId)
         .eq('claimed', true)
-        .gt('geo_reward', 0)
-        .order('updated_at', { ascending: false })
+        .order('period_date', { ascending: false })
         .limit(20),
     ]);
 
@@ -125,14 +124,6 @@ router.get('/api/activity', validateTma, async (req, res) => {
       (hunts || []).forEach(h => { huntsMap[h.id] = h; });
     }
 
-    const taskKeys = [...new Set((tasksRes.data || []).map(t => t.task_key).filter(Boolean))];
-    const taskDefsMap = {};
-    if (taskKeys.length > 0) {
-      const { data: defs } = await supabase.from('task_definitions')
-        .select('key, title').in('key', taskKeys);
-      (defs || []).forEach(d => { taskDefsMap[d.key] = d; });
-    }
-
     const items = [];
 
     for (const v of visitsRes.data || []) {
@@ -150,8 +141,9 @@ router.get('/api/activity', validateTma, async (req, res) => {
       items.push({ id: `r_${r.id}`, type: 'referral', title: 'Реферальный бонус', amount: r.amount, created_at: r.created_at });
     }
     for (const t of tasksRes.data || []) {
-      const def = taskDefsMap[t.task_key];
-      items.push({ id: `t_${t.task_key}_${t.updated_at}`, type: 'task', title: def?.title || t.task_key, amount: t.geo_reward, created_at: t.updated_at });
+      const geo = t.task_definitions?.geo_reward || 0;
+      if (geo <= 0) continue;
+      items.push({ id: `t_${t.task_key}_${t.period_date}`, type: 'task', title: t.task_definitions?.title || t.task_key, amount: geo, created_at: t.period_date });
     }
 
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

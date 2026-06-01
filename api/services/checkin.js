@@ -20,7 +20,7 @@ async function activateReferral(userId) {
     const [settings, { data: referral }, { data: userRow }] = await Promise.all([
       getSettings(),
       supabase.from('referrals')
-        .select('id, referrer_id')
+        .select('referrer_id')
         .eq('referred_id', userId)
         .or('activated.eq.false,activated.is.null')
         .maybeSingle(),
@@ -33,10 +33,10 @@ async function activateReferral(userId) {
     const BONUS_NEW_USER  = settings.referral_bonus_new_user;
     const telegramId      = userRow?.telegram_id;
 
-    // Run all mutations independently — one failure must not block the others
+    // referrals table has no id column — use referred_id (UNIQUE) as key
     await supabase.from('referrals')
       .update({ activated: true, activated_at: new Date().toISOString() })
-      .eq('id', referral.id);
+      .eq('referred_id', userId);
 
     await supabase.rpc('apply_checkin_bonus', { p_user_id: userId,               p_amount: BONUS_NEW_USER  });
     await supabase.rpc('apply_checkin_bonus', { p_user_id: referral.referrer_id, p_amount: BONUS_REFERRER  });
