@@ -1,6 +1,7 @@
 const { supabase } = require('../../db/index');
 const { getDistance } = require('./geo');
 const { sendMessage } = require('./notify');
+const { getSettings } = require('./platformSettings');
 const {
   getTashkentDay,
   getWeekStart,
@@ -14,16 +15,17 @@ const {
   checkAchievements,
 } = require('./gamification');
 
-const REFERRAL_BONUS_REFERRER = 25;
-const REFERRAL_BONUS_NEW_USER = 10;
-
 async function activateReferral(userId, telegramId) {
   try {
+    const settings = await getSettings();
+    const REFERRAL_BONUS_REFERRER = settings.referral_bonus_referrer;
+    const REFERRAL_BONUS_NEW_USER = settings.referral_bonus_new_user;
+
     const { data: referral } = await supabase
       .from('referrals')
       .select('id, referrer_id')
       .eq('referred_id', userId)
-      .eq('activated', false)
+      .or('activated.eq.false,activated.is.null')
       .maybeSingle();
 
     if (!referral) return;
@@ -170,13 +172,14 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   }
 
   // ── Gamification pre-computation ─────────────────────────────────────────
-  const [{ streak, user }, boosts, { count: prevVisitCount }, { count: totalVisitCount }] = await Promise.all([
+  const [{ streak, user }, boosts, { count: prevVisitCount }, { count: totalVisitCount }, platformSettings] = await Promise.all([
     getStreakAndLevel(userId),
     getActiveBoosts(business.id),
     supabase.from('visits').select('id', { count: 'exact', head: true })
       .eq('user_id', userId).eq('business_id', business.id),
     supabase.from('visits').select('id', { count: 'exact', head: true })
       .eq('user_id', userId),
+    getSettings(),
   ]);
 
   const levelInfo = getLevelInfo(user?.xp || 0);
@@ -295,6 +298,12 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
     }
   })();
 
+  const milestoneGeoFromSettings = {
+    7:  platformSettings.milestone_geo_7,
+    14: platformSettings.milestone_geo_14,
+    30: platformSettings.milestone_geo_30,
+  };
+
   return {
     reward:       effectiveReward + newPlaceBonus,
     baseReward,
@@ -304,6 +313,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
     streakInfo: {
       projected: projStreak,
       streakMult,
+      milestoneBonus: milestoneGeoFromSettings[projStreak] || 0,
     },
     levelInfo: {
       level: levelInfo.level,

@@ -55,7 +55,7 @@ const PROMO_ERRORS = {
 // ─── Particle burst (25 particles, randomized) ───────────────────────────────
 
 const PARTICLE_COLORS = [C.geo, C.green, C.gold, '#fff', C.geo, C.geo];
-const MILESTONE_GEO = { 7: 500, 14: 1500, 30: 5000 };
+// milestone bonus amount comes from API (data.streakInfo.milestoneBonus)
 
 function genParticles() {
   return Array.from({ length: 25 }, (_, i) => {
@@ -97,6 +97,7 @@ export default function Checkin() {
   const [showBurst,          setShowBurst]          = useState(false);
   const [showWave,           setShowWave]           = useState(false);
   const [streakMilestone,    setStreakMilestone]    = useState(null);
+  const [checkinData,        setCheckinData]        = useState(null);
   const pinRef = useRef(null);
   const sent   = useRef(false);
 
@@ -283,6 +284,7 @@ export default function Checkin() {
       } else {
         clog('[CHECKIN:DO_CHECKIN] SUCCESS reward:', data.reward);
         setReward(data.reward);
+        setCheckinData(data);
         setStatus('success');
         headerCache.reset();
         setShowBurst(true);
@@ -498,7 +500,7 @@ export default function Checkin() {
             animation: 'fadeUp 0.4s 0.45s ease both',
           }}>
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", color: C.geo, fontWeight: 900, fontSize: 32, letterSpacing: -1 }}>
-              +{MILESTONE_GEO[streakMilestone].toLocaleString('ru-RU')} GEO
+              +{(checkinData?.streakInfo?.milestoneBonus || 0).toLocaleString('ru-RU')} GEO
             </div>
             <div style={{ color: C.t3, fontSize: 13, marginTop: 4 }}>Milestone bonus credited!</div>
           </div>
@@ -724,6 +726,19 @@ export default function Checkin() {
                 </div>
                 <div style={{ fontSize: 20, fontWeight: 700, color: C.t2, marginTop: 6 }}>GEO</div>
               </div>
+              {checkinData?.newPlaceBonus > 0 && (
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  marginTop: 10, padding: '4px 12px', borderRadius: 20,
+                  background: C.geoDim, border: `1px solid ${C.geoGl}`,
+                  animation: 'fadeUp 0.4s 0.55s both',
+                }}>
+                  <MapPin size={11} color={C.geo} strokeWidth={2} />
+                  <span style={{ fontSize: 11, fontWeight: 600, color: C.geo }}>
+                    +{formatGeo(checkinData.newPlaceBonus)} GEO новое место
+                  </span>
+                </div>
+              )}
             </div>
 
             <Link to="/balance" style={{

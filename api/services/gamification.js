@@ -1,4 +1,5 @@
 const { supabase } = require('../../db/index');
+const { getSettings } = require('./platformSettings');
 
 const TASHKENT_MS = 5 * 60 * 60 * 1000; // UTC+5
 const GRACE_MS    = 2 * 60 * 60 * 1000; // 2-hour grace period
@@ -16,7 +17,6 @@ const LEVELS = [
   { min: 0,    level: 1,  label: 'Новичок',        bonus: 1.00 },
 ];
 
-const MILESTONE_GEO = { 7: 100, 14: 200, 30: 300 };
 
 // Returns the Tashkent "game day" as YYYY-MM-DD.
 // Visits before 02:00 Tashkent (= UTC+5) still count for the previous calendar day.
@@ -90,7 +90,7 @@ function projectedStreak(streak, today) {
   return streak.freeze_available > 0 ? streak.current_streak : 1;
 }
 
-function computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt }) {
+async function computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt }) {
   const today = getTashkentDay();
   const projected = projectedStreak(streak, today);
 
@@ -110,9 +110,11 @@ function computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt }) {
     if (h >= 12 && h < 14) boostMult = Math.max(boostMult, 2.0);
   }
 
-  // New place bonus: flat +100 GEO if business opened < 7 days ago
+  // New place bonus: flat GEO if business opened < 7 days ago (amount from platform settings)
+  const settings = await getSettings();
   const newPlaceBonus = businessCreatedAt &&
-    Date.now() - new Date(businessCreatedAt).getTime() < 7 * 24 * 3600 * 1000 ? 100 : 0;
+    Date.now() - new Date(businessCreatedAt).getTime() < 7 * 24 * 3600 * 1000
+    ? settings.new_place_bonus : 0;
 
   // Is before noon in Tashkent? (for daily_before_noon task)
   const isBeforeNoon = tNow.getUTCHours() < 12;
@@ -172,8 +174,14 @@ async function applyStreakUpdate(userId, today) {
 
   // Milestone GEO bonuses paid from platform wallet
   let milestoneBonus = 0;
-  if (!frozeUsed && MILESTONE_GEO[newStreak]) {
-    milestoneBonus = MILESTONE_GEO[newStreak];
+  const settings = await getSettings();
+  const milestoneGeo = {
+    7:  settings.milestone_geo_7,
+    14: settings.milestone_geo_14,
+    30: settings.milestone_geo_30,
+  };
+  if (!frozeUsed && milestoneGeo[newStreak]) {
+    milestoneBonus = milestoneGeo[newStreak];
     await supabase.rpc('apply_checkin_bonus', { p_user_id: userId, p_amount: milestoneBonus });
   }
 

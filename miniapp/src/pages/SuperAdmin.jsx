@@ -6,7 +6,7 @@ import {
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode, Send,
-  MessageCircle, AlertCircle, MessageCircleReply,
+  MessageCircle, AlertCircle, MessageCircleReply, Gift,
 } from 'lucide-react';
 import { API_BASE, waitForInitData, apiFetch } from '../lib/api';
 import { formatGeo, formatUzs, geoToUzs } from '../lib/geo';
@@ -1640,6 +1640,89 @@ function UsersTab() {
 
 // ─── Tab: System ──────────────────────────────────────────────────────────────
 
+const SETTING_META = [
+  { key: 'referral_bonus_referrer', label: 'Бонус рефереру',       hint: 'GEO рефереру при первом чекине друга' },
+  { key: 'referral_bonus_new_user', label: 'Бонус новому юзеру',   hint: 'GEO новому за приход по реф. ссылке' },
+  { key: 'milestone_geo_7',         label: 'Стрик 7 дней',         hint: 'GEO за 7-дневный streak milestone' },
+  { key: 'milestone_geo_14',        label: 'Стрик 14 дней',        hint: 'GEO за 14-дневный streak milestone' },
+  { key: 'milestone_geo_30',        label: 'Стрик 30 дней',        hint: 'GEO за 30-дневный streak milestone' },
+  { key: 'new_place_bonus',         label: 'Бонус нового места',   hint: 'GEO за чекин в заведении < 7 дней' },
+];
+
+function BonusSettingsSection() {
+  const [settings, setSettings] = useState(null);
+  const [drafts,   setDrafts]   = useState({});
+  const [saving,   setSaving]   = useState({});
+  const [saved,    setSaved]    = useState({});
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    saFetch('/api/superadmin/platform-settings')
+      .then(d => {
+        setSettings(d.settings);
+        setDrafts(Object.fromEntries(Object.entries(d.settings).map(([k, v]) => [k, String(v)])));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save(key) {
+    const val = Number(drafts[key]);
+    if (!Number.isFinite(val) || val < 0) return;
+    setSaving(s => ({ ...s, [key]: true }));
+    try {
+      await saFetch(`/api/superadmin/platform-settings/${key}`, {
+        method: 'PUT', body: JSON.stringify({ value: val }),
+      });
+      setSettings(s => ({ ...s, [key]: val }));
+      setSaved(s => ({ ...s, [key]: true }));
+      setTimeout(() => setSaved(s => ({ ...s, [key]: false })), 2000);
+    } catch {}
+    setSaving(s => ({ ...s, [key]: false }));
+  }
+
+  return (
+    <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '18px', borderRadius: 18, marginBottom: 16 }}>
+      <SectionTitle icon={Gift} color={C.t3}>Бонусы и рефералы</SectionTitle>
+      {loading
+        ? [1,2,3].map(i => <div key={i} style={{ marginBottom: 10 }}><Skel h={36} w="100%" r={8} /></div>)
+        : SETTING_META.map(({ key, label, hint }) => (
+          <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${C.b0}` }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: C.t1 }}>{label}</div>
+              <div style={{ fontSize: 10, color: C.t3 }}>{hint}</div>
+            </div>
+            <input
+              type="number" min="0" step="1"
+              value={drafts[key] ?? ''}
+              onChange={e => setDrafts(d => ({ ...d, [key]: e.target.value }))}
+              style={{
+                width: 80, padding: '6px 8px', borderRadius: 8, border: `1px solid ${C.b2}`,
+                background: C.card, color: C.t1, fontSize: 13, textAlign: 'right',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={() => save(key)}
+              disabled={saving[key] || Number(drafts[key]) === settings?.[key]}
+              style={{
+                padding: '6px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: saved[key] ? C.green : SA_COLOR,
+                color: C.bg, fontSize: 11, fontWeight: 700,
+                opacity: (saving[key] || Number(drafts[key]) === settings?.[key]) ? 0.4 : 1,
+                transition: 'background 0.2s',
+                minWidth: 52,
+              }}
+            >
+              {saved[key] ? '✓' : saving[key] ? '...' : 'Сохр.'}
+            </button>
+          </div>
+        ))
+      }
+    </div>
+  );
+}
+
 function SystemTab() {
   const [cfg,     setCfg]     = useState(null);
   const [auditLog, setAuditLog] = useState([]);
@@ -1672,6 +1755,8 @@ function SystemTab() {
 
   return (
     <div>
+      <BonusSettingsSection />
+
       {/* Config */}
       <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '18px', borderRadius: 18, marginBottom: 16 }}>
         <SectionTitle icon={Settings} color={C.t3}>Конфигурация платформы</SectionTitle>

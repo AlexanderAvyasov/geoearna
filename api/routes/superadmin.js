@@ -4,6 +4,7 @@ const validateTma = require('../middleware/validateTma');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
 const { getGeoRate } = require('../lib/geoRate');
+const { getSettings, invalidateCache, DEFAULTS } = require('../services/platformSettings');
 
 const router = express.Router();
 
@@ -1230,6 +1231,31 @@ router.post('/api/superadmin/support/:id/close', ...SA, async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
+});
+
+// ── Platform settings (bonuses) ──────────────────────────────────────────────
+
+router.get('/api/superadmin/platform-settings', ...SA, async (req, res) => {
+  try {
+    const settings = await getSettings();
+    res.json({ settings, defaults: DEFAULTS });
+  } catch (e) {
+    res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.put('/api/superadmin/platform-settings/:key', ...SA, async (req, res) => {
+  const { key } = req.params;
+  const { value } = req.body;
+  if (!(key in DEFAULTS)) return res.status(400).json({ error: 'UNKNOWN_KEY' });
+  const num = Number(value);
+  if (!Number.isFinite(num) || num < 0) return res.status(400).json({ error: 'INVALID_VALUE' });
+  const { error } = await supabase
+    .from('platform_settings')
+    .upsert({ key, value: num, updated_at: new Date().toISOString() });
+  if (error) return res.status(500).json({ error: 'DB_ERROR', detail: error.message });
+  invalidateCache();
+  res.json({ ok: true, key, value: num });
 });
 
 module.exports = router;
