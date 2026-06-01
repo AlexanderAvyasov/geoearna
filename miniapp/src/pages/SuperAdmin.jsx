@@ -339,7 +339,28 @@ function OverviewTab() {
               <StatCard Icon={Users}       label="DAU"             value={d.dau || 0}              color={C.blue}    trend={d.dauTrend} sub="сегодня" />
               <StatCard Icon={TrendingUp}  label="MAU"             value={d.mau || 0}              color={C.indigo}  trend={d.mauTrend} sub="этот месяц" />
               <StatCard Icon={MapPin}      label="Чекины сегодня"  value={d.checkinsToday || 0}    color="#10B981"   />
-              <StatCard Icon={Store}       label="Бизнесов"        value={d.totalBiz || 0}         color={C.gold}    sub={`${d.bizZeroBalance || 0} с нулём`} />
+              <div style={{
+                gridColumn: 'span 2',
+                ...cardBase, border: `1px solid ${C.b1}`, borderRadius: 16, padding: '14px 18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Store size={14} color={C.gold} strokeWidth={2} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.7 }}>Бизнесы</span>
+                </div>
+                <div style={{ display: 'flex', gap: 24 }}>
+                  {[
+                    { label: 'Всего',        value: d.totalBiz || 0,        color: C.gold   },
+                    { label: 'Активных',     value: d.activeBiz || 0,       color: '#10B981' },
+                    { label: 'Без баланса',  value: d.bizZeroBalance || 0,  color: (d.bizZeroBalance || 0) > 0 ? C.red : C.t3 },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1, letterSpacing: -0.5 }}>{value}</div>
+                      <div style={{ fontSize: 10, color: C.t3, marginTop: 3 }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <StatCard Icon={Megaphone}   label="Акт. кампании"   value={d.activeCamps || 0}      color={C.orange}  />
               <StatCard Icon={ShieldAlert} label="Подозрительных"  value={d.fraudSuspectsCount || 0} color={C.red}  alert={(d.fraudSuspectsCount || 0) > 0} />
             </>

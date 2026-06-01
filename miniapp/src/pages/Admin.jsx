@@ -1102,13 +1102,27 @@ function OverviewTab({ business, stats, statsLoading, onShowForm }) {
 
         {balanceLevel !== 'ok' && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
+            display: 'flex', alignItems: 'flex-start', gap: 8,
             background: `${balanceColor}15`, border: `1px solid ${balanceColor}35`,
-            borderRadius: 10, padding: '9px 12px', marginBottom: 12,
-            fontSize: 13, fontWeight: 700, color: balanceColor,
+            borderRadius: 10, padding: '10px 12px', marginBottom: 12,
+            color: balanceColor,
           }}>
-            <AlertTriangle size={14} color={balanceColor} />
-            {balanceLevel === 'critical' ? t('admin.overview.critical') : t('admin.overview.warn')}
+            <AlertTriangle size={14} color={balanceColor} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                {balanceLevel === 'critical' ? 'Критически низкий баланс' : 'Баланс на исходе'}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 400, marginTop: 3, color: balanceColor, opacity: 0.85, lineHeight: 1.45 }}>
+                {lastTopup
+                  ? `Осталось ${Math.round(balance / lastTopup * 100)}% от последнего пополнения (${formatGeo(lastTopup)} GEO).`
+                  : 'Текущий баланс недостаточен для длительной работы.'
+                }
+                {forecastDays !== null
+                  ? ` По текущему трафику хватит ещё примерно на ${forecastDays} ${forecastDays === 1 ? 'день' : forecastDays < 5 ? 'дня' : 'дней'}. Пополните баланс заранее.`
+                  : ' Пополните баланс заранее.'
+                }
+              </div>
+            </div>
           </div>
         )}
 

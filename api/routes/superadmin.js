@@ -392,6 +392,7 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       { count: totalBiz },
       { count: bizZero },
       { count: activeCamps },
+      { data: activeCampsData },
       { data: geoIssuedRow },
       { data: approvedWds },
     ] = await Promise.all([
@@ -406,6 +407,7 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       supabase.from('businesses').select('*', { count: 'exact', head: true }),
       supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('balance', 0),
       supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('active', true),
+      supabase.from('campaigns').select('business_id').eq('active', true),
       supabase.from('visits').select('rewarded.sum()').single(),
       supabase.from('withdrawals').select('amount').eq('status', 'approved').limit(5000),
     ]);
@@ -427,6 +429,8 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
     const totalGeoIssued = geoIssuedRow?.rewarded || 0;
     const approvedGeo    = (approvedWds  || []).reduce((s, w) => s + (w.amount || 0), 0);
 
+    const activeBiz = new Set((activeCampsData || []).map(c => c.business_id).filter(Boolean)).size;
+
     return res.json({
       dau, dauTrend,
       mau, mauTrend,
@@ -436,6 +440,7 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
       platformBalance:    platform?.balance || 0,
       totalBiz:           totalBiz || 0,
       bizZeroBalance:     bizZero  || 0,
+      activeBiz,
       activeCamps:        activeCamps || 0,
       fraudSuspectsCount,
       geoRate:            getGeoRate(),
