@@ -50,7 +50,7 @@ router.get('/api/superadmin/stats', ...SA, async (req, res) => {
       supabase.from('withdrawals').select('amount, status').limit(2000),
     ]);
 
-    const totalGeoIssued  = geoIssuedRow?.rewarded || 0;
+    const totalGeoIssued  = (geoIssuedRow?.sum ?? geoIssuedRow?.rewarded) || 0;
     const pendingWds      = (withdrawals || []).filter(w => w.status === 'pending');
     const approvedGeo     = (withdrawals || []).filter(w => w.status === 'approved').reduce((s, w) => s + w.amount, 0);
 
@@ -426,7 +426,7 @@ router.get('/api/superadmin/overview', ...SA, async (req, res) => {
     });
     const fraudSuspectsCount = Object.values(bizPerUser).filter(s => s.size > 3).length;
     const pendingGeo     = (pendingAmts  || []).reduce((s, w) => s + (w.amount || 0), 0);
-    const totalGeoIssued = geoIssuedRow?.rewarded || 0;
+    const totalGeoIssued = (geoIssuedRow?.sum ?? geoIssuedRow?.rewarded) || 0;
     const approvedGeo    = (approvedWds  || []).reduce((s, w) => s + (w.amount || 0), 0);
 
     const activeBiz = new Set((activeCampsData || []).map(c => c.business_id).filter(Boolean)).size;
