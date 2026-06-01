@@ -1187,7 +1187,7 @@ function AppLayout() {
 export default function App() {
   useTelegram();
   const { ready, fading } = useAppReady();
-  const ONBOARD_KEY = user?.id ? `geo_onboarded_${user.id}` : 'geo_onboarded';
+  const ONBOARD_KEY = user?.id ? `geo_onboarded_v2_${user.id}` : 'geo_onboarded_v2';
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem(ONBOARD_KEY));
 
   function handleOnboardDone(mode) {
