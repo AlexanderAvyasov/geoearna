@@ -933,14 +933,15 @@ router.get('/api/superadmin/platform-wallet/history', ...SA, async (req, res) =>
   try {
     const LIMIT = 50;
 
-    const [ptRes, wdRes, promoRes, ghCodesRes] = await Promise.all([
+    const [ptRes, wdRes, promoRes, ghCodesRes, refEarningsRes] = await Promise.all([
       supabase.from('platform_transactions')
         .select('id, amount, created_at, business_id')
         .order('created_at', { ascending: false })
         .limit(LIMIT),
+      // Show all withdrawal statuses so pending payouts also appear
       supabase.from('withdrawals')
-        .select('id, amount, created_at, user_id')
-        .eq('status', 'approved')
+        .select('id, amount, created_at, user_id, status')
+        .in('status', ['approved', 'pending'])
         .order('created_at', { ascending: false })
         .limit(LIMIT),
       supabase.from('promo_claims')
@@ -952,14 +953,21 @@ router.get('/api/superadmin/platform-wallet/history', ...SA, async (req, res) =>
         .not('used_at', 'is', null)
         .order('used_at', { ascending: false })
         .limit(LIMIT),
+      // Referral bonus payouts from platform wallet
+      supabase.from('referral_earnings')
+        .select('id, amount, created_at, referrer_id, referred_id')
+        .order('created_at', { ascending: false })
+        .limit(LIMIT),
     ]);
 
     // Two-step lookups
     const bizIds   = [...new Set((ptRes.data  || []).map(r => r.business_id).filter(Boolean))];
     const userIds  = [...new Set([
-      ...(wdRes.data    || []).map(r => r.user_id),
-      ...(promoRes.data || []).map(r => r.user_id),
-      ...(ghCodesRes.data || []).map(r => r.used_by),
+      ...(wdRes.data          || []).map(r => r.user_id),
+      ...(promoRes.data       || []).map(r => r.user_id),
+      ...(ghCodesRes.data     || []).map(r => r.used_by),
+      ...(refEarningsRes.data || []).map(r => r.referrer_id),
+      ...(refEarningsRes.data || []).map(r => r.referred_id),
     ].filter(Boolean))];
     const promoIds = [...new Set((promoRes.data  || []).map(r => r.promo_id).filter(Boolean))];
     const huntIds  = [...new Set((ghCodesRes.data || []).map(r => r.hunt_id).filter(Boolean))];
@@ -989,10 +997,10 @@ router.get('/api/superadmin/platform-wallet/history', ...SA, async (req, res) =>
       const u = userMap[wd.user_id];
       items.push({
         id:         `wd_${wd.id}`,
-        type:       'withdrawal',
+        type:       wd.status === 'pending' ? 'withdrawal_pending' : 'withdrawal',
         direction:  'debit',
         amount:     wd.amount,
-        label:      `Вывод: ${u?.username ? '@' + u.username : u?.telegram_id || '—'}`,
+        label:      `Вывод${wd.status === 'pending' ? ' (ожидает)' : ''}: ${u?.username ? '@' + u.username : u?.telegram_id || '—'}`,
         created_at: wd.created_at,
       });
     }
@@ -1020,6 +1028,19 @@ router.get('/api/superadmin/platform-wallet/history', ...SA, async (req, res) =>
         amount:     hunt?.reward_per_code || 0,
         label:      `GeoHunt: ${hunt?.title || '—'}${u?.username ? ' · @' + u.username : ''}`,
         created_at: g.used_at,
+      });
+    }
+
+    for (const r of refEarningsRes.data || []) {
+      const referrer  = userMap[r.referrer_id];
+      const referred  = userMap[r.referred_id];
+      items.push({
+        id:         `re_${r.id}`,
+        type:       'referral_bonus',
+        direction:  'debit',
+        amount:     r.amount,
+        label:      `Реф. бонус: ${referrer?.username ? '@' + referrer.username : referrer?.telegram_id || '—'} ← ${referred?.username ? '@' + referred.username : referred?.telegram_id || '—'}`,
+        created_at: r.created_at,
       });
     }
 

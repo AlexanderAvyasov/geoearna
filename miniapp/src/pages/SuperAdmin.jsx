@@ -157,10 +157,12 @@ function StatCard({ Icon, label, value, sub, color, trend, alert }) {
 // ─── Wallet history section ───────────────────────────────────────────────────
 
 const WALLET_TX_STYLE = {
-  commission: { color: '#10B981', bg: '#10B98114', border: '#10B98130', sign: '+', Icon: Coins,           label: 'Комиссия'  },
-  withdrawal: { color: C.red,    bg: C.redFt,     border: `${C.red}30`, sign: '−', Icon: ArrowDownToLine, label: 'Вывод'     },
-  promo:      { color: '#3B82F6', bg: '#3B82F614', border: '#3B82F630', sign: '−', Icon: QrCode,          label: 'Promo QR'  },
-  geohunt:    { color: '#FF8C00', bg: '#FF8C0014', border: '#FF8C0030', sign: '−', Icon: Target,          label: 'GeoHunt'   },
+  commission:         { color: '#10B981', bg: '#10B98114', border: '#10B98130', sign: '+', Icon: Coins,           label: 'Комиссия'       },
+  withdrawal:         { color: C.red,    bg: C.redFt,     border: `${C.red}30`, sign: '−', Icon: ArrowDownToLine, label: 'Вывод'          },
+  withdrawal_pending: { color: C.gold,   bg: C.goldFt,    border: `${C.gold}30`,sign: '−', Icon: Clock,           label: 'Вывод (ожидает)'},
+  promo:              { color: '#3B82F6', bg: '#3B82F614', border: '#3B82F630', sign: '−', Icon: QrCode,          label: 'Promo QR'       },
+  geohunt:            { color: '#FF8C00', bg: '#FF8C0014', border: '#FF8C0030', sign: '−', Icon: Target,          label: 'GeoHunt'        },
+  referral_bonus:     { color: '#A78BFA', bg: '#A78BFA14', border: '#A78BFA30', sign: '−', Icon: Users,           label: 'Реф. бонус'     },
 };
 
 function WalletHistorySection() {
