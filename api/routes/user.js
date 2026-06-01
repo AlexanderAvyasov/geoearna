@@ -155,6 +155,45 @@ router.get('/api/activity', validateTma, async (req, res) => {
   }
 });
 
+// ─── TOS Acceptance ──────────────────────────────────────────────────────────
+
+router.post('/api/user/accept-tos', validateTma, async (req, res) => {
+  try {
+    const { tos_version, device_fingerprint, user_agent, tg_platform, tg_version } = req.body;
+
+    if (!tos_version || typeof tos_version !== 'string') {
+      return res.status(400).json({ error: 'MISSING_TOS_VERSION' });
+    }
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || req.socket?.remoteAddress
+      || null;
+
+    const { error } = await supabase
+      .from('tos_acceptances')
+      .insert({
+        user_id:            req.user.id,
+        telegram_id:        req.user.telegram_id,
+        tos_version:        String(tos_version).slice(0, 20),
+        device_fingerprint: device_fingerprint ? String(device_fingerprint).slice(0, 128) : null,
+        user_agent:         user_agent         ? String(user_agent).slice(0, 512)         : null,
+        tg_platform:        tg_platform        ? String(tg_platform).slice(0, 64)         : null,
+        tg_version:         tg_version         ? String(tg_version).slice(0, 20)          : null,
+        ip,
+      });
+
+    if (error) {
+      console.error('POST /api/user/accept-tos insert error', error);
+      return res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/user/accept-tos error', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 // ─── Business Application ─────────────────────────────────────────────────────
 
 router.post('/api/user/apply-business', validateTma, async (req, res) => {

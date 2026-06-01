@@ -1,11 +1,36 @@
 import { useState } from 'react';
-import { MapPin, Wallet, CreditCard, User, Store, Check, ChevronDown } from 'lucide-react';
-import { C, E } from '../lib/design';
+import { MapPin, Wallet, CreditCard, Check, ChevronDown, Shield, FileText, Eye } from 'lucide-react';
+import { C, E, FF } from '../lib/design';
 import { LegalSheet } from './Legal';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LANGS } from '../lib/i18n';
+import { apiFetch } from '../lib/api';
 
-const RYE = { fontFamily: "'Rye', serif" };
+const TOS_VERSION = 'v1';
+
+// ── Device fingerprint ────────────────────────────────────────────────────────
+async function buildFingerprint() {
+  const tgw = window.Telegram?.WebApp;
+  const raw = [
+    navigator.userAgent || '',
+    navigator.language  || '',
+    `${screen.width}x${screen.height}`,
+    String(screen.colorDepth || 0),
+    String(navigator.hardwareConcurrency || 0),
+    String(navigator.maxTouchPoints || 0),
+    tgw?.platform || '',
+    tgw?.version  || '',
+  ].join('|');
+
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+    return Array.from(new Uint8Array(buf))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  } catch {
+    return raw.slice(0, 200);
+  }
+}
 
 const SLIDE_META = [
   { Icon: MapPin,     accent: C.geo,   accentDim: C.geoDim,  accentGl: C.geoGl,  num: 1 },
@@ -13,6 +38,15 @@ const SLIDE_META = [
   { Icon: CreditCard, accent: C.gold,  accentDim: C.goldFt,  accentGl: C.goldGl,  num: 3 },
 ];
 
+// ── Key terms for the consent screen ─────────────────────────────────────────
+const KEY_POINTS = [
+  { icon: MapPin,    text: 'Вы зарабатываете GEO за посещение заведений и участие в кампаниях.' },
+  { icon: Shield,    text: 'Запрещено использовать ботов, подделывать GPS или создавать несколько аккаунтов.' },
+  { icon: Wallet,    text: 'GEO не являются ценными бумагами. Курс конвертации может меняться.' },
+  { icon: FileText,  text: 'Мы собираем данные Telegram-аккаунта для авторизации и предотвращения мошенничества.' },
+];
+
+// ── Language phase ────────────────────────────────────────────────────────────
 function LangPhase({ onDone }) {
   const { lang: currentLang, setLang, t } = useLanguage();
   const [selected, setSelected] = useState(currentLang);
@@ -32,7 +66,6 @@ function LangPhase({ onDone }) {
       alignItems: 'center', justifyContent: 'center',
       padding: '48px 28px 52px',
     }}>
-      {/* Logo mark */}
       <div style={{
         width: 72, height: 72, borderRadius: 22,
         background: 'linear-gradient(145deg, #0D1520 0%, #08101A 100%)',
@@ -45,7 +78,7 @@ function LangPhase({ onDone }) {
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: 36, animation: 'fadeUp 0.5s 0.1s ease both' }}>
-        <div style={{ ...RYE, fontSize: 24, fontWeight: 700, color: C.t1, marginBottom: 6, letterSpacing: -0.4 }}>
+        <div style={{ fontSize: 24, fontWeight: 700, color: C.t1, marginBottom: 6, fontFamily: FF.display }}>
           {t('lang.title')}
         </div>
         <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5 }}>
@@ -53,7 +86,6 @@ function LangPhase({ onDone }) {
         </div>
       </div>
 
-      {/* Custom dropdown */}
       <div style={{ position: 'relative', width: '100%', maxWidth: 340, animation: 'fadeUp 0.5s 0.18s ease both' }}>
         <button
           onClick={() => setOpen(o => !o)}
@@ -101,7 +133,6 @@ function LangPhase({ onDone }) {
                     borderTop: `0.5px solid ${C.b1}`,
                     padding: '14px 18px',
                     cursor: 'pointer', textAlign: 'left',
-                    transition: `background 0.15s ${E.smooth}`,
                     WebkitTapHighlightColor: 'transparent',
                   }}
                 >
@@ -110,10 +141,8 @@ function LangPhase({ onDone }) {
                   </span>
                   {isActive && (
                     <div style={{
-                      width: 20, height: 20, borderRadius: '50%',
-                      background: C.geo,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
+                      width: 20, height: 20, borderRadius: '50%', background: C.geo,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}>
                       <Check size={11} color={C.bg} strokeWidth={3} />
                     </div>
@@ -148,6 +177,7 @@ function LangPhase({ onDone }) {
   );
 }
 
+// ── Slides phase ──────────────────────────────────────────────────────────────
 function SlidePhase({ onDone }) {
   const { t } = useLanguage();
   const [slide, setSlide] = useState(0);
@@ -162,7 +192,7 @@ function SlidePhase({ onDone }) {
     }
   }
 
-  const s = SLIDE_META[slide];
+  const s     = SLIDE_META[slide];
   const title = t(`onboard.slide${s.num}.title`);
   const text  = t(`onboard.slide${s.num}.text`);
 
@@ -173,7 +203,6 @@ function SlidePhase({ onDone }) {
       alignItems: 'center', justifyContent: 'space-between',
       padding: '60px 28px 52px', textAlign: 'center',
     }}>
-      {/* Skip */}
       <button onClick={onDone} style={{
         alignSelf: 'flex-end', background: 'none', border: 'none',
         color: C.t3, fontSize: 14, cursor: 'pointer',
@@ -184,11 +213,9 @@ function SlidePhase({ onDone }) {
       </button>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        {/* Icon circle */}
         <div key={`icon-${key}`} style={{
           width: 112, height: 112, borderRadius: '50%',
-          background: s.accentDim,
-          border: `0.5px solid ${s.accentGl}`,
+          background: s.accentDim, border: `0.5px solid ${s.accentGl}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           marginBottom: 40,
           animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
@@ -196,7 +223,6 @@ function SlidePhase({ onDone }) {
           <s.Icon size={48} color={s.accent} strokeWidth={1.5} />
         </div>
 
-        {/* Counter */}
         <div key={`pill-${key}`} style={{
           background: s.accentDim, border: `0.5px solid ${s.accentGl}`,
           borderRadius: 20, padding: '4px 14px', fontSize: 10,
@@ -208,24 +234,21 @@ function SlidePhase({ onDone }) {
         </div>
 
         <div key={`title-${key}`} style={{
-          ...RYE, fontSize: 28, fontWeight: 700, color: C.t1,
-          marginBottom: 18, lineHeight: 1.2, whiteSpace: 'pre-line',
-          letterSpacing: -0.4,
+          fontFamily: FF.display, fontSize: 28, fontWeight: 700, color: C.t1,
+          marginBottom: 18, lineHeight: 1.2, whiteSpace: 'pre-line', letterSpacing: -0.4,
           animation: 'fadeUp 0.5s 0.1s ease both',
         }}>
           {title}
         </div>
 
         <div key={`text-${key}`} style={{
-          fontSize: 15, color: C.t3,
-          lineHeight: 1.65, maxWidth: 300,
+          fontSize: 15, color: C.t3, lineHeight: 1.65, maxWidth: 300,
           animation: 'fadeUp 0.5s 0.18s ease both',
         }}>
           {text}
         </div>
       </div>
 
-      {/* Dots */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
         {SLIDE_META.map((_, i) => (
           <div key={i} style={{
@@ -240,8 +263,7 @@ function SlidePhase({ onDone }) {
         onClick={next}
         style={{
           width: '100%', maxWidth: 340,
-          background: s.accent,
-          color: C.bg,
+          background: s.accent, color: C.bg,
           border: 'none', borderRadius: 14,
           padding: '16px', fontSize: 16, fontWeight: 700,
           cursor: 'pointer',
@@ -253,163 +275,207 @@ function SlidePhase({ onDone }) {
         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        {slide < SLIDE_META.length - 1 ? t('onboard.next') : t('onboard.select_mode')}
+        {slide < SLIDE_META.length - 1 ? t('onboard.next') : 'Далее'}
       </button>
     </div>
   );
 }
 
-function ModePhase({ onChoose }) {
-  const { t } = useLanguage();
-  const [chosen, setChosen] = useState(null);
-  const [legalTab, setLegalTab] = useState(null);
+// ── Terms phase ───────────────────────────────────────────────────────────────
+function TermsPhase({ onAccepted }) {
+  const [legalTab,   setLegalTab]   = useState(null);
+  const [checked,    setChecked]    = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   if (legalTab) {
     return <LegalSheet initialTab={legalTab} onClose={() => setLegalTab(null)} />;
   }
 
-  const modes = [
-    {
-      id: 'user',
-      Icon: User,
-      label: t('onboard.mode.user.label'),
-      desc:  t('onboard.mode.user.desc'),
-      accent: C.geo,
-      accentDim: C.geoDim,
-      accentGl:  C.geoGl,
-    },
-    {
-      id: 'business',
-      Icon: Store,
-      label: t('onboard.mode.biz.label'),
-      desc:  t('onboard.mode.biz.desc'),
-      accent: C.green,
-      accentDim: C.greenFt,
-      accentGl:  C.greenGl,
-    },
-  ];
+  async function handleAccept() {
+    if (!checked || submitting) return;
+    setSubmitting(true);
+
+    const tgw = window.Telegram?.WebApp;
+    try {
+      const fingerprint = await buildFingerprint();
+      await apiFetch('/api/user/accept-tos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tos_version:        TOS_VERSION,
+          device_fingerprint: fingerprint,
+          user_agent:         navigator.userAgent || null,
+          tg_platform:        tgw?.platform || null,
+          tg_version:         tgw?.version  || null,
+        }),
+      });
+    } catch {
+      // Log failure is non-blocking — still let user in
+    }
+
+    onAccepted();
+  }
 
   return (
     <div style={{
-      minHeight: '100vh',
-      background: C.bg,
+      minHeight: '100vh', background: C.bg,
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '40px 24px',
+      padding: '48px 24px 40px',
     }}>
-      <div style={{ animation: 'fadeUp 0.5s ease both', width: '100%', maxWidth: 380 }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: '50%',
-            background: C.geoDim,
-            border: `0.5px solid ${C.geoGl}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 18px',
-            animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
-          }}>
-            <MapPin size={32} color={C.geo} strokeWidth={1.75} />
-          </div>
-          <div style={{ ...RYE, fontSize: 26, fontWeight: 700, color: C.t1, marginBottom: 8, lineHeight: 1.2, letterSpacing: -0.4 }}>
-            {t('onboard.mode.title')}
-          </div>
-          <div style={{ fontSize: 14, color: C.t3, lineHeight: 1.5 }}>
-            {t('onboard.mode.subtitle')}
-          </div>
-        </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
-          {modes.map(m => (
+      {/* Icon + title */}
+      <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.5s ease both' }}>
+        <div style={{
+          width: 72, height: 72, borderRadius: '50%',
+          background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          margin: '0 auto 20px',
+          animation: 'pop 0.5s cubic-bezier(0.22,1,0.36,1) both',
+        }}>
+          <FileText size={30} color={C.geo} strokeWidth={1.75} />
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: C.t1, marginBottom: 6, letterSpacing: -0.4 }}>
+          Пользовательское соглашение
+        </div>
+        <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5, maxWidth: 280, margin: '0 auto' }}>
+          Прочитайте ключевые условия перед использованием GeoEarn
+        </div>
+      </div>
+
+      {/* Key points */}
+      <div style={{
+        flex: 1,
+        display: 'flex', flexDirection: 'column', gap: 10,
+        marginBottom: 28,
+        animation: 'fadeUp 0.5s 0.1s ease both',
+      }}>
+        {KEY_POINTS.map(({ icon: Icon, text }, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+            background: 'rgba(255,255,255,0.03)',
+            border: `0.5px solid ${C.b1}`,
+            borderRadius: 14, padding: '14px 16px',
+          }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+              background: C.geoDim, border: `0.5px solid ${C.geoGl}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginTop: 1,
+            }}>
+              <Icon size={15} color={C.geo} strokeWidth={1.75} />
+            </div>
+            <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, paddingTop: 7 }}>
+              {text}
+            </div>
+          </div>
+        ))}
+
+        {/* Read full links */}
+        <div style={{
+          display: 'flex', gap: 10, marginTop: 4,
+        }}>
+          {[
+            { label: 'Условия использования', tab: 'terms' },
+            { label: 'Политика конфиденциальности', tab: 'privacy' },
+          ].map(({ label, tab }) => (
             <button
-              key={m.id}
-              onClick={() => setChosen(m.id)}
+              key={tab}
+              onClick={() => setLegalTab(tab)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 16,
-                background: chosen === m.id ? m.accentDim : 'rgba(255,255,255,0.02)',
-                border: `0.5px solid ${chosen === m.id ? m.accentGl : C.b1}`,
-                borderRadius: 18, padding: '18px 20px',
-                cursor: 'pointer', textAlign: 'left',
-                transition: `all 0.18s ${E.smooth}`,
+                flex: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                background: 'rgba(255,255,255,0.03)',
+                border: `0.5px solid ${C.b2}`,
+                borderRadius: 12, padding: '11px 8px',
+                cursor: 'pointer', color: C.t2, fontSize: 12, fontWeight: 600,
                 WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <div style={{
-                width: 50, height: 50, borderRadius: 14, flexShrink: 0,
-                background: chosen === m.id ? m.accentDim : C.b0,
-                border: `0.5px solid ${chosen === m.id ? m.accentGl : C.b1}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: `all 0.18s ${E.smooth}`,
-              }}>
-                <m.Icon size={24} color={chosen === m.id ? m.accent : C.t3} strokeWidth={1.75} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 16, fontWeight: 700,
-                  color: chosen === m.id ? C.t1 : C.t2,
-                  marginBottom: 3, transition: 'color 0.15s',
-                }}>
-                  {m.label}
-                </div>
-                <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.4 }}>
-                  {m.desc}
-                </div>
-              </div>
-              {chosen === m.id && (
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: m.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                  animation: 'pop 0.3s cubic-bezier(0.22,1,0.36,1)',
-                }}>
-                  <Check size={12} color={C.bg} strokeWidth={3} />
-                </div>
-              )}
+              <Eye size={13} color={C.t3} strokeWidth={1.75} />
+              {label}
             </button>
           ))}
         </div>
+      </div>
 
+      {/* Checkbox */}
+      <div style={{ animation: 'fadeUp 0.5s 0.2s ease both' }}>
         <button
-          onClick={() => chosen && onChoose(chosen)}
-          disabled={!chosen}
+          onClick={() => setChecked(v => !v)}
           style={{
             width: '100%',
-            background: chosen ? C.geo : C.card,
-            color: chosen ? C.bg : C.t3,
-            border: `0.5px solid ${chosen ? 'transparent' : C.b2}`,
-            borderRadius: 14,
-            padding: '16px', fontSize: 16, fontWeight: 700,
-            cursor: chosen ? 'pointer' : 'not-allowed',
-            transition: `all 0.2s ${E.smooth}`,
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+            background: checked ? C.geoDim : 'rgba(255,255,255,0.03)',
+            border: `0.5px solid ${checked ? C.geo : C.b2}`,
+            borderRadius: 14, padding: '14px 16px',
+            cursor: 'pointer', textAlign: 'left',
+            transition: `all 0.18s ${E.smooth}`,
             WebkitTapHighlightColor: 'transparent',
+            marginBottom: 16,
           }}
         >
-          {chosen ? t('onboard.mode.start') : t('onboard.mode.choose')}
+          <div style={{
+            width: 22, height: 22, borderRadius: 7, flexShrink: 0,
+            background: checked ? C.geo : 'transparent',
+            border: `2px solid ${checked ? C.geo : C.b2}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: `all 0.18s ${E.smooth}`,
+            marginTop: 1,
+          }}>
+            {checked && <Check size={13} color={C.bg} strokeWidth={3} />}
+          </div>
+          <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.55 }}>
+            Я прочитал(а) и принимаю{' '}
+            <span style={{ color: C.geo, fontWeight: 600 }}>Условия использования</span>
+            {' '}и{' '}
+            <span style={{ color: C.geo, fontWeight: 600 }}>Политику конфиденциальности</span>
+            {' '}GeoEarn
+          </span>
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: 16, fontSize: 11, color: C.t3, lineHeight: 1.6 }}>
-          {t('onboard.legal.prefix')}{' '}
-          <button
-            onClick={() => setLegalTab('terms')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.geo, fontSize: 11, padding: 0, fontWeight: 600 }}
-          >
-            {t('onboard.legal.terms')}
-          </button>
-          {' '}{t('onboard.legal.and')}{' '}
-          <button
-            onClick={() => setLegalTab('privacy')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.geo, fontSize: 11, padding: 0, fontWeight: 600 }}
-          >
-            {t('onboard.legal.privacy')}
-          </button>
+        <button
+          onClick={handleAccept}
+          disabled={!checked || submitting}
+          style={{
+            width: '100%',
+            background: checked ? C.geo : C.card,
+            color: checked ? C.bg : C.t3,
+            border: `0.5px solid ${checked ? 'transparent' : C.b2}`,
+            borderRadius: 14,
+            padding: '16px', fontSize: 16, fontWeight: 700,
+            cursor: checked ? 'pointer' : 'not-allowed',
+            transition: `all 0.2s ${E.smooth}`,
+            WebkitTapHighlightColor: 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            boxShadow: checked ? '0 6px 24px rgba(201,123,71,0.28)' : 'none',
+          }}
+          onTouchStart={e => { if (checked) e.currentTarget.style.transform = 'scale(0.97)'; }}
+          onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+          onMouseDown={e => { if (checked) e.currentTarget.style.transform = 'scale(0.97)'; }}
+          onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        >
+          {submitting
+            ? <>Сохраняем…</>
+            : <>
+                <Check size={17} strokeWidth={2.5} />
+                Принять и начать
+              </>
+          }
+        </button>
+
+        <div style={{ textAlign: 'center', marginTop: 14, fontSize: 11, color: C.t3 }}>
+          Версия соглашения: {TOS_VERSION} · {new Date().getFullYear()}
         </div>
       </div>
     </div>
   );
 }
 
+// ── Root ──────────────────────────────────────────────────────────────────────
 export default function Onboarding({ onDone }) {
   const [phase, setPhase] = useState('lang');
 
   if (phase === 'lang')   return <LangPhase  onDone={() => setPhase('slides')} />;
-  if (phase === 'slides') return <SlidePhase onDone={() => setPhase('mode')} />;
-  return <ModePhase onChoose={onDone} />;
+  if (phase === 'slides') return <SlidePhase onDone={() => setPhase('terms')} />;
+  return <TermsPhase onAccepted={() => onDone()} />;
 }

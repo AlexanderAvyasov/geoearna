@@ -1190,9 +1190,8 @@ export default function App() {
   const ONBOARD_KEY = user?.id ? `geo_onboarded_v2_${user.id}` : 'geo_onboarded_v2';
   const [onboarded, setOnboarded] = useState(() => !!localStorage.getItem(ONBOARD_KEY));
 
-  function handleOnboardDone(mode) {
+  function handleOnboardDone() {
     localStorage.setItem(ONBOARD_KEY, '1');
-    if (mode) localStorage.setItem('geo_mode', mode);
     setOnboarded(true);
   }
 
