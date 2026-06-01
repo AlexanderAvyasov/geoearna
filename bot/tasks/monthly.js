@@ -3,6 +3,8 @@ const { sendMessage } = require('../../api/services/notify');
 
 // 1st of month 10:00 Tashkent = 05:00 UTC
 const MONTHLY_UTC_HOUR = 5;
+// Node.js setTimeout max is 2^31-1 ms (~24.8 days). Use 1 day as safe chunk.
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 async function sendMonthlySummaries() {
   try {
@@ -68,13 +70,17 @@ function startMonthlyTask() {
     }
 
     const delay = next.getTime() - now.getTime();
+
+    // Break into ≤1-day chunks to avoid 32-bit overflow in setTimeout
+    const safeDelay = Math.min(delay, ONE_DAY_MS);
     console.log(`[monthly] next summary in ${Math.round(delay / 3600000)} h`);
 
     setTimeout(() => {
-      sendMonthlySummaries();
-      // reschedule for next month
+      if (Date.now() >= next.getTime()) {
+        sendMonthlySummaries();
+      }
       scheduleNext();
-    }, delay);
+    }, safeDelay);
   }
 
   scheduleNext();
