@@ -88,15 +88,14 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
       attributionControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19, subdomains: 'abcd',
+    // OSM standard tiles + CSS invert = dark map with full building detail
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
     }).addTo(map);
 
-    // Boost tile brightness/contrast so streets and labels are legible
     setTimeout(() => {
-      const tilePanes = el.querySelectorAll('.leaflet-tile-pane');
-      tilePanes.forEach(p => {
-        p.style.filter = 'brightness(1.55) contrast(1.08) saturate(1.2)';
+      el.querySelectorAll('.leaflet-tile-pane').forEach(p => {
+        p.style.filter = 'invert(0.92) hue-rotate(180deg) brightness(0.88) contrast(1.05) saturate(0.75)';
       });
     }, 80);
 

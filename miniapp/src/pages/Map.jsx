@@ -197,8 +197,9 @@ export default function MapPage() {
           preferCanvas: true,
         });
 
-        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          maxZoom: 19, subdomains: 'abcd',
+        // OSM standard tiles + CSS invert = dark map with full building detail
+        const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
         });
         let tileLoaded = false;
         osmLayer.on('tileload', () => { tileLoaded = true; setTileError(false); });
@@ -206,13 +207,12 @@ export default function MapPage() {
         osmLayer.addTo(map);
         mapRef.current = map;
 
-        // Boost readability: streets and labels pop without losing the dark aesthetic
         [100, 300, 600].forEach(ms => {
           const t = setTimeout(() => {
             try { map.invalidateSize(); } catch {}
             if (ms === 300) {
               el.querySelectorAll('.leaflet-tile-pane').forEach(p => {
-                p.style.filter = 'brightness(1.55) contrast(1.08) saturate(1.2)';
+                p.style.filter = 'invert(0.92) hue-rotate(180deg) brightness(0.88) contrast(1.05) saturate(0.75)';
               });
             }
           }, ms);
