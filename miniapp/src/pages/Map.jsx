@@ -197,7 +197,7 @@ export default function MapPage() {
           preferCanvas: true,
         });
 
-        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        const osmLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
           maxZoom: 19, subdomains: 'abcd',
         });
         let tileLoaded = false;
@@ -206,8 +206,16 @@ export default function MapPage() {
         osmLayer.addTo(map);
         mapRef.current = map;
 
+        // Boost readability: streets and labels pop without losing the dark aesthetic
         [100, 300, 600].forEach(ms => {
-          const t = setTimeout(() => { try { map.invalidateSize(); } catch {} }, ms);
+          const t = setTimeout(() => {
+            try { map.invalidateSize(); } catch {}
+            if (ms === 300) {
+              el.querySelectorAll('.leaflet-tile-pane').forEach(p => {
+                p.style.filter = 'brightness(1.55) contrast(1.08) saturate(1.2)';
+              });
+            }
+          }, ms);
           timers.push(t);
         });
         setMapReady(true);

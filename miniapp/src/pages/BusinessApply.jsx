@@ -44,17 +44,39 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
+// ── Polished map pin HTML (reused for all marker placements) ─────────────────
+function makePinHtml() {
+  return `
+    <div style="position:relative;width:44px;height:52px;pointer-events:none;">
+      <div style="
+        position:absolute;top:4px;left:2px;
+        width:40px;height:40px;border-radius:50%;
+        background:${C.geo}28;
+        animation:markerPulse 2.2s cubic-bezier(0.23,1,0.32,1) infinite;
+      "></div>
+      <div style="
+        position:absolute;top:0;left:6px;
+        width:32px;height:32px;
+        border-radius:50% 50% 50% 0;
+        background:${C.geo};
+        border:3px solid rgba(255,255,255,0.95);
+        transform:rotate(-45deg);
+        box-shadow:0 4px 18px ${C.geo}70, 0 2px 6px rgba(0,0,0,0.55);
+      "></div>
+    </div>
+  `;
+}
+
 // ── Map picker sheet ──────────────────────────────────────────────────────────
 function MapPickerSheet({ initialPos, onConfirm, onClose }) {
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
   const markerRef    = useRef(null);
-  const [pos,         setPos]         = useState(initialPos || null);
-  const [geocoding,   setGeocoding]   = useState(false);
-  const [locating,    setLocating]    = useState(false);
-  const [address,     setAddress]     = useState('');
+  const [pos,       setPos]       = useState(initialPos || null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [locating,  setLocating]  = useState(false);
+  const [address,   setAddress]   = useState('');
 
-  // Init Leaflet after mount
   useEffect(() => {
     const el = containerRef.current;
     if (!el || mapRef.current) return;
@@ -66,40 +88,42 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
       attributionControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // Slightly lighter dark tiles — `dark_matter` reads better than `dark_all`
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_matter/{z}/{x}/{y}{r}.png', {
       maxZoom: 19, subdomains: 'abcd',
     }).addTo(map);
 
+    // Boost tile brightness/contrast so streets and labels are legible
+    setTimeout(() => {
+      const tilePanes = el.querySelectorAll('.leaflet-tile-pane');
+      tilePanes.forEach(p => {
+        p.style.filter = 'brightness(1.55) contrast(1.08) saturate(1.2)';
+      });
+    }, 80);
+
     const icon = L.divIcon({
-      html: `<div style="
-        width:32px;height:32px;border-radius:50% 50% 50% 0;
-        background:${C.geo};border:3px solid #fff;
-        transform:rotate(-45deg);
-        box-shadow:0 2px 10px rgba(0,0,0,0.5);
-      "></div>`,
-      iconSize: [32, 32], iconAnchor: [16, 32], className: '',
+      html: makePinHtml(),
+      iconSize: [44, 52], iconAnchor: [22, 52], className: '',
     });
 
-    if (initialPos) {
-      const m = L.marker([initialPos.lat, initialPos.lng], { icon, draggable: true }).addTo(map);
+    function addMarker(lat, lng) {
+      const m = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
       markerRef.current = m;
       m.on('dragend', () => {
-        const { lat, lng } = m.getLatLng();
-        updatePos(lat, lng);
+        const ll = m.getLatLng();
+        updatePos(ll.lat, ll.lng);
       });
+      return m;
     }
+
+    if (initialPos) addMarker(initialPos.lat, initialPos.lng);
 
     map.on('click', e => {
       const { lat, lng } = e.latlng;
       if (markerRef.current) {
         markerRef.current.setLatLng([lat, lng]);
       } else {
-        const m = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
-        markerRef.current = m;
-        m.on('dragend', () => {
-          const ll = m.getLatLng();
-          updatePos(ll.lat, ll.lng);
-        });
+        addMarker(lat, lng);
       }
       updatePos(lat, lng);
     });
@@ -131,18 +155,13 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
         const map = mapRef.current;
         if (!map) return;
         map.setView([lat, lng], 17);
+        const icon = L.divIcon({
+          html: makePinHtml(),
+          iconSize: [44, 52], iconAnchor: [22, 52], className: '',
+        });
         if (markerRef.current) {
           markerRef.current.setLatLng([lat, lng]);
         } else {
-          const icon = L.divIcon({
-            html: `<div style="
-              width:32px;height:32px;border-radius:50% 50% 50% 0;
-              background:${C.geo};border:3px solid #fff;
-              transform:rotate(-45deg);
-              box-shadow:0 2px 10px rgba(0,0,0,0.5);
-            "></div>`,
-            iconSize: [32, 32], iconAnchor: [16, 32], className: '',
-          });
           const m = L.marker([lat, lng], { icon, draggable: true }).addTo(map);
           markerRef.current = m;
           m.on('dragend', () => {
@@ -181,54 +200,89 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
         position: 'fixed', bottom: 0, left: 0, right: 0,
         background: '#0D1520',
         borderRadius: '22px 22px 0 0',
-        border: '0.5px solid rgba(255,255,255,0.10)', borderBottom: 'none',
+        border: `1px solid rgba(201,123,71,0.18)`, borderBottom: 'none',
         zIndex: 301, maxWidth: 480, margin: '0 auto',
-        animation: 'slideUp 0.32s cubic-bezier(0.22,1,0.36,1)',
+        animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
         display: 'flex', flexDirection: 'column',
         maxHeight: '92vh',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.6), 0 -1px 0 rgba(201,123,71,0.12) inset',
       }}>
         {/* Drag handle */}
-        <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.12)', margin: '12px auto 0', flexShrink: 0 }} />
+        <div style={{
+          width: 36, height: 4, borderRadius: 2,
+          background: `rgba(201,123,71,0.3)`,
+          margin: '12px auto 0', flexShrink: 0,
+        }} />
 
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px 12px', flexShrink: 0,
+          padding: '14px 18px 10px', flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <MapPin size={16} color={C.geo} strokeWidth={1.75} />
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.t1 }}>Отметьте место на карте</span>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8,
+              background: C.geoDim, border: `1px solid ${C.geoGl}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <MapPin size={14} color={C.geo} strokeWidth={2} />
+            </div>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.t1 }}>Отметьте место</span>
           </div>
-          <button onClick={onClose} style={{
-            background: 'rgba(255,255,255,0.07)', border: 'none',
-            width: 28, height: 28, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-          }}>
-            <X size={13} color={C.t3} />
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)',
+              width: 28, height: 28, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              transition: 'background 0.15s ease-out',
+            }}
+            onTouchStart={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+            onTouchEnd={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            onMouseDown={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; }}
+            onMouseUp={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+          >
+            <X size={13} color={C.t2} />
           </button>
         </div>
 
-        <div style={{ fontSize: 12, color: C.t3, padding: '0 18px 12px', flexShrink: 0 }}>
-          Нажмите на карту чтобы поставить метку
+        <div style={{ fontSize: 12, color: C.t3, padding: '0 18px 10px', flexShrink: 0 }}>
+          Нажмите на карту или перетащите метку
         </div>
 
-        {/* Map */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
+        {/* Map with fade edges */}
+        <div style={{
+          position: 'relative', flexShrink: 0,
+          borderTop: `1px solid rgba(201,123,71,0.18)`,
+          borderBottom: `1px solid rgba(201,123,71,0.18)`,
+        }}>
           <div ref={containerRef} style={{ height: '48vmax', maxHeight: 320, minHeight: 200 }} />
+
+          {/* Top gradient fade — blends map into sheet */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 28,
+            background: 'linear-gradient(to bottom, #0D1520 0%, transparent 100%)',
+            pointerEvents: 'none', zIndex: 998,
+          }} />
 
           {/* My location button */}
           <button
             onClick={goToMyLocation}
             style={{
               position: 'absolute', bottom: 12, right: 12, zIndex: 999,
-              width: 40, height: 40, borderRadius: '50%',
-              background: 'rgba(8,16,24,0.92)',
-              border: `1px solid rgba(255,255,255,0.15)`,
+              width: 42, height: 42, borderRadius: '50%',
+              background: 'rgba(8,16,24,0.94)',
+              border: `1px solid rgba(201,123,71,0.35)`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
+              boxShadow: `0 2px 12px rgba(0,0,0,0.55), 0 0 0 1px rgba(201,123,71,0.10)`,
+              transition: 'transform 120ms cubic-bezier(0.23,1,0.32,1)',
             }}
+            onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+            onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
           >
             {locating
               ? <Loader2 size={18} color={C.geo} style={{ animation: 'spin 1s linear infinite' }} />
@@ -239,25 +293,40 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
 
         {/* Address preview */}
         <div style={{
-          padding: '14px 18px',
+          margin: '12px 16px 0',
+          padding: '12px 14px',
+          background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${pos ? `rgba(201,123,71,0.20)` : 'rgba(255,255,255,0.07)'}`,
+          borderRadius: 12,
           flexShrink: 0,
-          minHeight: 52,
+          minHeight: 48,
           display: 'flex', alignItems: 'center', gap: 10,
+          transition: 'border-color 0.25s ease-out',
+          animation: 'fadeUp 0.25s cubic-bezier(0.23,1,0.32,1) both',
         }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+            background: pos ? C.geoDim : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${pos ? C.geoGl : 'rgba(255,255,255,0.06)'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all 0.25s ease-out',
+          }}>
+            <MapPin size={13} color={pos ? C.geo : C.t3} strokeWidth={2} />
+          </div>
           {pos ? (
-            <>
-              <MapPin size={14} color={C.geo} strokeWidth={2} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.4 }}>
-                {geocoding
-                  ? <span style={{ color: C.t3 }}>Определяем адрес…</span>
-                  : address || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`
-                }
-              </span>
-            </>
+            geocoding
+              ? <div className="sk" style={{ height: 14, width: 180, borderRadius: 6 }} />
+              : <span style={{
+                  fontSize: 13, color: C.t1, lineHeight: 1.45, fontWeight: 500,
+                  animation: 'staggerIn 0.2s cubic-bezier(0.23,1,0.32,1) both',
+                }}>
+                  {address || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`}
+                </span>
           ) : (
-            <span style={{ fontSize: 13, color: C.t3 }}>Метка не установлена</span>
+            <span style={{ fontSize: 13, color: C.t3 }}>Место не выбрано</span>
           )}
         </div>
+        <div style={{ flexShrink: 0, height: 4 }} />
 
         {/* Confirm */}
         <div style={{ padding: '0 16px 32px', flexShrink: 0 }}>
