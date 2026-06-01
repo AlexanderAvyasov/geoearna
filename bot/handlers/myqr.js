@@ -1,6 +1,15 @@
 const { InlineKeyboard, InputFile } = require('grammy');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 const { supabase } = require('../../db/index');
+
+function buildCheckinDeepLink(token) {
+  const bot = process.env.BOT_USERNAME || 'GeoEarnBot';
+  const app = process.env.BOT_APP_SHORT_NAME;
+  return app
+    ? `https://t.me/${bot}/${app}?startapp=${token}`
+    : `https://t.me/${bot}?start=${token}`;
+}
 
 async function myqrAction(ctx) {
   ctx.answerCallbackQuery().catch(() => {});
@@ -20,8 +29,14 @@ async function myqrAction(ctx) {
     );
   }
 
-  const checkinUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(business.qr_token)}`;
-  const qrBuffer   = await QRCode.toBuffer(checkinUrl, { width: 512, margin: 2 });
+  // Auto-generate qr_token if the business was created without one
+  if (!business.qr_token) {
+    business.qr_token = crypto.randomBytes(24).toString('hex');
+    await supabase.from('businesses').update({ qr_token: business.qr_token }).eq('id', business.id);
+  }
+
+  const deepLink = buildCheckinDeepLink(business.qr_token);
+  const qrBuffer = await QRCode.toBuffer(deepLink, { width: 512, margin: 2 });
 
   const kb = new InlineKeyboard()
     .webApp('🏪 Панель заведения', `${process.env.WEBAPP_URL}/admin`)

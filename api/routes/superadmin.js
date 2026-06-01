@@ -10,6 +10,14 @@ const router = express.Router();
 
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID;
 
+function buildCheckinDeepLink(token) {
+  const bot = process.env.BOT_USERNAME || 'GeoEarnBot';
+  const app = process.env.BOT_APP_SHORT_NAME;
+  return app
+    ? `https://t.me/${bot}/${app}?startapp=${token}`
+    : `https://t.me/${bot}?start=${token}`;
+}
+
 function requireSuperAdmin(req, res, next) {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) {
     return res.status(403).json({ error: 'FORBIDDEN' });
@@ -334,8 +342,7 @@ router.post('/api/superadmin/platform-campaign', ...SA, async (req, res) => {
 
     if (campErr) throw campErr;
 
-    const webappUrl = process.env.WEBAPP_URL || '';
-    const qrUrl = `${webappUrl}/checkin?token=${business.qr_token}&cid=${campaign.id}`;
+    const qrUrl = buildCheckinDeepLink(business.qr_token);
 
     try { await supabase.from('sa_audit_log').insert({ action: 'platform_campaign_create', target_id: campaign.id, admin_id: Number(SUPER_ADMIN_ID), note: `${reward_amount} GEO x ${max_visits} = ${totalCost} for biz ${business_id}` }); } catch (_) {}
 
@@ -772,11 +779,10 @@ router.get('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
 
     if (error) throw error;
 
-    const webappUrl = process.env.WEBAPP_URL || '';
     const now = new Date();
     const campaigns = (data || []).map(c => ({
       ...c,
-      qrUrl:       `${webappUrl}/checkin?token=${c.token}&promo=1`,
+      qrUrl:       buildCheckinDeepLink(c.token),
       remaining:   c.max_claims - c.claims_count,
       isExpired:   c.expires_at ? new Date(c.expires_at) <= now : false,
       isExhausted: c.claims_count >= c.max_claims,
@@ -824,8 +830,7 @@ router.post('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
 
     if (error) throw error;
 
-    const webappUrl = process.env.WEBAPP_URL || '';
-    const qrUrl = `${webappUrl}/checkin?token=${token}&promo=1`;
+    const qrUrl = buildCheckinDeepLink(token);
 
     try {
       await supabase.from('sa_audit_log').insert({
@@ -896,9 +901,8 @@ router.get('/api/superadmin/promo-campaigns/:id/analytics', ...SA, async (req, r
     const totalGeo    = (claims || []).reduce((s, c) => s + c.geo_awarded, 0);
     const uniqueUsers = new Set((claims || []).map(c => c.user_id)).size;
 
-    const webappUrl = process.env.WEBAPP_URL || '';
     return res.json({
-      promo: { ...promo, qrUrl: `${webappUrl}/checkin?token=${promo.token}&promo=1` },
+      promo: { ...promo, qrUrl: buildCheckinDeepLink(promo.token) },
       claims: (claims || []).map(c => ({
         claimed_at: c.claimed_at,
         geo_awarded: c.geo_awarded,

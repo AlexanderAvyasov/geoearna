@@ -1106,6 +1106,16 @@ function AppLayout() {
     clog('[ROUTER:CHANGE] pathname:', pathname, '| search:', location.search, '| hash:', window.location.hash);
   }, [location]);
 
+  // Handle Telegram startapp deep link — camera scans QR → Telegram opens Mini App directly
+  useEffect(() => {
+    const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
+    if (!startParam || !/^[A-Za-z0-9_-]{8,64}$/.test(startParam)) return;
+    const qs = new URLSearchParams({ token: startParam });
+    if (startParam.startsWith('promo_')) qs.set('promo', '1');
+    clog('[START_PARAM] deep-link checkin:', startParam);
+    navigateRef.current(`/checkin?${qs.toString()}`);
+  }, []);
+
   function handleQrResult(result) {
     clog('[QR:RECEIVED_BY_LAYOUT] token:', result.token, 'promo:', result.promo, 'geohunt:', result.geohunt);
     const qs = new URLSearchParams({ token: result.token });

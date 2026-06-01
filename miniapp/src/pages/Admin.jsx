@@ -127,6 +127,16 @@ function StatCard({ label, value, sub, subUp, Icon, color, loading }) {
   );
 }
 
+// ─── Deep link helper ─────────────────────────────────────────────────────────
+
+function buildCheckinDeepLink(token) {
+  const bot = import.meta.env.VITE_BOT_USERNAME || 'GeoEarnBot';
+  const app = import.meta.env.VITE_BOT_APP_SHORT_NAME;
+  return app
+    ? `https://t.me/${bot}/${app}?startapp=${token}`
+    : `https://t.me/${bot}?start=${token}`;
+}
+
 // ─── CampaignCard ─────────────────────────────────────────────────────────────
 
 function CampaignCard({ campaign, business, webappUrl, onStop, stopping, onOpenDetail }) {
@@ -273,7 +283,7 @@ function CampaignDetailModal({ campaign, business, webappUrl, onClose, onStop, s
 
   // Campaign-specific QR (falls back to business token for old campaigns without their own token)
   const checkinToken = campaign.qr_token || business?.qr_token;
-  const checkinUrl   = checkinToken ? `${webappUrl}/checkin?token=${encodeURIComponent(checkinToken)}` : null;
+  const checkinUrl   = checkinToken ? buildCheckinDeepLink(checkinToken) : null;
   const qrImageUrl   = checkinUrl
     ? `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=3&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`
     : null;
@@ -1503,7 +1513,7 @@ function QrTab({ business, webappUrl }) {
   const [dlSent,    setDlSent]    = useState(false);
   const [qrLoaded,  setQrLoaded]  = useState(false);
 
-  const checkinUrl = `${webappUrl}/checkin?token=${encodeURIComponent(business.qr_token)}`;
+  const checkinUrl = buildCheckinDeepLink(business.qr_token);
   const qrImageUrl =
     `https://api.qrserver.com/v1/create-qr-code/?size=600x600&margin=3` +
     `&bgcolor=FFFFFF&color=000000&data=${encodeURIComponent(checkinUrl)}`;
