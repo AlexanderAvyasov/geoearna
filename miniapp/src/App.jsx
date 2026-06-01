@@ -19,8 +19,6 @@ import Legal      from './pages/Legal';
 import ChannelSub from './pages/ChannelSub';
 import Profile    from './pages/Profile';
 
-const SA_TG_ID = Number(import.meta.env.VITE_SUPER_ADMIN_TG_ID) || 0;
-
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
 

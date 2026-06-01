@@ -12,7 +12,16 @@ const { startMonthlyTask }                          = require('./tasks/monthly')
 const { startReengagementTask }                     = require('./tasks/reengagement');
 const { startMissionsTask }                         = require('./tasks/missions');
 
-const sessions = new Map();
+const sessions = new Map(); // telegram_id → { data, expiresAt }
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// Evict expired sessions periodically to prevent unbounded memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, s] of sessions) {
+    if (s.expiresAt < now) sessions.delete(id);
+  }
+}, 5 * 60 * 1000);
 
 const bot = new Bot(process.env.BOT_TOKEN);
 
@@ -20,11 +29,18 @@ const bot = new Bot(process.env.BOT_TOKEN);
 bot.use(async (ctx, next) => {
   const telegramId = ctx.from?.id?.toString();
   if (telegramId) {
-    if (!sessions.has(telegramId)) sessions.set(telegramId, {});
+    const existing = sessions.get(telegramId);
+    if (!existing || existing.expiresAt < Date.now()) {
+      sessions.set(telegramId, { expiresAt: Date.now() + SESSION_TTL_MS });
+    }
     ctx.session = sessions.get(telegramId);
   }
   await next();
-  if (telegramId) sessions.set(telegramId, ctx.session || {});
+  if (telegramId && sessions.has(telegramId)) {
+    // Refresh TTL on every interaction
+    sessions.get(telegramId).expiresAt = Date.now() + SESSION_TTL_MS;
+    Object.assign(sessions.get(telegramId), ctx.session || {});
+  }
 });
 
 // ── Commands ───────────────────────────────────────────────────────────────────

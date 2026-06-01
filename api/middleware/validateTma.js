@@ -46,7 +46,12 @@ async function validateTma(req, res, next) {
       .update(dataCheckString)
       .digest('hex');
 
-    if (expectedHash !== hash) {
+    // timing-safe comparison prevents byte-by-byte side-channel reconstruction
+    const expectedBuf = Buffer.from(expectedHash, 'hex');
+    const receivedBuf = Buffer.from(hash.length === expectedHash.length ? hash : '', 'hex');
+    const sigValid = expectedBuf.length === receivedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, receivedBuf);
+    if (!sigValid) {
       return res.status(401).json({ error: 'INVALID_SIGNATURE' });
     }
 

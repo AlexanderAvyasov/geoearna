@@ -1924,7 +1924,6 @@ function SystemTab() {
               ['GEO Rate (env)',  `${cfg.geoRate} UZS / GEO`],
               ['Topup Card',      cfg.topupCard || '—'],
               ['Topup Bank',      cfg.topupBank || '—'],
-              ['Super Admin ID',  String(import.meta.env.VITE_SUPER_ADMIN_TG_ID || '—')],
             ].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${C.b0}` }}>
                 <span style={{ fontSize: 12, color: C.t3 }}>{k}</span>
