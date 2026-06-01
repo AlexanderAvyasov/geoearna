@@ -330,10 +330,12 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
 // ── SuperAdmin: toggle hunt active ──────────────────────────────────────────
 router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
+  const huntId = parseInt(req.params.id, 10);
+  if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
   const { active } = req.body;
   const { data, error } = await supabase.from('geohunts')
     .update({ active })
-    .eq('id', req.params.id)
+    .eq('id', huntId)
     .select().single();
   if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   return res.json(data);
@@ -342,10 +344,12 @@ router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
 // ── SuperAdmin: get codes for a hunt ────────────────────────────────────────
 router.get('/api/sa/geohunts/:id/codes', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
+  const huntId = parseInt(req.params.id, 10);
+  if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
   const { data, error } = await supabase
     .from('geohunt_codes')
     .select('id, token, point_label, used_by, used_at, created_at')
-    .eq('hunt_id', req.params.id)
+    .eq('hunt_id', huntId)
     .order('created_at', { ascending: true });
   if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   return res.json({ codes: data || [] });

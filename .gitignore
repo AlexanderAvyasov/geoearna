@@ -1,0 +1,30 @@
+# Environment secrets — NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+*.env
+
+# Dependencies
+node_modules/
+miniapp/node_modules/
+
+# Build outputs
+miniapp/dist/
+miniapp/.vite/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo

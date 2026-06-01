@@ -153,10 +153,12 @@ router.post('/api/sa/platform-promos', validateTma, async (req, res) => {
 // ── SuperAdmin: toggle active ──────────────────────────────────────────────
 router.patch('/api/sa/platform-promos/:id', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
+  const promoId = parseInt(req.params.id, 10);
+  if (!promoId) return res.status(400).json({ error: 'INVALID_PARAMS' });
   const { active } = req.body;
   const { data, error } = await supabase.from('platform_promotions')
     .update({ active })
-    .eq('id', req.params.id)
+    .eq('id', promoId)
     .select().single();
   if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   return res.json(data);

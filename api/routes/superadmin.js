@@ -625,7 +625,7 @@ router.post('/api/superadmin/users/:id/adjust', ...SA, async (req, res) => {
 
     const newBalance = Math.round(Math.max(0, userRow.balance + amount));
     const { error } = await supabase.from('users').update({ balance: newBalance }).eq('id', userId);
-    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
 
     try {
       await supabase.from('sa_audit_log').insert({
@@ -653,7 +653,7 @@ router.post('/api/superadmin/businesses/:id/suspend', ...SA, async (req, res) =>
     await supabase.from('campaigns').update({ active: false }).eq('business_id', bizId);
 
     const { error } = await supabase.from('businesses').update({ suspended_at: new Date().toISOString() }).eq('id', bizId);
-    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
 
     try { await supabase.from('sa_audit_log').insert({ action: 'business_suspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID), note: reason || null }); } catch (_) {}
 
@@ -670,7 +670,7 @@ router.post('/api/superadmin/businesses/:id/unsuspend', ...SA, async (req, res) 
     if (!bizId) return res.status(400).json({ error: 'INVALID_PARAMS' });
 
     const { error } = await supabase.from('businesses').update({ suspended_at: null }).eq('id', bizId);
-    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR', detail: error.message });
+    if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
 
     try { await supabase.from('sa_audit_log').insert({ action: 'business_unsuspend', target_id: bizId, admin_id: Number(SUPER_ADMIN_ID) }); } catch (_) {}
 
@@ -848,7 +848,7 @@ router.post('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
     return res.json({ campaign, qrUrl });
   } catch (err) {
     console.error('superadmin/promo-campaigns POST', err);
-    return res.status(500).json({ error: 'INTERNAL_ERROR', detail: err.message });
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 });
 
@@ -1096,7 +1096,7 @@ router.post('/api/superadmin/tasks', ...SA, async (req, res) => {
       xp_reward: Number(xp_reward) || 0,
       requirement: requirement || {},
     }).select().single();
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) return res.status(400).json({ error: 'CONSTRAINT_VIOLATION' });
     return res.json({ task: data });
   } catch (err) {
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
@@ -1157,7 +1157,7 @@ router.post('/api/superadmin/achievements', ...SA, async (req, res) => {
       xp_reward: Number(xp_reward) || 0,
       requirement: requirement || {},
     }).select().single();
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) return res.status(400).json({ error: 'CONSTRAINT_VIOLATION' });
     return res.json({ achievement: data });
   } catch (err) {
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
@@ -1374,7 +1374,7 @@ router.put('/api/superadmin/platform-settings/:key', ...SA, async (req, res) => 
   const { error } = await supabase
     .from('platform_settings')
     .upsert({ key, value: num, updated_at: new Date().toISOString() });
-  if (error) return res.status(500).json({ error: 'DB_ERROR', detail: error.message });
+  if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
   invalidateCache();
   res.json({ ok: true, key, value: num });
 });
