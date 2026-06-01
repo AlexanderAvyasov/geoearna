@@ -72,12 +72,12 @@ router.get('/api/visits', validateTma, async (req, res) => {
   }
 });
 
-// Unified activity feed: visits + promo QR claims + geohunt claims
+// Unified activity feed: visits + promo + geohunt + referrals + task rewards
 router.get('/api/activity', validateTma, async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const [visitsRes, promoRes, geohuntCodesRes] = await Promise.all([
+    const [visitsRes, promoRes, geohuntCodesRes, referralEarningsRes, tasksRes] = await Promise.all([
       supabase.from('visits')
         .select('id, rewarded, created_at, businesses(name)')
         .eq('user_id', userId)
@@ -94,9 +94,21 @@ router.get('/api/activity', validateTma, async (req, res) => {
         .not('used_at', 'is', null)
         .order('used_at', { ascending: false })
         .limit(30),
+      supabase.from('referral_earnings')
+        .select('id, amount, created_at, referred_id')
+        .eq('referrer_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20),
+      supabase.from('user_tasks')
+        .select('task_key, geo_reward, updated_at')
+        .eq('user_id', userId)
+        .eq('claimed', true)
+        .gt('geo_reward', 0)
+        .order('updated_at', { ascending: false })
+        .limit(20),
     ]);
 
-    // Two-step joins to avoid PostgREST FK traversal issues on UUID tables
+    // Two-step joins
     const promoIds = [...new Set((promoRes.data || []).map(c => c.promo_id).filter(Boolean))];
     const promosMap = {};
     if (promoIds.length > 0) {
@@ -113,44 +125,38 @@ router.get('/api/activity', validateTma, async (req, res) => {
       (hunts || []).forEach(h => { huntsMap[h.id] = h; });
     }
 
+    const taskKeys = [...new Set((tasksRes.data || []).map(t => t.task_key).filter(Boolean))];
+    const taskDefsMap = {};
+    if (taskKeys.length > 0) {
+      const { data: defs } = await supabase.from('task_definitions')
+        .select('key, title').in('key', taskKeys);
+      (defs || []).forEach(d => { taskDefsMap[d.key] = d; });
+    }
+
     const items = [];
 
     for (const v of visitsRes.data || []) {
-      items.push({
-        id:         `v_${v.id}`,
-        type:       'visit',
-        title:      v.businesses?.name || 'Бизнес',
-        amount:     v.rewarded,
-        created_at: v.created_at,
-      });
+      items.push({ id: `v_${v.id}`, type: 'visit', title: v.businesses?.name || 'Заведение', amount: v.rewarded, created_at: v.created_at });
     }
-
     for (const p of promoRes.data || []) {
       const promo = promosMap[p.promo_id];
-      items.push({
-        id:         `p_${p.id}`,
-        type:       'promo',
-        title:      promo?.title || 'Promo QR',
-        rarity:     promo?.rarity || 'common',
-        amount:     p.geo_awarded,
-        created_at: p.claimed_at,
-      });
+      items.push({ id: `p_${p.id}`, type: 'promo', title: promo?.title || 'Promo QR', rarity: promo?.rarity || 'common', amount: p.geo_awarded, created_at: p.claimed_at });
     }
-
     for (const g of geohuntCodesRes.data || []) {
       const hunt = huntsMap[g.hunt_id];
-      items.push({
-        id:         `g_${g.id}`,
-        type:       'geohunt',
-        title:      hunt?.title || 'GeoHunt',
-        amount:     hunt?.reward_per_code || 0,
-        created_at: g.used_at,
-      });
+      items.push({ id: `g_${g.id}`, type: 'geohunt', title: hunt?.title || 'GeoHunt', amount: hunt?.reward_per_code || 0, created_at: g.used_at });
+    }
+    for (const r of referralEarningsRes.data || []) {
+      items.push({ id: `r_${r.id}`, type: 'referral', title: 'Реферальный бонус', amount: r.amount, created_at: r.created_at });
+    }
+    for (const t of tasksRes.data || []) {
+      const def = taskDefsMap[t.task_key];
+      items.push({ id: `t_${t.task_key}_${t.updated_at}`, type: 'task', title: def?.title || t.task_key, amount: t.geo_reward, created_at: t.updated_at });
     }
 
     items.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    return res.json({ activity: items.slice(0, 30) });
+    return res.json({ activity: items.slice(0, 40) });
   } catch (err) {
     console.error('GET /api/activity', err);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });

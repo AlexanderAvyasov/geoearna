@@ -15,33 +15,39 @@ const {
   checkAchievements,
 } = require('./gamification');
 
-async function activateReferral(userId, telegramId) {
+async function activateReferral(userId) {
   try {
-    const settings = await getSettings();
-    const REFERRAL_BONUS_REFERRER = settings.referral_bonus_referrer;
-    const REFERRAL_BONUS_NEW_USER = settings.referral_bonus_new_user;
-
-    const { data: referral } = await supabase
-      .from('referrals')
-      .select('id, referrer_id')
-      .eq('referred_id', userId)
-      .or('activated.eq.false,activated.is.null')
-      .maybeSingle();
+    const [settings, { data: referral }, { data: userRow }] = await Promise.all([
+      getSettings(),
+      supabase.from('referrals')
+        .select('id, referrer_id')
+        .eq('referred_id', userId)
+        .or('activated.eq.false,activated.is.null')
+        .maybeSingle(),
+      supabase.from('users').select('telegram_id').eq('id', userId).single(),
+    ]);
 
     if (!referral) return;
 
-    await Promise.all([
-      supabase.from('referrals')
-        .update({ activated: true, activated_at: new Date().toISOString() })
-        .eq('id', referral.id),
-      supabase.rpc('apply_checkin_bonus', { p_user_id: userId,             p_amount: REFERRAL_BONUS_NEW_USER }),
-      supabase.rpc('apply_checkin_bonus', { p_user_id: referral.referrer_id, p_amount: REFERRAL_BONUS_REFERRER }),
-      supabase.from('referral_earnings').insert({
-        referrer_id: referral.referrer_id,
-        referred_id: userId,
-        amount: REFERRAL_BONUS_REFERRER,
-      }),
-    ]);
+    const BONUS_REFERRER  = settings.referral_bonus_referrer;
+    const BONUS_NEW_USER  = settings.referral_bonus_new_user;
+    const telegramId      = userRow?.telegram_id;
+
+    // Run all mutations independently — one failure must not block the others
+    await supabase.from('referrals')
+      .update({ activated: true, activated_at: new Date().toISOString() })
+      .eq('id', referral.id);
+
+    await supabase.rpc('apply_checkin_bonus', { p_user_id: userId,               p_amount: BONUS_NEW_USER  });
+    await supabase.rpc('apply_checkin_bonus', { p_user_id: referral.referrer_id, p_amount: BONUS_REFERRER  });
+
+    supabase.from('referral_earnings').insert({
+      referrer_id: referral.referrer_id,
+      referred_id: userId,
+      amount:      BONUS_REFERRER,
+    }).then(({ error }) => {
+      if (error) console.error('[referral] earnings insert error', error?.message);
+    });
 
     const { data: referrerRow } = await supabase
       .from('users').select('telegram_id').eq('id', referral.referrer_id).single();
@@ -50,14 +56,13 @@ async function activateReferral(userId, telegramId) {
       sendMessage(referrerRow.telegram_id,
         `👥 *Реферал активирован!*\n\n` +
         `Ваш друг сделал первый чекин.\n` +
-        `💰 *+${REFERRAL_BONUS_REFERRER} GEO* зачислено на ваш счёт!`
+        `💰 *+${BONUS_REFERRER} GEO* зачислено на ваш счёт!`
       ).catch(() => {});
     }
-
     if (telegramId) {
       sendMessage(telegramId,
         `🎁 *Приветственный бонус!*\n\n` +
-        `*+${REFERRAL_BONUS_NEW_USER} GEO* начислено за приход по реферальной ссылке!`
+        `*+${BONUS_NEW_USER} GEO* начислено за приход по реферальной ссылке!`
       ).catch(() => {});
     }
   } catch (e) {
@@ -237,6 +242,13 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
   const prevLevel = levelInfo.level;
   const prevXp    = user?.xp || 0;
 
+  // Referral activation runs independently — any failure in the gamification
+  // pipeline cannot block it. telegramId is fetched inside activateReferral.
+  if (isFirstCheckinEver) {
+    activateReferral(userId).catch(e =>
+      console.error('[referral] standalone activation error', e?.message));
+  }
+
   ;(async () => {
     try {
       const { data: userRow } = await supabase
@@ -256,7 +268,6 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
 
       const [newlyUnlocked] = await Promise.all([
         checkAchievements(userId, business.id, newStreak),
-        isFirstCheckinEver ? activateReferral(userId, telegramId) : Promise.resolve(),
         checkAndUpdateTasks(userId, business.id, today, weekStart, newStreak, isBeforeNoon),
       ]);
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   MapPin, AlertCircle, Clock, CheckCircle, XCircle,
-  Loader2, QrCode, Target, CreditCard, BarChart3, Zap,
+  Loader2, QrCode, Target, CreditCard, BarChart3, Zap, Users,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { geoToUzs, formatGeo, formatUzs } from '../lib/geo';
@@ -28,6 +28,12 @@ function activityMeta(item, t) {
   }
   if (item.type === 'geohunt') {
     return { Icon: Target, color: '#FF8C00', bg: '#FF8C0012', border: '#FF8C0028', tag: 'GeoHunt' };
+  }
+  if (item.type === 'referral') {
+    return { Icon: Users, color: '#34D399', bg: 'rgba(52,211,153,0.08)', border: 'rgba(52,211,153,0.20)', tag: 'Реферал' };
+  }
+  if (item.type === 'task') {
+    return { Icon: CheckCircle, color: '#818CF8', bg: 'rgba(129,140,248,0.08)', border: 'rgba(129,140,248,0.20)', tag: 'Задание' };
   }
   return { Icon: MapPin, color: C.geo, bg: C.geoDim, border: C.geoGl, tag: t('balance.tag.visit') };
 }
