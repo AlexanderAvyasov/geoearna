@@ -80,7 +80,15 @@ async function sendMainMenu(ctx, user) {
   const qrToken = ctx.session?.pendingQrToken;
   if (qrToken) {
     ctx.session.pendingQrToken = null;
-    const checkinUrl = `${process.env.WEBAPP_URL}/checkin?token=${encodeURIComponent(qrToken)}`;
+    const base = process.env.WEBAPP_URL;
+    let checkinUrl;
+    if (qrToken.startsWith('gh_')) {
+      checkinUrl = `${base}/checkin?token=${encodeURIComponent(qrToken.slice(3))}&geohunt=1`;
+    } else if (qrToken.startsWith('promo_')) {
+      checkinUrl = `${base}/checkin?token=${encodeURIComponent(qrToken)}&promo=1`;
+    } else {
+      checkinUrl = `${base}/checkin?token=${encodeURIComponent(qrToken)}`;
+    }
     const kb = new InlineKeyboard().webApp('📍 Выполнить чекин', checkinUrl);
     return ctx.reply(
       'Найден QR-код заведения. Нажмите кнопку ниже для чекина:',

@@ -6,6 +6,14 @@ const router = express.Router();
 
 const SUPER_ADMIN_ID = process.env.SUPER_ADMIN_TG_ID;
 
+function buildCheckinDeepLink(token) {
+  const bot = process.env.BOT_USERNAME || 'GeoEarnBot';
+  const app = process.env.BOT_APP_SHORT_NAME;
+  return app
+    ? `https://t.me/${bot}/${app}?startapp=${token}`
+    : `https://t.me/${bot}?start=${token}`;
+}
+
 // GET /api/geohunts/active  — public: list active hunts for home screen
 router.get('/api/geohunts/active', async (_req, res) => {
   const now = new Date().toISOString();
@@ -275,7 +283,6 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
 
   const { id } = req.params;
-  const webappUrl = process.env.WEBAPP_URL || '';
 
   const { data: hunt } = await supabase.from('geohunts').select('title').eq('id', id).single();
   if (!hunt) return res.status(404).json({ error: 'NOT_FOUND' });
@@ -296,7 +303,7 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
   const { sendPhoto, sendMessage } = require('../services/notify');
 
   const urlList = codes.map((c, i) => {
-    const url   = `${webappUrl}/checkin?token=${c.token}&geohunt=1`;
+    const url   = buildCheckinDeepLink(`gh_${c.token}`);
     const label = c.point_label || `Код ${i + 1}`;
     return `📍 *${label}*\n\`${url}\``;
   }).join('\n\n');
@@ -307,7 +314,7 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
 
   for (let i = 0; i < codes.length; i++) {
     const code  = codes[i];
-    const url   = `${webappUrl}/checkin?token=${code.token}&geohunt=1`;
+    const url   = buildCheckinDeepLink(`gh_${code.token}`);
     const label = code.point_label || `Код ${i + 1}`;
     try {
       const buf = await QRCode.toBuffer(url, { width: 600, margin: 3 });

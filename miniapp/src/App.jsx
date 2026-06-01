@@ -1110,8 +1110,16 @@ function AppLayout() {
   useEffect(() => {
     const startParam = window.Telegram?.WebApp?.initDataUnsafe?.start_param;
     if (!startParam || !/^[A-Za-z0-9_-]{8,64}$/.test(startParam)) return;
-    const qs = new URLSearchParams({ token: startParam });
-    if (startParam.startsWith('promo_')) qs.set('promo', '1');
+    const qs = new URLSearchParams();
+    if (startParam.startsWith('gh_')) {
+      qs.set('token', startParam.slice(3));   // strip gh_ → raw geohunt token
+      qs.set('geohunt', '1');
+    } else if (startParam.startsWith('promo_')) {
+      qs.set('token', startParam);
+      qs.set('promo', '1');
+    } else {
+      qs.set('token', startParam);
+    }
     clog('[START_PARAM] deep-link checkin:', startParam);
     navigateRef.current(`/checkin?${qs.toString()}`);
   }, []);
