@@ -184,7 +184,7 @@ async function performCheckin({ userId, qrToken, lat, lng, pin, campaignId }) {
 
   const levelInfo = getLevelInfo(user?.xp || 0);
   const { streakMult, levelMult, boostMult, newPlaceBonus, isBeforeNoon, projectedStreak: projStreak } =
-    computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt: business.created_at });
+    await computeMultipliers({ streak, levelInfo, boosts, businessCreatedAt: business.created_at });
 
   const baseReward = campaign.reward_amount;
   const effectiveReward = Math.round(baseReward * levelMult * streakMult * boostMult);
