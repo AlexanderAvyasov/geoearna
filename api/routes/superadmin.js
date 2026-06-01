@@ -1233,6 +1233,96 @@ router.post('/api/superadmin/support/:id/close', ...SA, async (req, res) => {
   }
 });
 
+// ── Broadcast ─────────────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/broadcast/counts', ...SA, async (req, res) => {
+  try {
+    const [
+      { count: allCount },
+      { data: v7 },
+      { data: v30 },
+    ] = await Promise.all([
+      supabase.from('users').select('*', { count: 'exact', head: true }).not('telegram_id', 'is', null),
+      supabase.from('visits').select('user_id').gte('created_at', new Date(Date.now() - 7 * 86400_000).toISOString()),
+      supabase.from('visits').select('user_id').gte('created_at', new Date(Date.now() - 30 * 86400_000).toISOString()),
+    ]);
+    return res.json({
+      all:        allCount || 0,
+      active_7d:  new Set((v7  || []).map(v => v.user_id)).size,
+      active_30d: new Set((v30 || []).map(v => v.user_id)).size,
+    });
+  } catch (err) {
+    console.error('superadmin/broadcast/counts', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
+router.post('/api/superadmin/broadcast', ...SA, async (req, res) => {
+  try {
+    const { message, target = 'all' } = req.body;
+    if (!message?.trim() || message.trim().length < 5)
+      return res.status(400).json({ error: 'INVALID_MESSAGE' });
+    if (message.trim().length > 4096)
+      return res.status(400).json({ error: 'MESSAGE_TOO_LONG' });
+    if (!['all', 'active_7d', 'active_30d'].includes(target))
+      return res.status(400).json({ error: 'INVALID_TARGET' });
+
+    let telegramIds;
+
+    if (target === 'all') {
+      const { data } = await supabase.from('users')
+        .select('telegram_id').not('telegram_id', 'is', null);
+      telegramIds = (data || []).map(u => u.telegram_id);
+    } else {
+      const days  = target === 'active_7d' ? 7 : 30;
+      const since = new Date(Date.now() - days * 86400_000).toISOString();
+      const { data: visits } = await supabase.from('visits')
+        .select('user_id').gte('created_at', since);
+      const userIds = [...new Set((visits || []).map(v => v.user_id))];
+      if (userIds.length === 0) return res.json({ sent: 0, failed: 0, total: 0 });
+      const { data: users } = await supabase.from('users')
+        .select('telegram_id').in('id', userIds).not('telegram_id', 'is', null);
+      telegramIds = (users || []).map(u => u.telegram_id);
+    }
+
+    if (telegramIds.length === 0) return res.json({ sent: 0, failed: 0, total: 0 });
+
+    const token = process.env.BOT_TOKEN;
+    const text  = message.trim();
+    const BATCH = 25;
+    let sent = 0, failed = 0;
+
+    for (let i = 0; i < telegramIds.length; i += BATCH) {
+      const batch   = telegramIds.slice(i, i + BATCH);
+      const results = await Promise.all(batch.map(async tgId => {
+        try {
+          const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ chat_id: String(tgId), text, parse_mode: 'Markdown' }),
+          });
+          return r.ok;
+        } catch (_) { return false; }
+      }));
+      results.forEach(ok => ok ? sent++ : failed++);
+      if (i + BATCH < telegramIds.length) await new Promise(r => setTimeout(r, 1000));
+    }
+
+    try {
+      await supabase.from('sa_audit_log').insert({
+        action:    'broadcast',
+        admin_id:  Number(SUPER_ADMIN_ID),
+        note:      `target=${target} sent=${sent}/${telegramIds.length}: "${text.slice(0, 60)}"`,
+      });
+    } catch (_) {}
+
+    return res.json({ sent, failed, total: telegramIds.length });
+  } catch (err) {
+    console.error('superadmin/broadcast', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 // ── Platform settings (bonuses) ──────────────────────────────────────────────
 
 router.get('/api/superadmin/platform-settings', ...SA, async (req, res) => {

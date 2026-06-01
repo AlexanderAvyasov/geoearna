@@ -1723,6 +1723,140 @@ function BonusSettingsSection() {
   );
 }
 
+function BroadcastSection() {
+  const [counts,  setCounts]  = useState(null);
+  const [target,  setTarget]  = useState('all');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [result,  setResult]  = useState(null);
+  const [confirm, setConfirm] = useState(false);
+
+  useEffect(() => {
+    saFetch('/api/superadmin/broadcast/counts').then(setCounts).catch(() => {});
+  }, []);
+
+  const TARGET_LABELS = {
+    all:        'Все',
+    active_7d:  'Активные 7д',
+    active_30d: 'Активные 30д',
+  };
+
+  const recipientCount = counts
+    ? (target === 'all' ? counts.all : target === 'active_7d' ? counts.active_7d : counts.active_30d)
+    : null;
+
+  async function send() {
+    setSending(true);
+    setResult(null);
+    setConfirm(false);
+    try {
+      const r = await saFetch('/api/superadmin/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({ message, target }),
+      });
+      setResult(r);
+      setMessage('');
+    } catch (e) {
+      setResult({ error: e.message || 'Ошибка отправки' });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style={{ ...cardBase, border: `1px solid ${C.b1}`, padding: '18px', borderRadius: 18, marginBottom: 16 }}>
+      <SectionTitle icon={Megaphone} color={SA_COLOR}>Рассылка</SectionTitle>
+
+      {/* Target selector */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        {['all', 'active_7d', 'active_30d'].map(t => {
+          const cnt = counts ? (t === 'all' ? counts.all : t === 'active_7d' ? counts.active_7d : counts.active_30d) : null;
+          return (
+            <button
+              key={t}
+              onClick={() => { setTarget(t); setResult(null); }}
+              style={{
+                padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', border: 'none',
+                background: target === t ? SA_COLOR : `${SA_COLOR}15`,
+                color: target === t ? '#fff' : SA_COLOR,
+                transition: 'all 0.15s',
+              }}
+            >
+              {TARGET_LABELS[t]}
+              {cnt !== null && (
+                <span style={{ opacity: 0.75, fontWeight: 400 }}>{' '}({cnt})</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Message */}
+      <textarea
+        value={message}
+        onChange={e => { setMessage(e.target.value); setResult(null); setConfirm(false); }}
+        placeholder="Текст объявления (поддерживает Markdown)..."
+        rows={4}
+        style={{
+          width: '100%', background: C.b1, border: `1px solid ${C.b2}`,
+          borderRadius: 12, padding: '12px', color: C.t1, fontSize: 13,
+          resize: 'vertical', outline: 'none', boxSizing: 'border-box',
+          fontFamily: 'inherit', marginBottom: 4,
+        }}
+      />
+      <div style={{ textAlign: 'right', fontSize: 11, color: message.length > 3800 ? C.red : C.t3, marginBottom: 10 }}>
+        {message.length} / 4096
+      </div>
+
+      {/* Confirm / Send */}
+      {!confirm ? (
+        <Btn
+          variant="purple"
+          size="md"
+          disabled={message.trim().length < 5 || sending}
+          loading={sending}
+          onClick={() => setConfirm(true)}
+          style={{ width: '100%' }}
+        >
+          <Send size={14} />
+          Отправить{recipientCount !== null ? ` (${recipientCount})` : ''}
+        </Btn>
+      ) : (
+        <div style={{
+          background: `${SA_COLOR}10`, border: `1px solid ${SA_COLOR}30`,
+          borderRadius: 12, padding: '14px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 13, color: C.t1, marginBottom: 12 }}>
+            Отправить <strong style={{ color: SA_COLOR }}>{recipientCount}</strong> пользователям?
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <Btn variant="ghost" size="sm" onClick={() => setConfirm(false)}>Отмена</Btn>
+            <Btn variant="purple" size="sm" loading={sending} onClick={send}>
+              <Send size={12} /> Подтвердить
+            </Btn>
+          </div>
+        </div>
+      )}
+
+      {/* Result */}
+      {result && !result.error && (
+        <div style={{ marginTop: 12, background: '#10B98110', border: '1px solid #10B98130', borderRadius: 10, padding: '12px' }}>
+          <div style={{ fontSize: 13, color: '#10B981', fontWeight: 700, marginBottom: 2 }}>Рассылка завершена</div>
+          <div style={{ fontSize: 12, color: C.t2 }}>
+            Отправлено: {result.sent} / {result.total} · Ошибок: {result.failed}
+          </div>
+        </div>
+      )}
+      {result?.error && (
+        <div style={{ marginTop: 12, background: `${C.red}10`, border: `1px solid ${C.red}30`, borderRadius: 10, padding: '12px' }}>
+          <div style={{ fontSize: 12, color: C.red }}>{result.error}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SystemTab() {
   const [cfg,     setCfg]     = useState(null);
   const [auditLog, setAuditLog] = useState([]);
@@ -1755,6 +1889,7 @@ function SystemTab() {
 
   return (
     <div>
+      <BroadcastSection />
       <BonusSettingsSection />
 
       {/* Config */}
