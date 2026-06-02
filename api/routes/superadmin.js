@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
-const validateTma = require('../middleware/validateTma');
+const validateTma    = require('../middleware/validateTma');
+const adminWebAuth   = require('../middleware/adminWebAuth');
 const { supabase } = require('../../db/index');
 const { sendMessage } = require('../services/notify');
 const { getGeoRate } = require('../lib/geoRate');
@@ -19,13 +20,21 @@ function buildCheckinDeepLink(token) {
 }
 
 function requireSuperAdmin(req, res, next) {
-  if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) {
+  if (String(req.user.telegram_id) !== String(SUPER_ADMIN_ID)) {
     return res.status(403).json({ error: 'FORBIDDEN' });
   }
   next();
 }
 
-const SA = [validateTma, requireSuperAdmin];
+// Accept either Telegram initData (miniapp) or web admin Bearer token
+function combinedAuth(req, res, next) {
+  if (req.headers.authorization?.startsWith('Bearer ')) {
+    return adminWebAuth(req, res, next);
+  }
+  validateTma(req, res, next);
+}
+
+const SA = [combinedAuth, requireSuperAdmin];
 
 // ── Dashboard stats ──────────────────────────────────────────────────────────
 

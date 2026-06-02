@@ -18,6 +18,7 @@ const platformPromoRoutes = require('./routes/platformPromo');
 const geohuntRoutes      = require('./routes/geohunt');
 const sendQrRoutes       = require('./routes/sendQr');
 const supportRoutes      = require('./routes/support');
+const adminAuthRoutes    = require('./routes/adminAuth');
 
 dotenv.config();
 
@@ -55,7 +56,7 @@ app.use(cors({
     cb(null, true);
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'initData', 'initdata', 'x-operator-secret'],
+  allowedHeaders: ['Content-Type', 'initData', 'initdata', 'x-operator-secret', 'Authorization'],
 }));
 
 app.use(express.json({ limit: '64kb' }));
@@ -168,6 +169,7 @@ app.use(platformPromoRoutes);
 app.use(geohuntRoutes);
 app.use(sendQrRoutes);
 app.use(supportRoutes);
+app.use(adminAuthRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });
