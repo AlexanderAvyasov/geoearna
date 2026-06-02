@@ -50,6 +50,7 @@ const ru = {
   'scan.update_tg':  'Обновите Telegram для сканирования QR',
   'scan.unavailable': 'Сканер недоступен в этой версии Telegram',
   'scan.aim':        'Наведите на QR-код заведения',
+  'scan.use_tg':     'Системный сканер',
 
   // task labels
   'task.visit':    'Визит',
@@ -601,6 +602,7 @@ const uz = {
   'scan.update_tg':   "QR skanerlash uchun Telegram'ni yangilang",
   'scan.unavailable': "Skaner ushbu Telegram versiyasida mavjud emas",
   'scan.aim':         "Joy QR-kodiga yo'naltiring",
+  'scan.use_tg':      'Tizim skaneri',
 
   'task.visit':    'Tashrif',
   'task.purchase': "Xarid",
@@ -1129,6 +1131,7 @@ const en = {
   'scan.update_tg':   'Update Telegram to scan QR',
   'scan.unavailable': 'Scanner unavailable in this Telegram version',
   'scan.aim':         'Aim at the venue QR code',
+  'scan.use_tg':      'System scanner',
 
   'task.visit':    'Visit',
   'task.purchase': 'Purchase',

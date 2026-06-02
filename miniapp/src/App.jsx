@@ -19,6 +19,8 @@ import Legal      from './pages/Legal';
 import ChannelSub from './pages/ChannelSub';
 import Profile       from './pages/Profile';
 import BusinessApply from './pages/BusinessApply';
+import Scan          from './pages/Scan';
+import { parseScanResult } from './lib/parseQr';
 
 // Module-level — computed once on load, reliable across all Telegram clients
 const IS_TELEGRAM = Boolean(window.Telegram?.WebApp) || import.meta.env.DEV;
@@ -732,143 +734,48 @@ function useAppReady() {
   return { ready: phase === 'done', fading: phase === 'fading' };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-function decodeTgDeepParam(param) {
-  if (param.startsWith('gh_'))    return { token: param.slice(3), promo: false, geohunt: true };
-  if (param.startsWith('promo_')) return { token: param,          promo: true,  geohunt: false };
-  return { token: param, promo: false, geohunt: false };
-}
-
-function parseScanResult(raw) {
-  if (!raw) return null;
-  try {
-    const url = new URL(raw);
-
-    // Legacy webapp URL: /checkin?token=TOKEN[&promo=1][&geohunt=1]
-    const t = url.searchParams.get('token');
-    if (t) {
-      return {
-        token:   t,
-        promo:   url.searchParams.get('promo')   === '1',
-        geohunt: url.searchParams.get('geohunt') === '1',
-      };
-    }
-
-    // New t.me deep link: t.me/Bot?start=TOKEN  or  t.me/Bot/App?startapp=TOKEN
-    if (url.hostname === 't.me') {
-      const deepParam = url.searchParams.get('startapp') || url.searchParams.get('start');
-      if (deepParam) return decodeTgDeepParam(deepParam);
-    }
-  } catch { /* not a URL */ }
-
-  // Raw token (alphanumeric)
-  if (/^[A-Za-z0-9_\-]{8,60}$/.test(raw.trim())) {
-    return { token: raw.trim(), promo: false, geohunt: false };
-  }
-  return null;
-}
-
-// ScanQrButton owns NO navigation logic.
-// It only scans, parses, and calls onQrResult(result).
-// AppLayout owns navigate and scheduling.
-function ScanQrButton({ onToast, onQrResult }) {
-  const [scanning, setScanning] = useState(false);
-  const scanRef = useRef(false);
-  const { t } = useLanguage();
-
-  function handleScan() {
-    clog('[QR:SCAN_START] scanRef.current:', scanRef.current);
-    if (scanRef.current) return;
-    if (!tg?.isVersionAtLeast?.('6.4')) {
-      clog('[QR:SCAN_START] TG version too old');
-      onToast(t('scan.update_tg'));
-      return;
-    }
-    if (typeof tg.showScanQrPopup !== 'function') {
-      clog('[QR:SCAN_START] showScanQrPopup not available');
-      onToast(t('scan.unavailable'));
-      return;
-    }
-
-    scanRef.current = true;
-    setScanning(true);
-    clog('[QR:POPUP_OPEN] showScanQrPopup called');
-
-    try {
-      tg.showScanQrPopup({ text: t('scan.aim') }, (scannedText) => {
-        clog('[QR:CALLBACK] raw:', scannedText?.slice(0, 80), '| length:', scannedText?.length);
-        const result = parseScanResult(scannedText);
-        clog('[QR:PARSE] result:', JSON.stringify(result));
-
-        if (result) {
-          clog('[QR:POPUP_CLOSE] calling closeScanQrPopup');
-          tg.closeScanQrPopup();
-          scanRef.current = false;
-          setScanning(false);
-          clog('[QR:PASS_TO_APP] calling onQrResult with token:', result.token);
-          onQrResult(result);
-          return true;
-        }
-        clog('[QR:UNRECOGNIZED] no result — keeping popup open');
-        return false;
-      });
-    } catch (e) {
-      cerr('[QR:POPUP_ERROR]', e.message);
-      scanRef.current = false;
-      setScanning(false);
-    }
-
-    setTimeout(() => {
-      if (scanRef.current) {
-        clog('[QR:TIMEOUT] 30s timeout — resetting scan state');
-        scanRef.current = false;
-        setScanning(false);
-      }
-    }, 30000);
-  }
+// ScanQrButton — navigates to /scan (custom camera scanner with Telegram fallback)
+function ScanQrButton() {
+  const navigate  = useNavigate();
+  const [pressed, setPressed] = useState(false);
 
   return (
-    /* Outer glow ring — decoupled from button transform so press state is clean */
     <div style={{ position: 'relative', bottom: 14, flexShrink: 0 }}>
-      {!scanning && (
-        <div style={{
-          position: 'absolute', inset: -2,
-          borderRadius: '50%',
-          background: C.geo,
-          opacity: 0.35,
-          filter: 'blur(8px)',
-          animation: 'glowPulse 3s ease-in-out infinite',
-          pointerEvents: 'none',
-        }} />
-      )}
+      {/* Ambient glow ring — decoupled from button so press transform stays clean */}
+      <div style={{
+        position: 'absolute', inset: -2,
+        borderRadius: '50%',
+        background: C.geo,
+        opacity: 0.32,
+        filter: 'blur(8px)',
+        animation: 'glowPulse 3s ease-in-out infinite',
+        pointerEvents: 'none',
+      }} />
       <button
-        onClick={handleScan}
+        onClick={() => navigate('/scan')}
+        onTouchStart={() => setPressed(true)}
+        onTouchEnd={() => setPressed(false)}
+        onMouseDown={() => setPressed(true)}
+        onMouseUp={() => setPressed(false)}
+        onMouseLeave={() => setPressed(false)}
         style={{
           position: 'relative',
           width: 50, height: 50,
           borderRadius: '50%',
-          background: scanning
-            ? 'rgba(143,174,123,0.5)'
-            : 'linear-gradient(145deg,#D48A52 0%,#C97B47 100%)',
+          background: 'linear-gradient(145deg,#D48A52 0%,#C97B47 100%)',
           border: `2px solid ${C.bg}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: scanning ? 'not-allowed' : 'pointer',
-          flexShrink: 0,
+          cursor: 'pointer', flexShrink: 0,
           WebkitTapHighlightColor: 'transparent',
           outline: 'none', zIndex: 10,
-          transition: 'transform 100ms cubic-bezier(0.23,1,0.32,1)',
           boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+          transform: pressed ? 'scale(0.91)' : 'scale(1)',
+          transition: pressed
+            ? 'transform 100ms cubic-bezier(0.23,1,0.32,1)'
+            : 'transform 200ms cubic-bezier(0.32,0.72,0,1)',
         }}
-        onTouchStart={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.92)'; }}
-        onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-        onMouseDown={e => { if (!scanning) e.currentTarget.style.transform = 'scale(0.92)'; }}
-        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        {scanning
-          ? <Loader2 size={20} strokeWidth={2.25} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
-          : <ScanLine size={20} strokeWidth={2.25} color="#0A0E14" />
-        }
+        <ScanLine size={20} strokeWidth={2.25} color="#0A0E14" />
       </button>
     </div>
   );
@@ -894,7 +801,7 @@ function Toast({ message }) {
   );
 }
 
-function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
+function BottomNav({ isOwner, isSuperAdmin }) {
   const { pathname } = useLocation();
   const [toast, setToast] = useState(null);
   const { t } = useLanguage();
@@ -919,7 +826,7 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
   const shouldHide =
     pathname === '/checkin'        || pathname === '/withdraw' ||
     pathname === '/legal'          || pathname === '/channel-reward' ||
-    pathname === '/apply-business' ||
+    pathname === '/apply-business' || pathname === '/scan'     ||
     (IS_SUPER_ADMIN && pathname === '/admin');
 
   const activeIdx = shouldHide ? -1 : NAV_ITEMS.findIndex(item =>
@@ -976,7 +883,7 @@ function BottomNav({ onQrResult, isOwner, isSuperAdmin }) {
                 flex: 1.1, display: 'flex', justifyContent: 'center',
                 alignItems: 'flex-end', paddingBottom: 4,
               }}>
-                <ScanQrButton onToast={showToast} onQrResult={onQrResult} />
+                <ScanQrButton />
               </div>
             );
           }
@@ -1150,7 +1057,7 @@ function AppLayout() {
     }, 400);
   }
 
-  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward' && pathname !== '/apply-business';
+  const hasNav   = pathname !== '/checkin' && pathname !== '/withdraw' && pathname !== '/legal' && pathname !== '/channel-reward' && pathname !== '/apply-business' && pathname !== '/scan';
   const isSAPage = pathname === '/superadmin';
 
   return (
@@ -1179,9 +1086,10 @@ function AppLayout() {
           <Route path="/channel-reward"  element={<ChannelSub />} />
           <Route path="/profile"         element={<Profile />} />
           <Route path="/apply-business"  element={<BusinessApply />} />
+          <Route path="/scan"            element={<Scan />} />
         </Routes>
       </div>
-      <BottomNav onQrResult={handleQrResult} isOwner={isOwner} isSuperAdmin={isSuperAdmin} />
+      <BottomNav isOwner={isOwner} isSuperAdmin={isSuperAdmin} />
     </div>
   );
 }
