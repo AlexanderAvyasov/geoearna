@@ -333,12 +333,21 @@ router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
   const huntId = parseInt(req.params.id, 10);
   if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
   const { active } = req.body;
-  const { data, error } = await supabase.from('geohunts')
-    .update({ active })
-    .eq('id', huntId)
-    .select().single();
-  if (error) return res.status(500).json({ error: 'INTERNAL_ERROR' });
-  return res.json(data);
+  if (active === undefined || active === null) return res.status(400).json({ error: 'INVALID_PARAMS' });
+
+  const { error } = await supabase.from('geohunts')
+    .update({ active: Boolean(active) })
+    .eq('id', huntId);
+  if (error) {
+    console.error('[sa/geohunts PATCH] supabase error:', error.message, error.code);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+
+  // Re-fetch to confirm the updated row
+  const { data: row, error: fetchErr } = await supabase
+    .from('geohunts').select('*').eq('id', huntId).maybeSingle();
+  if (fetchErr || !row) return res.status(404).json({ error: 'NOT_FOUND' });
+  return res.json(row);
 });
 
 // ── SuperAdmin: get codes for a hunt ────────────────────────────────────────

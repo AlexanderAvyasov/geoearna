@@ -855,14 +855,17 @@ router.post('/api/superadmin/promo-campaigns', ...SA, async (req, res) => {
 router.patch('/api/superadmin/promo-campaigns/:id', ...SA, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
-    const { active, expires_at, max_claims, title, description } = req.body;
+    const { active, expires_at, max_claims, title, description, lat, lng, radius_m } = req.body;
 
     const updates = {};
-    if (active      !== undefined)                                      updates.active      = !!active;
-    if (expires_at  !== undefined)                                      updates.expires_at  = expires_at || null;
-    if (title       !== undefined && title?.trim())                     updates.title       = title.trim();
-    if (description !== undefined)                                      updates.description = description?.trim() || null;
+    if (active      !== undefined)                                            updates.active      = !!active;
+    if (expires_at  !== undefined)                                            updates.expires_at  = expires_at || null;
+    if (title       !== undefined && title?.trim())                           updates.title       = title.trim();
+    if (description !== undefined)                                            updates.description = description?.trim() || null;
     if (max_claims  !== undefined && Number.isInteger(max_claims) && max_claims >= 1) updates.max_claims = max_claims;
+    if (lat         !== undefined && lat !== null && !isNaN(Number(lat)))    updates.lat         = Number(lat);
+    if (lng         !== undefined && lng !== null && !isNaN(Number(lng)))    updates.lng         = Number(lng);
+    if (radius_m    !== undefined && Number.isInteger(radius_m) && radius_m > 0) updates.radius_m = radius_m;
 
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'NOTHING_TO_UPDATE' });
 

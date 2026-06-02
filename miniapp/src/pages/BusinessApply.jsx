@@ -69,7 +69,7 @@ function makePinHtml() {
 }
 
 // ── Map picker sheet ──────────────────────────────────────────────────────────
-function MapPickerSheet({ initialPos, onConfirm, onClose }) {
+export function MapPickerSheet({ initialPos, onConfirm, onClose }) {
   const { t } = useLanguage();
   const containerRef = useRef(null);
   const mapRef       = useRef(null);

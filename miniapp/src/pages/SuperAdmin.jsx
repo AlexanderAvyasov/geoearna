@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { MapPickerSheet } from './BusinessApply';
 import {
   LayoutDashboard, ShieldAlert, Store, Megaphone, Wallet, Users, Settings,
   TrendingUp, TrendingDown, Bell, AlertTriangle, CheckCircle, XCircle,
@@ -2275,11 +2276,14 @@ function PromoStatusBadge({ p }) {
 function PromoCreateSheet({ onClose, onCreated }) {
   const [form, setForm] = useState({
     title: '', description: '', rarity: 'common', reward_amount: '',
-    max_claims: '', lat: '', lng: '', radius_m: '200',
+    max_claims: '', radius_m: '200',
     expires_at: '', cooldown_hours: '0', image_url: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [pos,        setPos]        = useState(null);   // { lat, lng }
+  const [mapAddress, setMapAddress] = useState('');
+  const [mapOpen,    setMapOpen]    = useState(false);
+  const [loading,    setLoading]    = useState(false);
+  const [error,      setError]      = useState('');
   const today = new Date().toISOString().split('T')[0];
 
   function upd(k, v) { setForm(p => ({ ...p, [k]: v })); }
@@ -2292,10 +2296,9 @@ function PromoCreateSheet({ onClose, onCreated }) {
 
   async function handleCreate() {
     const missing = [];
-    if (!form.title.trim())                          missing.push('название');
-    if (!form.max_claims)                            missing.push('макс. клеймов');
-    if (!form.lat || isNaN(parseFloat(form.lat)))    missing.push('широта (lat)');
-    if (!form.lng || isNaN(parseFloat(form.lng)))    missing.push('долгота (lng)');
+    if (!form.title.trim()) missing.push('название');
+    if (!form.max_claims)   missing.push('макс. клеймов');
+    if (!pos)               missing.push('местоположение на карте');
     if (missing.length) { setError('Заполните: ' + missing.join(', ')); return; }
 
     setLoading(true); setError('');
@@ -2306,8 +2309,8 @@ function PromoCreateSheet({ onClose, onCreated }) {
         rarity:         form.rarity,
         reward_amount:  parseInt(form.reward_amount, 10),
         max_claims:     parseInt(form.max_claims, 10),
-        lat:            parseFloat(form.lat),
-        lng:            parseFloat(form.lng),
+        lat:            pos.lat,
+        lng:            pos.lng,
         radius_m:       parseInt(form.radius_m, 10) || 200,
         expires_at:     form.expires_at ? new Date(form.expires_at + 'T23:59:59').toISOString() : null,
         cooldown_hours: parseInt(form.cooldown_hours, 10) || 0,
@@ -2398,16 +2401,43 @@ function PromoCreateSheet({ onClose, onCreated }) {
             </div>
           )}
 
-          {/* Coordinates */}
-          <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-            <div style={{ flex: 1 }}>
-              <span style={labelSt}>Широта (lat)*</span>
-              <input value={form.lat} onChange={e => upd('lat', e.target.value)} inputMode="decimal" placeholder="41.2995" style={inStyle} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <span style={labelSt}>Долгота (lng)*</span>
-              <input value={form.lng} onChange={e => upd('lng', e.target.value)} inputMode="decimal" placeholder="69.2401" style={inStyle} />
-            </div>
+          {/* Location map picker */}
+          <div style={{ marginBottom: 12 }}>
+            <span style={labelSt}>Местоположение*</span>
+            <button
+              type="button"
+              onClick={() => setMapOpen(true)}
+              style={{
+                width: '100%', padding: '12px 14px', borderRadius: 12,
+                border: `1.5px solid ${pos ? `${SA_COLOR}60` : C.b1}`,
+                background: pos ? `${SA_COLOR}10` : C.card,
+                color: pos ? SA_COLOR : C.t3,
+                display: 'flex', alignItems: 'center', gap: 10,
+                cursor: 'pointer', textAlign: 'left', boxSizing: 'border-box',
+                WebkitTapHighlightColor: 'transparent',
+                transition: 'all 0.2s',
+              }}
+            >
+              <MapPin size={16} color={pos ? SA_COLOR : C.t3} strokeWidth={1.75} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: 14, fontWeight: pos ? 600 : 400, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {pos
+                  ? (mapAddress || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`)
+                  : 'Отметить на карте'}
+              </span>
+              {pos && (
+                <span
+                  onClick={e => { e.stopPropagation(); setPos(null); setMapAddress(''); }}
+                  style={{ padding: 4, flexShrink: 0, color: C.t3, display: 'flex' }}
+                >
+                  <X size={13} />
+                </span>
+              )}
+            </button>
+            {pos && (
+              <div style={{ fontSize: 11, color: C.t3, marginTop: 5, paddingLeft: 2 }}>
+                lat: {pos.lat.toFixed(6)} · lng: {pos.lng.toFixed(6)}
+              </div>
+            )}
           </div>
 
           {/* Radius + Cooldown */}
@@ -2446,6 +2476,18 @@ function PromoCreateSheet({ onClose, onCreated }) {
           </Btn>
         </div>
       </div>
+
+      {mapOpen && (
+        <MapPickerSheet
+          initialPos={pos}
+          onConfirm={({ lat, lng, address }) => {
+            setPos({ lat, lng });
+            if (address) setMapAddress(address);
+            setMapOpen(false);
+          }}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -2537,11 +2579,16 @@ function PromoResultSheet({ result, onClose }) {
 }
 
 function PromoAnalyticsSheet({ campaign, onClose }) {
-  const [data,    setData]    = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [busy,    setBusy]    = useState(false);
-  const [dlLoad,  setDlLoad]  = useState(false);
-  const [dlSent,  setDlSent]  = useState(false);
+  const [data,         setData]         = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [busy,         setBusy]         = useState(false);
+  const [dlLoad,       setDlLoad]       = useState(false);
+  const [dlSent,       setDlSent]       = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [locBusy,      setLocBusy]      = useState(false);
+  const [currentPos,   setCurrentPos]   = useState(
+    campaign.lat && campaign.lng ? { lat: campaign.lat, lng: campaign.lng } : null
+  );
   const r = RARITY_CFG[campaign.rarity] || RARITY_CFG.common;
 
   useEffect(() => {
@@ -2558,6 +2605,19 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
       onClose('reload');
     } catch (e) { alert(e.message); }
     setBusy(false);
+  }
+
+  async function saveLocation({ lat, lng }) {
+    setLocBusy(true);
+    try {
+      await saFetch(`/api/superadmin/promo-campaigns/${campaign.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ lat, lng }),
+      });
+      setCurrentPos({ lat, lng });
+      setLocationOpen(false);
+    } catch (e) { alert(e.message); }
+    setLocBusy(false);
   }
 
   async function sendQR() {
@@ -2647,7 +2707,7 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
               { label: 'Радиус',       value: `${campaign.radius_m} м` },
               { label: 'Кулдаун',      value: campaign.cooldown_hours > 0 ? `${campaign.cooldown_hours} ч` : 'Одноразово' },
               { label: 'Истекает',     value: campaign.expires_at ? fmtDay(campaign.expires_at) : 'Без ограничения' },
-              { label: 'Координаты',   value: `${campaign.lat?.toFixed(4)}, ${campaign.lng?.toFixed(4)}` },
+              { label: 'Координаты',   value: currentPos ? `${currentPos.lat.toFixed(4)}, ${currentPos.lng.toFixed(4)}` : '—' },
             ].map((row, i, arr) => (
               <div key={row.label} style={{
                 display: 'flex', justifyContent: 'space-between', paddingBottom: 8, marginBottom: 8,
@@ -2684,7 +2744,7 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
           )}
 
           {/* Actions */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
             <Btn variant={campaign.active ? 'gold' : 'success'} size="md" onClick={toggleActive} loading={busy} style={{ flex: 1 }}>
               {campaign.active ? <><PauseCircle size={13} /> Пауза</> : <><PlayCircle size={13} /> Запустить</>}
             </Btn>
@@ -2693,8 +2753,19 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
               {dlSent ? 'Отправлено' : 'QR в Telegram'}
             </Btn>
           </div>
+          <Btn variant="ghost" size="md" onClick={() => setLocationOpen(true)} loading={locBusy} style={{ width: '100%' }}>
+            <MapPin size={13} /> Изменить локацию
+          </Btn>
         </div>
       </div>
+
+      {locationOpen && (
+        <MapPickerSheet
+          initialPos={currentPos}
+          onConfirm={({ lat, lng }) => saveLocation({ lat, lng })}
+          onClose={() => setLocationOpen(false)}
+        />
+      )}
     </>
   );
 }

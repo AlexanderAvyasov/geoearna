@@ -999,7 +999,7 @@ export default function Home() {
                   iconColor={C.gold} iconBg={C.goldFt} iconBorder={C.goldGl}
                   gradStart="rgba(232,192,104,0.10)"
                   title={h.title}
-                  subtitle={`${h.total_codes - h.claimed_codes}/${h.total_codes} осталось`}
+                  subtitle={`${h.claimed_codes}/${h.total_codes} отсканировано · ${h.total_codes - h.claimed_codes} осталось`}
                   badge="GEOHUNT"
                   rewardAmount={h.reward_per_code}
                   rewardLabel="GEO/шт"
