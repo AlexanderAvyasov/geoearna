@@ -3898,7 +3898,7 @@ export default function SuperAdmin() {
         <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, letterSpacing: -0.5, marginBottom: 4 }}>GeoEarn Platform</div>
         <div style={{ fontSize: 13, color: C.t3, marginBottom: 12 }}>Полный доступ</div>
         <button
-          onClick={() => window.open(import.meta.env.VITE_ADMIN_URL || `${import.meta.env.VITE_API_BASE || ''}/admin`, '_blank', 'noopener')}
+          onClick={() => window.open(import.meta.env.VITE_ADMIN_URL || `${import.meta.env.VITE_API_URL || ''}/admin`, '_blank', 'noopener')}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', borderRadius: 10,
