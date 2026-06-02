@@ -241,6 +241,11 @@ router.post('/api/geohunt/claim', validateTma, async (req, res) => {
   }
 });
 
+// Validate UUID format (geohunts.id is uuid, not serial int)
+function isUUID(s) {
+  return typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+}
+
 // ── SuperAdmin: list all hunts ────────────────────────────────────────────────
 router.get('/api/sa/geohunts', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
@@ -333,8 +338,8 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
 // ── SuperAdmin: toggle hunt active (or set explicit active via body) ────────
 router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
-  const huntId = parseInt(req.params.id, 10);
-  if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+  const huntId = req.params.id;
+  if (!isUUID(huntId)) return res.status(400).json({ error: 'INVALID_PARAMS' });
 
   // Fetch current row first — needed to toggle and to return full object
   const { data: current, error: fetchErr } = await supabase
@@ -362,8 +367,8 @@ router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
 // ── SuperAdmin: get codes for a hunt ────────────────────────────────────────
 router.get('/api/sa/geohunts/:id/codes', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
-  const huntId = parseInt(req.params.id, 10);
-  if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
+  const huntId = req.params.id;
+  if (!isUUID(huntId)) return res.status(400).json({ error: 'INVALID_PARAMS' });
   const { data, error } = await supabase
     .from('geohunt_codes')
     .select('id, token, point_label, used_by, used_at, created_at')

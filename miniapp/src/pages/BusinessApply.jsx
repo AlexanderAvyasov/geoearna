@@ -69,7 +69,7 @@ function makePinHtml() {
 }
 
 // ── Map picker sheet ──────────────────────────────────────────────────────────
-export function MapPickerSheet({ initialPos, onConfirm, onClose }) {
+export function MapPickerSheet({ initialPos, onConfirm, onClose, zBase = 300 }) {
   const { t } = useLanguage();
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
@@ -191,7 +191,7 @@ export function MapPickerSheet({ initialPos, onConfirm, onClose }) {
           position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.75)',
           backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-          zIndex: 300, animation: 'backdropIn 0.2s ease',
+          zIndex: zBase, animation: 'backdropIn 0.2s ease',
         }}
       />
 
@@ -201,7 +201,7 @@ export function MapPickerSheet({ initialPos, onConfirm, onClose }) {
         background: '#0D1520',
         borderRadius: '22px 22px 0 0',
         border: `1px solid rgba(201,123,71,0.18)`, borderBottom: 'none',
-        zIndex: 301, maxWidth: 480, margin: '0 auto',
+        zIndex: zBase + 1, maxWidth: 480, margin: '0 auto',
         animation: 'slideUp 0.32s cubic-bezier(0.32,0.72,0,1)',
         display: 'flex', flexDirection: 'column',
         maxHeight: '92vh',

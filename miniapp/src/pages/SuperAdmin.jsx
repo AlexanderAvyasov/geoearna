@@ -2480,6 +2480,7 @@ function PromoCreateSheet({ onClose, onCreated }) {
       {mapOpen && (
         <MapPickerSheet
           initialPos={pos}
+          zBase={500}
           onConfirm={({ lat, lng, address }) => {
             setPos({ lat, lng });
             if (address) setMapAddress(address);
@@ -2762,6 +2763,7 @@ function PromoAnalyticsSheet({ campaign, onClose }) {
       {locationOpen && (
         <MapPickerSheet
           initialPos={currentPos}
+          zBase={500}
           onConfirm={({ lat, lng }) => saveLocation({ lat, lng })}
           onClose={() => setLocationOpen(false)}
         />
