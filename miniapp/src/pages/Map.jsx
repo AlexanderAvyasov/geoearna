@@ -18,6 +18,46 @@ const RARITY = {
   legendary: { label: 'LEGENDARY', color: '#FBBF24' },
 };
 
+// ── Map CSS (injected once — Leaflet divIcons live outside React) ─────────────
+let _mapCssInjected = false;
+function ensureMapCSS() {
+  if (_mapCssInjected) return;
+  _mapCssInjected = true;
+  const s = document.createElement('style');
+  s.textContent = `
+    @keyframes markerPop { from{transform:scale(0.3) translateY(8px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+    @keyframes radarPing  { 0%{transform:scale(0.6);opacity:0.7} 100%{transform:scale(2.6);opacity:0} }
+    @keyframes spin       { to{transform:rotate(360deg)} }
+    @keyframes backdropIn { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp    { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  `;
+  document.head.appendChild(s);
+}
+
+// Pin colors by task type and promo rarity
+const CAM_COLORS       = { visit: '#6CBE6C', purchase: '#D4874F', review: '#E8C068' };
+const PROMO_PIN_COLORS = { common: '#9CA3AF', rare: '#60A5FA', epic: '#C084FC', legendary: '#FBBF24' };
+
+// Inline SVG icon paths (24×24 Lucide-style, rendered at ~10px inside pin)
+const PIN_ICONS = {
+  visit:    `<circle cx="12" cy="11" r="3" fill="rgba(255,255,255,0.92)"/><path d="M12 2a9 9 0 00-9 9c0 6.5 9 15 9 15s9-8.5 9-15a9 9 0 00-9-9z" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/>`,
+  purchase: `<path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4H6z" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linejoin="round"/><line x1="3" y1="6" x2="21" y2="6" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/><path d="M16 10a4 4 0 01-8 0" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/>`,
+  review:   `<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="rgba(255,255,255,0.92)"/>`,
+  promo:    `<rect x="2" y="7" width="20" height="5" rx="1" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/><polyline points="20,12 20,22 4,22 4,12" fill="none" stroke="rgba(255,255,255,0.92)" stroke-width="1.8" stroke-linejoin="round"/><line x1="12" y1="22" x2="12" y2="7" stroke="rgba(255,255,255,0.92)" stroke-width="1.8"/>`,
+};
+
+// Build a teardrop SVG pin for Leaflet divIcon
+function makePinHtml(color, iconKey, delay = 0) {
+  const icon = PIN_ICONS[iconKey] || PIN_ICONS.visit;
+  return `<div style="filter:drop-shadow(0 3px 9px rgba(0,0,0,0.6));animation:markerPop 0.36s cubic-bezier(0.22,1,0.36,1) ${delay}ms both;">
+    <svg width="28" height="36" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg">
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 9 14 22 14 22S28 23 28 14C28 6.268 21.732 0 14 0z" fill="${color}"/>
+      <circle cx="14" cy="13" r="7" fill="rgba(0,0,0,0.22)"/>
+      <g transform="translate(9,8) scale(0.4167)">${icon}</g>
+    </svg>
+  </div>`;
+}
+
 function matchPct(c) {
   if (c.dist === undefined) return 82;
   return Math.max(55, Math.min(99, Math.round(99 - c.dist / 80)));
@@ -122,20 +162,98 @@ function CampaignSheet({ campaign, userPos, onClose }) {
   );
 }
 
+function PromoQrSheet({ promo, onClose }) {
+  const rr        = RARITY[promo.rarity] || RARITY.common;
+  const remaining = promo.max_claims - promo.claims_count;
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(0,0,0,0.78)',
+        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+        zIndex: 500, animation: 'backdropIn 0.2s cubic-bezier(0.22,1,0.36,1)',
+      }} />
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        background: C.surf,
+        borderRadius: '4px 4px 0 0',
+        border: '1px solid rgba(255,255,255,0.10)', borderBottom: 'none',
+        padding: '0 0 44px', zIndex: 501,
+        maxWidth: 480, margin: '0 auto',
+        animation: 'slideUp 0.35s cubic-bezier(0.22,1,0.36,1)',
+        boxShadow: '0 -12px 60px rgba(0,0,0,0.8)',
+      }}>
+        <div style={{ width: 32, height: 3, borderRadius: 2, background: C.b2, margin: '14px auto 20px' }} />
+        <div style={{ padding: '0 20px' }}>
+          <div style={{ fontSize: 8, fontWeight: 700, color: C.t3, letterSpacing: 1.5, marginBottom: 8 }}>◆ PROMO QR</div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 14 }}>
+            <div style={{ fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, fontSize: 20, color: C.t1, flex: 1, letterSpacing: 0.2 }}>
+              {promo.title}
+            </div>
+            <span style={{
+              fontSize: 9, fontWeight: 700, color: rr.color,
+              background: `${rr.color}14`, border: `1px solid ${rr.color}30`,
+              borderRadius: 3, padding: '3px 7px', whiteSpace: 'nowrap', flexShrink: 0,
+            }}>{rr.label}</span>
+          </div>
+
+          <div style={{
+            background: `${rr.color}10`, border: `1px solid ${rr.color}25`,
+            borderRadius: 14, padding: '16px', textAlign: 'center', marginBottom: 10,
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.t3, marginBottom: 4, letterSpacing: 1.5 }}>REWARD</div>
+            <div style={{ fontSize: 40, fontWeight: 700, color: rr.color }}>
+              +{formatGeo(promo.reward_amount)}
+              <span style={{ fontSize: 16, color: C.t3, marginLeft: 6 }}>GEO</span>
+            </div>
+          </div>
+
+          <div style={{
+            background: 'rgba(255,255,255,0.02)', border: `1px solid ${C.b1}`,
+            borderRadius: 4, padding: '10px 12px', marginBottom: 8,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.t3, letterSpacing: 0.5 }}>REMAINING</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: remaining > 0 ? C.t1 : C.t3 }}>
+              {remaining > 0 ? remaining : 'Exhausted'}
+            </span>
+          </div>
+
+          {promo.description && (
+            <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, marginBottom: 10 }}>
+              {promo.description}
+            </div>
+          )}
+
+          <button onClick={onClose} style={{
+            width: '100%', marginTop: 8,
+            background: 'rgba(255,255,255,0.03)', border: `1px solid ${C.b2}`,
+            borderRadius: 4, padding: '14px',
+            fontSize: 11, fontWeight: 700, color: C.t2, cursor: 'pointer', letterSpacing: 1,
+          }}>CLOSE</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function MapPage() {
+  ensureMapCSS();
+
   const containerRef  = useRef(null);
   const mapRef        = useRef(null);
   const markersRef    = useRef([]);
   const userMarkerRef = useRef(null);
 
-  const [campaigns, setCampaigns] = useState([]);
-  const [promoQrs,  setPromoQrs]  = useState([]);
-  const [userPos,   setUserPos]   = useState(null);
-  const [selected,  setSelected]  = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [mapReady,  setMapReady]  = useState(false);
-  const [tileError, setTileError] = useState(false);
-  const [stats,     setStats]     = useState(null);
+  const [campaigns,     setCampaigns]     = useState([]);
+  const [promoQrs,      setPromoQrs]      = useState([]);
+  const [userPos,       setUserPos]       = useState(null);
+  const [selected,      setSelected]      = useState(null);
+  const [selectedPromo, setSelectedPromo] = useState(null);
+  const [loading,       setLoading]       = useState(true);
+  const [mapReady,      setMapReady]      = useState(false);
+  const [tileError,     setTileError]     = useState(false);
+  const [stats,         setStats]         = useState(null);
 
   // Fetch user stats for HUD header
   useEffect(() => {
@@ -257,7 +375,7 @@ export default function MapPage() {
     map.setView([userPos.lat, userPos.lng], 14);
   }, [userPos, mapReady]);
 
-  // Campaign + Promo QR markers
+  // Campaign + Promo QR markers — teardrop pin icons, no GEO text (shown on tap)
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -266,64 +384,30 @@ export default function MapPage() {
 
     campaigns.forEach((c, idx) => {
       if (!c.lat || !c.lng) return;
-      const delay = idx * 60;
-      const icon = L.divIcon({
-        html: `<div style="
-          position:relative;
-          display:flex;align-items:center;justify-content:center;
-          animation:markerPop 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms both;
-        ">
-          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid rgba(201,123,71,0.4);animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
-          <div style="
-            background:rgba(8,16,24,0.92);
-            color:#C97B47;padding:5px 10px;border-radius:8px;
-            font-size:12px;font-weight:700;white-space:nowrap;
-            border:1px solid rgba(201,123,71,0.35);
-            box-shadow:0 4px 16px rgba(0,0,0,0.4);
-            font-family:'Inter',sans-serif;
-            letter-spacing:0.2px;
-            position:relative;z-index:1;
-          ">+${formatGeo(c.reward_amount)} GEO</div>
-        </div>`,
-        className: '',
-        iconSize: [90, 30],
-        iconAnchor: [45, 15],
+      const color = CAM_COLORS[c.task_type] || CAM_COLORS.visit;
+      const icon  = L.divIcon({
+        html:       makePinHtml(color, c.task_type || 'visit', idx * 50),
+        className:  '',
+        iconSize:   [28, 36],
+        iconAnchor: [14, 36],
       });
-
       const marker = L.marker([+c.lat, +c.lng], { icon }).addTo(map);
       marker.on('click', () => setSelected(c));
       markersRef.current.push(marker);
     });
 
-    const RARITY_COLORS = { common: '#9CA3AF', rare: '#60A5FA', epic: '#C084FC', legendary: '#FBBF24' };
     promoQrs.forEach((p, idx) => {
       if (!p.lat || !p.lng) return;
-      const delay = (campaigns.length + idx) * 60;
-      const color = RARITY_COLORS[p.rarity] || RARITY_COLORS.common;
-      const icon = L.divIcon({
-        html: `<div style="
-          position:relative;
-          display:flex;align-items:center;justify-content:center;
-          animation:markerPop 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms both;
-        ">
-          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid ${color}60;animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
-          <div style="
-            background:rgba(8,16,24,0.92);
-            color:${color};padding:5px 10px;border-radius:8px;
-            font-size:12px;font-weight:700;white-space:nowrap;
-            border:1px solid ${color}50;
-            box-shadow:0 4px 16px rgba(0,0,0,0.4);
-            font-family:'Inter',sans-serif;
-            letter-spacing:0.2px;
-            position:relative;z-index:1;
-          ">◆ +${formatGeo(p.reward_amount)} GEO</div>
-        </div>`,
-        className: '',
-        iconSize: [100, 30],
-        iconAnchor: [50, 15],
+      const color = PROMO_PIN_COLORS[p.rarity] || PROMO_PIN_COLORS.common;
+      const icon  = L.divIcon({
+        html:       makePinHtml(color, 'promo', (campaigns.length + idx) * 50),
+        className:  '',
+        iconSize:   [28, 36],
+        iconAnchor: [14, 36],
       });
-
-      markersRef.current.push(L.marker([+p.lat, +p.lng], { icon }).addTo(map));
+      const marker = L.marker([+p.lat, +p.lng], { icon }).addTo(map);
+      marker.on('click', () => setSelectedPromo(p));
+      markersRef.current.push(marker);
     });
   }, [campaigns, promoQrs, mapReady]);
 
@@ -639,6 +723,9 @@ export default function MapPage() {
 
       {selected && (
         <CampaignSheet campaign={selected} userPos={userPos} onClose={() => setSelected(null)} />
+      )}
+      {selectedPromo && (
+        <PromoQrSheet promo={selectedPromo} onClose={() => setSelectedPromo(null)} />
       )}
     </div>
   );
