@@ -26,7 +26,10 @@ router.get('/api/geohunts/active', async (_req, res) => {
     .order('created_at', { ascending: false });
 
   if (error) { console.error('[geohunts/active]', error); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
-  return res.json({ hunts: data || [] });
+
+  // Hide fully-exhausted hunts (all codes claimed)
+  const hunts = (data || []).filter(h => h.claimed_codes < h.total_codes);
+  return res.json({ hunts });
 });
 
 // GET /api/geohunt/info?token=  — public: get code info before claiming
@@ -327,27 +330,33 @@ router.post('/api/sa/geohunts/:id/send-qr', validateTma, async (req, res) => {
   }
 });
 
-// ── SuperAdmin: toggle hunt active ──────────────────────────────────────────
+// ── SuperAdmin: toggle hunt active (or set explicit active via body) ────────
 router.patch('/api/sa/geohunts/:id', validateTma, async (req, res) => {
   if (String(req.user.telegram_id) !== SUPER_ADMIN_ID) return res.status(403).json({ error: 'FORBIDDEN' });
   const huntId = parseInt(req.params.id, 10);
   if (!huntId) return res.status(400).json({ error: 'INVALID_PARAMS' });
-  const { active } = req.body;
-  if (active === undefined || active === null) return res.status(400).json({ error: 'INVALID_PARAMS' });
 
-  const { error } = await supabase.from('geohunts')
-    .update({ active: Boolean(active) })
+  // Fetch current row first — needed to toggle and to return full object
+  const { data: current, error: fetchErr } = await supabase
+    .from('geohunts').select('*').eq('id', huntId).maybeSingle();
+  if (fetchErr) { console.error('[sa/geohunts PATCH] fetch:', fetchErr.message); return res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+  if (!current) return res.status(404).json({ error: 'NOT_FOUND' });
+
+  // Use explicit active from body when available, otherwise flip current value
+  const bodyActive = req.body?.active;
+  const newActive  = (bodyActive !== undefined && bodyActive !== null)
+    ? Boolean(bodyActive)
+    : !current.active;
+
+  const { error: updateErr } = await supabase.from('geohunts')
+    .update({ active: newActive })
     .eq('id', huntId);
-  if (error) {
-    console.error('[sa/geohunts PATCH] supabase error:', error.message, error.code);
+  if (updateErr) {
+    console.error('[sa/geohunts PATCH] update:', updateErr.message, updateErr.code);
     return res.status(500).json({ error: 'INTERNAL_ERROR' });
   }
 
-  // Re-fetch to confirm the updated row
-  const { data: row, error: fetchErr } = await supabase
-    .from('geohunts').select('*').eq('id', huntId).maybeSingle();
-  if (fetchErr || !row) return res.status(404).json({ error: 'NOT_FOUND' });
-  return res.json(row);
+  return res.json({ ...current, active: newActive });
 });
 
 // ── SuperAdmin: get codes for a hunt ────────────────────────────────────────
