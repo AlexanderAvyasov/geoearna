@@ -9,15 +9,16 @@ import L from 'leaflet';
 import { apiFetch } from '../lib/api';
 import { C, FF, inputStyle, cardBase } from '../lib/design';
 import RippleButton from '../lib/RippleButton';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const CATEGORIES = [
-  'Кафе / Ресторан',
-  'Магазин',
-  'Аптека',
-  'Салон красоты',
-  'Спортзал / Фитнес',
-  'Автосервис',
-  'Другое',
+const CAT_KEYS = [
+  'apply.cat.cafe',
+  'apply.cat.shop',
+  'apply.cat.pharmacy',
+  'apply.cat.beauty',
+  'apply.cat.gym',
+  'apply.cat.auto',
+  'apply.cat.other',
 ];
 
 const DEFAULT_CENTER = [41.2995, 69.2401]; // Ташкент
@@ -69,6 +70,7 @@ function makePinHtml() {
 
 // ── Map picker sheet ──────────────────────────────────────────────────────────
 function MapPickerSheet({ initialPos, onConfirm, onClose }) {
+  const { t } = useLanguage();
   const containerRef = useRef(null);
   const mapRef       = useRef(null);
   const markerRef    = useRef(null);
@@ -225,7 +227,7 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
             }}>
               <MapPin size={14} color={C.geo} strokeWidth={2} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: C.t1 }}>Отметьте место</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: C.t1 }}>{t('apply.map.title')}</span>
           </div>
           <button
             onClick={onClose}
@@ -246,7 +248,7 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
         </div>
 
         <div style={{ fontSize: 12, color: C.t3, padding: '0 18px 10px', flexShrink: 0 }}>
-          Нажмите на карту или перетащите метку
+          {t('apply.map.hint')}
         </div>
 
         {/* Map with fade edges */}
@@ -321,7 +323,7 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
                   {address || `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`}
                 </span>
           ) : (
-            <span style={{ fontSize: 13, color: C.t3 }}>Место не выбрано</span>
+            <span style={{ fontSize: 13, color: C.t3 }}>{t('apply.map.no_pos')}</span>
           )}
         </div>
         <div style={{ flexShrink: 0, height: 4 }} />
@@ -341,7 +343,7 @@ function MapPickerSheet({ initialPos, onConfirm, onClose }) {
               transition: 'all 0.2s',
             }}
           >
-            {geocoding ? 'Определяем адрес…' : 'Подтвердить место'}
+            {geocoding ? t('apply.map.geocoding') : t('apply.map.confirm')}
           </button>
         </div>
       </div>
@@ -374,6 +376,7 @@ function Field({ label, value, onChange, placeholder, inputMode, required, hint,
 }
 
 function SelectField({ label, value, onChange }) {
+  const { t } = useLanguage();
   const [focused, setFocused] = useState(false);
   return (
     <div style={{ marginBottom: 18 }}>
@@ -393,20 +396,24 @@ function SelectField({ label, value, onChange }) {
           paddingRight: 36, cursor: 'pointer',
         }}
       >
-        <option value="">— не выбрано —</option>
-        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        <option value="">{t('apply.form.no_cat')}</option>
+        {CAT_KEYS.map(key => <option key={key} value={t(key)}>{t(key)}</option>)}
       </select>
     </div>
   );
 }
 
 function StatusBanner({ application }) {
+  const { t, lang } = useLanguage();
   const cfg = {
-    pending:  { icon: Clock,       color: C.gold,  bg: C.goldFt,  title: 'Заявка на рассмотрении', sub: 'Мы проверяем вашу заявку. Обычно это занимает 1–2 рабочих дня.' },
-    approved: { icon: CheckCircle, color: C.green, bg: C.greenFt, title: 'Заявка одобрена!',        sub: 'Ваш бизнес-аккаунт активирован. Перейдите в раздел Бизнес.' },
-    rejected: { icon: XCircle,     color: C.red,   bg: C.redFt,   title: 'Заявка отклонена',        sub: application?.review_note || 'Свяжитесь с поддержкой для уточнения причины.' },
+    pending:  { icon: Clock,       color: C.gold,  bg: C.goldFt,  titleKey: 'apply.status.pending.title',  subKey: 'apply.status.pending.sub'  },
+    approved: { icon: CheckCircle, color: C.green, bg: C.greenFt, titleKey: 'apply.status.approved.title', subKey: 'apply.status.approved.sub' },
+    rejected: { icon: XCircle,     color: C.red,   bg: C.redFt,   titleKey: 'apply.status.rejected.title', subKey: 'apply.status.rejected.sub' },
   };
-  const { icon: Icon, color, bg, title, sub } = cfg[application.status] || cfg.pending;
+  const { icon: Icon, color, bg, titleKey, subKey } = cfg[application.status] || cfg.pending;
+  const sub = application.status === 'rejected' && application.review_note
+    ? application.review_note
+    : t(subKey);
   return (
     <div style={{
       ...cardBase, padding: '20px 18px', marginBottom: 24,
@@ -415,10 +422,10 @@ function StatusBanner({ application }) {
     }}>
       <Icon size={24} color={color} strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
       <div>
-        <div style={{ fontSize: 15, fontWeight: 700, color, marginBottom: 4 }}>{title}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color, marginBottom: 4 }}>{t(titleKey)}</div>
         <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55 }}>{sub}</div>
         <div style={{ fontSize: 11, color: C.t3, marginTop: 8 }}>
-          Заявка №{application.id} · {new Date(application.created_at).toLocaleDateString('ru-RU')}
+          {t('apply.status.info', { id: application.id, date: new Date(application.created_at).toLocaleDateString(lang === 'uz' ? 'uz-UZ' : lang === 'en' ? 'en-GB' : 'ru-RU') })}
         </div>
       </div>
     </div>
@@ -429,6 +436,7 @@ function StatusBanner({ application }) {
 
 export default function BusinessApply() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   const [existing,    setExisting]    = useState(undefined);
   const [loadingInit, setLoadingInit] = useState(true);
@@ -463,7 +471,7 @@ export default function BusinessApply() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError('');
-    if (!name.trim()) return setError('Введите название заведения');
+    if (!name.trim()) return setError(t('apply.err.name'));
 
     setSubmitting(true);
     try {
@@ -481,14 +489,14 @@ export default function BusinessApply() {
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data.error === 'ALREADY_BUSINESS_OWNER')      return setError('У вас уже есть бизнес-аккаунт');
-        if (data.error === 'APPLICATION_ALREADY_PENDING') return setError('Заявка уже отправлена и ожидает рассмотрения');
-        return setError('Ошибка при отправке заявки. Попробуйте ещё раз.');
+        if (data.error === 'ALREADY_BUSINESS_OWNER')      return setError(t('apply.err.owner'));
+        if (data.error === 'APPLICATION_ALREADY_PENDING') return setError(t('apply.err.pending'));
+        return setError(t('apply.err.generic'));
       }
       setExisting(data.application);
       setSuccess(true);
     } catch {
-      setError('Нет соединения. Попробуйте ещё раз.');
+      setError(t('apply.err.conn'));
     } finally {
       setSubmitting(false);
     }
@@ -515,7 +523,7 @@ export default function BusinessApply() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Store size={18} color={C.geo} strokeWidth={1.75} />
           <span style={{ fontSize: 16, fontWeight: 700, color: C.t1, fontFamily: FF.body }}>
-            Стать партнёром
+            {t('apply.title')}
           </span>
         </div>
       </div>
@@ -541,7 +549,7 @@ export default function BusinessApply() {
                     fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FF.body,
                   }}
                 >
-                  Подать повторно
+                  {t('apply.reapply')}
                 </RippleButton>
               </div>
             )}
@@ -555,8 +563,7 @@ export default function BusinessApply() {
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
             }}>
               <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.6 }}>
-                Заполните форму — мы рассмотрим заявку и свяжемся с вами через Telegram.
-                После одобрения вы получите доступ к панели бизнеса и сможете создавать кампании.
+                {t('apply.intro')}
               </div>
             </div>
 
@@ -568,9 +575,9 @@ export default function BusinessApply() {
               }}>
                 <CheckCircle size={24} color={C.green} strokeWidth={1.75} style={{ flexShrink: 0, marginTop: 1 }} />
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: C.green, marginBottom: 4 }}>Заявка отправлена!</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: C.green, marginBottom: 4 }}>{t('apply.success.title')}</div>
                   <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55 }}>
-                    Мы уведомим вас в Telegram когда заявка будет рассмотрена.
+                    {t('apply.success.sub')}
                   </div>
                 </div>
               </div>
@@ -578,15 +585,15 @@ export default function BusinessApply() {
 
             <form onSubmit={handleSubmit}>
               <Field
-                label="Название заведения" required
+                label={t('apply.form.name')} required
                 value={name} onChange={setName}
-                placeholder="Например: Кафе «Уют»"
+                placeholder={t('apply.form.name_ph')}
               />
 
               {/* Location picker */}
               <div style={{ marginBottom: 18 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-                  Местоположение
+                  {t('apply.form.location')}
                 </div>
 
                 {/* Map pick button */}
@@ -606,7 +613,7 @@ export default function BusinessApply() {
                 >
                   <MapPin size={16} color={lat ? C.geo : C.t3} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                   <span style={{ fontSize: 14, fontWeight: lat ? 600 : 400, fontFamily: FF.body, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {lat ? (address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`) : 'Отметить на карте'}
+                    {lat ? (address || `${lat.toFixed(5)}, ${lng.toFixed(5)}`) : t('apply.form.pick_map')}
                   </span>
                   {lat && (
                     <span
@@ -621,22 +628,22 @@ export default function BusinessApply() {
                 {/* Manual address field below (editable, auto-filled from geocoding) */}
                 <div style={{ marginTop: 10 }}>
                   <Field
-                    label="Адрес (текстом)"
+                    label={t('apply.form.address_label')}
                     value={address}
                     onChange={setAddress}
-                    placeholder="Заполняется автоматически или вручную"
-                    hint={lat ? undefined : 'Или введите адрес вручную'}
+                    placeholder={t('apply.form.address_ph')}
+                    hint={lat ? undefined : t('apply.form.address_hint')}
                   />
                 </div>
               </div>
 
-              <SelectField label="Категория" value={category} onChange={setCategory} />
+              <SelectField label={t('apply.form.category')} value={category} onChange={setCategory} />
               <Field
-                label="Контактный телефон"
+                label={t('apply.form.phone')}
                 value={phone} onChange={setPhone}
                 placeholder="+998 90 123 45 67"
                 inputMode="tel"
-                hint="Для связи по вопросам заявки"
+                hint={t('apply.form.phone_hint')}
               />
 
               {error && (
@@ -666,8 +673,8 @@ export default function BusinessApply() {
                 }}
               >
                 {submitting
-                  ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> Отправляем…</>
-                  : 'Отправить заявку'
+                  ? <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /> {t('apply.form.submitting')}</>
+                  : t('apply.form.submit')
                 }
               </RippleButton>
             </form>

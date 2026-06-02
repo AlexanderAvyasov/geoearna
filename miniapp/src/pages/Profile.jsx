@@ -343,8 +343,23 @@ export default function Profile() {
                   width: 46, height: 46, borderRadius: '50%',
                   background: cfg.bg, border: `1px solid ${cfg.color}40`,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden',
                 }}>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: cfg.color, letterSpacing: -0.3 }}>
+                  {user?.photo_url
+                    ? <img
+                        src={user.photo_url}
+                        alt=""
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                      />
+                    : null
+                  }
+                  <span style={{
+                    fontSize: 17, fontWeight: 700, color: cfg.color, letterSpacing: -0.3,
+                    display: user?.photo_url ? 'none' : 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: '100%',
+                  }}>
                     {initials}
                   </span>
                 </div>
@@ -531,7 +546,7 @@ export default function Profile() {
                 Super Admin
               </div>
               <div style={{ fontSize: 11, color: 'rgba(167,139,250,0.6)', marginTop: 2 }}>
-                Панель управления
+                {t('profile.sa.sub')}
               </div>
             </div>
             <ChevronRight size={16} color="rgba(167,139,250,0.5)" strokeWidth={1.75} />
@@ -561,10 +576,10 @@ export default function Profile() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: C.geo, letterSpacing: -0.2 }}>
-                Стать партнёром
+                {t('profile.partner.title')}
               </div>
               <div style={{ fontSize: 11, color: C.t3, marginTop: 2 }}>
-                Подать заявку на бизнес-аккаунт
+                {t('profile.partner.sub')}
               </div>
             </div>
             <ChevronRight size={16} color={C.t3} strokeWidth={1.75} />

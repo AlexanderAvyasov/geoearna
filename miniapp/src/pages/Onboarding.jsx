@@ -38,13 +38,8 @@ const SLIDE_META = [
   { Icon: CreditCard, accent: C.gold,  accentDim: C.goldFt,  accentGl: C.goldGl,  num: 3 },
 ];
 
-// ── Key terms for the consent screen ─────────────────────────────────────────
-const KEY_POINTS = [
-  { icon: MapPin,    text: 'Вы зарабатываете GEO за посещение заведений и участие в кампаниях.' },
-  { icon: Shield,    text: 'Запрещено использовать ботов, подделывать GPS или создавать несколько аккаунтов.' },
-  { icon: Wallet,    text: 'GEO не являются ценными бумагами. Курс конвертации может меняться.' },
-  { icon: FileText,  text: 'Мы собираем данные Telegram-аккаунта для авторизации и предотвращения мошенничества.' },
-];
+// ── Key terms icons (texts resolved via t() inside component) ────────────────
+const KEY_POINT_ICONS = [MapPin, Shield, Wallet, FileText];
 
 // ── Language phase ────────────────────────────────────────────────────────────
 function LangPhase({ onDone }) {
@@ -275,7 +270,7 @@ function SlidePhase({ onDone }) {
         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
         onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        {slide < SLIDE_META.length - 1 ? t('onboard.next') : 'Далее'}
+        {t('onboard.next')}
       </button>
     </div>
   );
@@ -283,6 +278,7 @@ function SlidePhase({ onDone }) {
 
 // ── Terms phase ───────────────────────────────────────────────────────────────
 function TermsPhase({ onAccepted }) {
+  const { t } = useLanguage();
   const [legalTab,   setLegalTab]   = useState(null);
   const [checked,    setChecked]    = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -335,10 +331,10 @@ function TermsPhase({ onAccepted }) {
           <FileText size={30} color={C.geo} strokeWidth={1.75} />
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: C.t1, marginBottom: 6, letterSpacing: -0.4 }}>
-          Пользовательское соглашение
+          {t('tos.title')}
         </div>
         <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.5, maxWidth: 280, margin: '0 auto' }}>
-          Прочитайте ключевые условия перед использованием GeoEarn
+          {t('tos.subtitle')}
         </div>
       </div>
 
@@ -349,7 +345,7 @@ function TermsPhase({ onAccepted }) {
         marginBottom: 28,
         animation: 'fadeUp 0.5s 0.1s ease both',
       }}>
-        {KEY_POINTS.map(({ icon: Icon, text }, i) => (
+        {KEY_POINT_ICONS.map((Icon, i) => (
           <div key={i} style={{
             display: 'flex', alignItems: 'flex-start', gap: 14,
             background: 'rgba(255,255,255,0.03)',
@@ -365,7 +361,7 @@ function TermsPhase({ onAccepted }) {
               <Icon size={15} color={C.geo} strokeWidth={1.75} />
             </div>
             <div style={{ fontSize: 13, color: C.t2, lineHeight: 1.55, paddingTop: 7 }}>
-              {text}
+              {t(`tos.point${i + 1}`)}
             </div>
           </div>
         ))}
@@ -375,9 +371,9 @@ function TermsPhase({ onAccepted }) {
           display: 'flex', gap: 10, marginTop: 4,
         }}>
           {[
-            { label: 'Условия использования', tab: 'terms' },
-            { label: 'Политика конфиденциальности', tab: 'privacy' },
-          ].map(({ label, tab }) => (
+            { labelKey: 'tos.terms',   tab: 'terms'   },
+            { labelKey: 'tos.privacy', tab: 'privacy' },
+          ].map(({ labelKey, tab }) => (
             <button
               key={tab}
               onClick={() => setLegalTab(tab)}
@@ -392,7 +388,7 @@ function TermsPhase({ onAccepted }) {
               }}
             >
               <Eye size={13} color={C.t3} strokeWidth={1.75} />
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
@@ -425,11 +421,7 @@ function TermsPhase({ onAccepted }) {
             {checked && <Check size={13} color={C.bg} strokeWidth={3} />}
           </div>
           <span style={{ fontSize: 13, color: C.t2, lineHeight: 1.55 }}>
-            Я прочитал(а) и принимаю{' '}
-            <span style={{ color: C.geo, fontWeight: 600 }}>Условия использования</span>
-            {' '}и{' '}
-            <span style={{ color: C.geo, fontWeight: 600 }}>Политику конфиденциальности</span>
-            {' '}GeoEarn
+            {t('tos.checkbox')}
           </span>
         </button>
 
@@ -455,16 +447,16 @@ function TermsPhase({ onAccepted }) {
           onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
           {submitting
-            ? <>Сохраняем…</>
+            ? <>{t('tos.saving')}</>
             : <>
                 <Check size={17} strokeWidth={2.5} />
-                Принять и начать
+                {t('tos.accept')}
               </>
           }
         </button>
 
         <div style={{ textAlign: 'center', marginTop: 14, fontSize: 11, color: C.t3 }}>
-          Версия соглашения: {TOS_VERSION} · {new Date().getFullYear()}
+          {t('tos.version', { v: TOS_VERSION, year: new Date().getFullYear() })}
         </div>
       </div>
     </div>

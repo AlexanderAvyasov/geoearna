@@ -209,6 +209,7 @@ class AppErrorBoundary extends Component {
 
 // ─── Browser gate (shown when not running inside Telegram Mini App) ───────────
 function BrowserGate() {
+  const { t } = useLanguage();
   return (
     <div style={{
       minHeight: '100vh', background: C.bg,
@@ -233,8 +234,9 @@ function BrowserGate() {
       </div>
 
       <div style={{ fontSize: 15, color: C.t3, lineHeight: 1.7, marginBottom: 36, maxWidth: 280 }}>
-        Это приложение работает только внутри <strong style={{ color: C.t2 }}>Telegram</strong>.<br />
-        Открой бота и отсканируй QR-код прямо там.
+        {t('gate.text').split('\n').map((line, i) => (
+          <span key={i}>{line}{i === 0 && <br />}</span>
+        ))}
       </div>
 
       <a
@@ -248,11 +250,11 @@ function BrowserGate() {
           boxShadow: '0 6px 28px rgba(201,123,71,0.30)',
         }}
       >
-        Открыть @geoearnbot
+        {t('gate.btn')}
       </a>
 
       <div style={{ marginTop: 20, fontSize: 13, color: C.t3 }}>
-        или найди <strong style={{ color: C.t2 }}>@geoearnbot</strong> в поиске Telegram
+        {t('gate.hint')}
       </div>
     </div>
   );

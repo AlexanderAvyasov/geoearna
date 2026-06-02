@@ -355,7 +355,7 @@ function CampaignSheet({ campaign, userPos, onClose }) {
               fontSize: 14, fontWeight: 700, color: C.geo, cursor: 'pointer',
             }}>
               <ExternalLink size={15} color={C.geo} strokeWidth={2} />
-              Открыть в Google Картах
+              {t('home.open_maps')}
             </button>
           )}
           <button onClick={onClose} style={{
@@ -1044,7 +1044,7 @@ export default function Home() {
         {/* Nearby section */}
         <SectionHeader
           icon={MapPin}
-          label="Рядом с вами"
+          label={t('home.section.nearby')}
           count={!loading ? displayed.length : null}
           accent={C.t2}
         />
@@ -1054,7 +1054,7 @@ export default function Home() {
         {!loading && error && (
           <div style={{ textAlign: 'center', padding: '36px 0 16px' }}>
             <AlertCircle size={28} color={C.red} strokeWidth={1.5} style={{ margin: '0 auto 12px', display: 'block', opacity: 0.6 }} />
-            <div style={{ fontSize: 13, color: C.t3, marginBottom: 18 }}>Не удалось загрузить кампании</div>
+            <div style={{ fontSize: 13, color: C.t3, marginBottom: 18 }}>{t('home.load_err')}</div>
             <button onClick={loadCampaigns} style={{
               display: 'inline-flex', alignItems: 'center', gap: 7,
               background: C.geoDim, border: `1px solid ${C.geoGl}`,
@@ -1062,7 +1062,7 @@ export default function Home() {
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
             }}>
               <RefreshCw size={13} strokeWidth={2.5} />
-              Повторить
+              {t('home.retry')}
             </button>
           </div>
         )}
@@ -1079,10 +1079,10 @@ export default function Home() {
               <MapPin size={24} color={C.geo} strokeWidth={1.75} />
             </div>
             <div style={{ fontSize: 16, fontWeight: 600, color: C.t2, marginBottom: 6, letterSpacing: -0.3 }}>
-              Кампаний пока нет
+              {t('home.no_camps_yet')}
             </div>
             <div style={{ fontSize: 13, color: C.t3, lineHeight: 1.6 }}>
-              Заведения появятся, когда партнёры добавят их
+              {t('home.venues_soon')}
             </div>
           </div>
         )}

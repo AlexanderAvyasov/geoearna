@@ -488,7 +488,7 @@ export default function Checkin() {
             {streakMilestone}
           </div>
           <div style={{ fontSize: 14, fontWeight: 700, color: C.t3, textTransform: 'uppercase', letterSpacing: 2, marginTop: 4, animation: 'fadeUp 0.4s 0.3s ease both', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
-            DAYS STREAK
+            {t('checkin.milestone.streak')}
             <Flame size={13} color={C.orange} strokeWidth={2} />
           </div>
 
@@ -502,7 +502,7 @@ export default function Checkin() {
             <div style={{ fontFamily: "'Barlow Condensed', sans-serif", color: C.geo, fontWeight: 900, fontSize: 32, letterSpacing: -1 }}>
               +{(checkinData?.streakInfo?.milestoneBonus || 0).toLocaleString('ru-RU')} GEO
             </div>
-            <div style={{ color: C.t3, fontSize: 13, marginTop: 4 }}>Milestone bonus credited!</div>
+            <div style={{ color: C.t3, fontSize: 13, marginTop: 4 }}>{t('checkin.milestone.bonus')}</div>
           </div>
 
           <RippleButton
@@ -517,7 +517,7 @@ export default function Checkin() {
               animation: 'fadeUp 0.4s 0.6s ease both',
             }}
           >
-            Continue
+            {t('checkin.milestone.continue')}
           </RippleButton>
         </div>
       )}
@@ -539,14 +539,14 @@ export default function Checkin() {
           </div>
           <div style={{ fontWeight: 800, fontSize: 22, marginBottom: 10, color: C.t1 }}>
             {status === 'submitting'
-              ? (isGeohunt ? 'Активируем GeoHunt…' : isPromo ? t('checkin.submitting_promo') : t('checkin.submitting_biz'))
+              ? (isGeohunt ? t('checkin.geohunt.activating') : isPromo ? t('checkin.submitting_promo') : t('checkin.submitting_biz'))
               : t('checkin.loading')}
           </div>
           <div style={{ color: C.t3, fontSize: 15, lineHeight: 1.5 }}>
             {status === 'submitting'
               ? t('checkin.wait')
               : isGeohunt
-                ? 'Проверяем код…'
+                ? t('checkin.geohunt.checking')
                 : locLoading
                   ? t('checkin.locating')
                   : t('checkin.verifying')}
@@ -688,7 +688,7 @@ export default function Checkin() {
             </div>
 
             <div style={{ fontWeight: 900, fontSize: 28, marginBottom: 6, color: C.t1, letterSpacing: -0.5, animation: 'fadeUp 0.4s 0.2s both' }}>
-              {isGeohunt ? 'GeoHunt найден!' : isPromo ? t('checkin.success_promo') : t('checkin.success_biz')}
+              {isGeohunt ? t('checkin.geohunt.found') : isPromo ? t('checkin.success_promo') : t('checkin.success_biz')}
             </div>
             {isGeohunt && huntInfo?.huntTitle && (
               <div style={{ color: C.gold, fontSize: 14, marginBottom: 4, fontWeight: 700, animation: 'fadeUp 0.4s 0.22s both' }}>
