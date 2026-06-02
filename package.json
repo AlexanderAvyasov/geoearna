@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node start.js",
+    "build:admin": "cd admin && npm install && npm run build",
     "generate-qr": "node scripts/generate-qr.js"
   },
   "dependencies": {

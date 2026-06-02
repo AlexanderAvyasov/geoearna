@@ -3,21 +3,25 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, CreditCard, Megaphone, Gift,
   Crosshair, Building2, MessageSquare, TrendingUp, LogOut,
-  Menu, Bell, ChevronRight, MapPin,
+  Menu, Bell, ChevronRight, MapPin, ShieldAlert, Store, Target, Trophy, Settings,
 } from 'lucide-react';
 import { C, SW, SWC, TH } from '../lib/design.js';
 import { clearToken } from '../lib/api.js';
 
 const NAV = [
-  { path: '/',             label: 'Дашборд',      Icon: LayoutDashboard },
-  { path: '/users',        label: 'Пользователи', Icon: Users },
-  { path: '/withdrawals',  label: 'Выплаты',       Icon: CreditCard },
-  { path: '/campaigns',    label: 'Кампании',      Icon: Megaphone },
-  { path: '/promo',        label: 'Promo QR',      Icon: Gift },
-  { path: '/geohunts',     label: 'GeoHunts',      Icon: Crosshair },
-  { path: '/applications', label: 'Заявки',        Icon: Building2 },
-  { path: '/support',      label: 'Поддержка',     Icon: MessageSquare },
-  { path: '/economics',    label: 'Финансы',       Icon: TrendingUp },
+  { path: '/',               label: 'Дашборд',      Icon: LayoutDashboard },
+  { path: '/users',          label: 'Пользователи', Icon: Users           },
+  { path: '/withdrawals',    label: 'Выплаты',       Icon: CreditCard      },
+  { path: '/campaigns',      label: 'Кампании',      Icon: Megaphone       },
+  { path: '/promo',          label: 'Promo QR',      Icon: Gift            },
+  { path: '/geohunts',       label: 'GeoHunts',      Icon: Crosshair       },
+  { path: '/businesses',     label: 'Заведения',     Icon: Store           },
+  { path: '/applications',   label: 'Заявки',        Icon: Building2       },
+  { path: '/fraud',          label: 'Антифрод',      Icon: ShieldAlert     },
+  { path: '/gamification',   label: 'Геймификация',  Icon: Trophy          },
+  { path: '/support',        label: 'Поддержка',     Icon: MessageSquare   },
+  { path: '/economics',      label: 'Финансы',       Icon: TrendingUp      },
+  { path: '/system',         label: 'Система',       Icon: Settings        },
 ];
 
 export default function Layout({ children }) {
@@ -130,7 +134,7 @@ export default function Layout({ children }) {
             style={{
               background: 'none', border: 'none',
               color: C.t2, display: 'flex', padding: 6,
-              borderRadius: 6, transition: 'background 0.14s',
+              borderRadius: 6, transition: 'background 0.14s', cursor: 'pointer',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}

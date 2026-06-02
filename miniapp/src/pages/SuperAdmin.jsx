@@ -7,7 +7,7 @@ import {
   RefreshCw, Search, Zap, Activity, BarChart3, DollarSign,
   ChevronRight, Plus, Minus, Ban, UserCheck, PauseCircle, PlayCircle,
   ArrowDownToLine, Coins, Star, Trophy, Target, Trash2, Pencil, Check, X, QrCode, Send,
-  MessageCircle, AlertCircle, MessageCircleReply, Gift,
+  MessageCircle, AlertCircle, MessageCircleReply, Gift, ExternalLink,
 } from 'lucide-react';
 import { API_BASE, waitForInitData, apiFetch } from '../lib/api';
 import { formatGeo, formatUzs, geoToUzs } from '../lib/geo';
@@ -3896,7 +3896,18 @@ export default function SuperAdmin() {
           <Shield size={12} color={SA_COLOR} /> Super Admin · God View
         </div>
         <div style={{ fontSize: 28, fontWeight: 900, color: C.t1, letterSpacing: -0.5, marginBottom: 4 }}>GeoEarn Platform</div>
-        <div style={{ fontSize: 13, color: C.t3 }}>Полный доступ</div>
+        <div style={{ fontSize: 13, color: C.t3, marginBottom: 12 }}>Полный доступ</div>
+        <button
+          onClick={() => window.open(import.meta.env.VITE_ADMIN_URL || `${import.meta.env.VITE_API_BASE || ''}/admin`, '_blank', 'noopener')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 10,
+            background: `${SA_COLOR}18`, border: `1px solid ${SA_COLOR}40`, color: SA_COLOR,
+            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          <ExternalLink size={13} /> Открыть Web Версию
+        </button>
       </div>
 
       {/* Tab bar */}

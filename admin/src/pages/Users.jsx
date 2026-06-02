@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Ban, DollarSign, X, ChevronDown, Loader2, User } from 'lucide-react';
+import { Search, Ban, UserCheck, X, ChevronDown, Loader2 } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { C, fmt, fmtDate } from '../lib/design.js';
 
@@ -31,6 +31,12 @@ function UserModal({ user, onClose, onRefresh }) {
     setBusy(true);
     await api.post(`/api/superadmin/users/${user.id}/ban`, { reason: '' });
     setBusy(false); setMsg('Пользователь заблокирован'); onRefresh();
+  }
+
+  async function unban() {
+    setBusy(true);
+    await api.post(`/api/superadmin/users/${user.id}/unban`, {});
+    setBusy(false); setMsg('Пользователь разблокирован'); onRefresh();
   }
 
   async function adjust() {
@@ -93,10 +99,19 @@ function UserModal({ user, onClose, onRefresh }) {
           </button>
         </div>
 
-        <button onClick={ban} disabled={busy}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: C.redD, border: `1px solid ${C.red}30`, borderRadius: 10, color: C.red, fontSize: 13, fontWeight: 600 }}>
-          <Ban size={15} /> Заблокировать
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {user.banned_at ? (
+            <button onClick={unban} disabled={busy}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: C.greenD, border: `1px solid ${C.green}30`, borderRadius: 10, color: C.green, fontSize: 13, fontWeight: 600 }}>
+              <UserCheck size={15} /> Разблокировать
+            </button>
+          ) : (
+            <button onClick={ban} disabled={busy}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: C.redD, border: `1px solid ${C.red}30`, borderRadius: 10, color: C.red, fontSize: 13, fontWeight: 600 }}>
+              <Ban size={15} /> Заблокировать
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
@@ -164,7 +179,8 @@ export default function Users() {
                     <div style={{ width: 30, height: 30, borderRadius: 8, background: C.accentD, border: `1px solid ${C.accentGl}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.accent }}>
                       {(u.username || '?')[0]?.toUpperCase()}
                     </div>
-                    <span style={{ fontWeight: 600, color: C.t1 }}>{u.username ? `@${u.username}` : '—'}</span>
+                    <span style={{ fontWeight: 600, color: u.banned_at ? C.red : C.t1 }}>{u.username ? `@${u.username}` : '—'}</span>
+                  {u.banned_at && <span style={{ fontSize: 10, fontWeight: 700, color: C.red, background: C.redD, borderRadius: 4, padding: '1px 5px', border: `1px solid ${C.red}25` }}>БАН</span>}
                   </div>
                 </td>
                 <td style={{ padding: '12px 16px', color: C.t2 }}>{u.telegram_id}</td>

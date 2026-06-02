@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const rateLimit = require('express-rate-limit');
 const { webhookCallback } = require('grammy');
 const checkinRoutes = require('./routes/checkin');
@@ -55,7 +56,7 @@ app.use(cors({
     // All other origins (including absent) — reflect back or allow freely.
     cb(null, true);
   },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'initData', 'initdata', 'x-operator-secret', 'Authorization'],
 }));
 
@@ -170,6 +171,15 @@ app.use(geohuntRoutes);
 app.use(sendQrRoutes);
 app.use(supportRoutes);
 app.use(adminAuthRoutes);
+
+// ── Web Admin SPA ─────────────────────────────────────────────────────────────
+// Serve the built admin panel at /admin/*
+// Run `cd admin && npm run build` before deploying to populate admin/dist.
+const adminDist = path.join(__dirname, '..', 'admin', 'dist');
+app.use('/admin', express.static(adminDist));
+app.get('/admin/*', (req, res) => {
+  res.sendFile(path.join(adminDist, 'index.html'));
+});
 
 app.use((req, res) => {
   res.status(404).json({ error: 'NOT_FOUND' });

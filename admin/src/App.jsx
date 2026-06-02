@@ -12,6 +12,10 @@ import GeoHunts      from './pages/GeoHunts.jsx';
 import BusinessApps  from './pages/BusinessApps.jsx';
 import Support       from './pages/Support.jsx';
 import Economics     from './pages/Economics.jsx';
+import Fraud         from './pages/Fraud.jsx';
+import Businesses    from './pages/Businesses.jsx';
+import Gamification  from './pages/Gamification.jsx';
+import System        from './pages/System.jsx';
 
 function Private({ children }) {
   return isLoggedIn() ? children : <Navigate to="/login" replace />;
@@ -19,23 +23,27 @@ function Private({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <Private>
             <Layout>
               <Routes>
-                <Route path="/"             element={<Dashboard />} />
-                <Route path="/users"        element={<Users />} />
-                <Route path="/withdrawals"  element={<Withdrawals />} />
-                <Route path="/campaigns"    element={<Campaigns />} />
-                <Route path="/promo"        element={<PromoQR />} />
-                <Route path="/geohunts"     element={<GeoHunts />} />
-                <Route path="/applications" element={<BusinessApps />} />
-                <Route path="/support"      element={<Support />} />
-                <Route path="/economics"    element={<Economics />} />
-                <Route path="*"             element={<Navigate to="/" />} />
+                <Route path="/"               element={<Dashboard />} />
+                <Route path="/users"          element={<Users />} />
+                <Route path="/withdrawals"    element={<Withdrawals />} />
+                <Route path="/campaigns"      element={<Campaigns />} />
+                <Route path="/promo"          element={<PromoQR />} />
+                <Route path="/geohunts"       element={<GeoHunts />} />
+                <Route path="/applications"   element={<BusinessApps />} />
+                <Route path="/support"        element={<Support />} />
+                <Route path="/economics"      element={<Economics />} />
+                <Route path="/fraud"          element={<Fraud />} />
+                <Route path="/businesses"     element={<Businesses />} />
+                <Route path="/gamification"   element={<Gamification />} />
+                <Route path="/system"         element={<System />} />
+                <Route path="*"               element={<Navigate to="/" />} />
               </Routes>
             </Layout>
           </Private>
