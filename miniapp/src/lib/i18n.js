@@ -539,6 +539,25 @@ const ru = {
   'home.open_maps':              'Открыть в Google Картах',
   'home.load_err':               'Не удалось загрузить кампании',
   'home.retry':                  'Повторить',
+
+  'home.platform_promo':     'Акция платформы',
+
+  // GeoHunt sheet
+  'home.hunt.reward_label':  'Награда за код',
+  'home.hunt.progress':      'Прогресс',
+  'home.hunt.remaining':     '{n} осталось',
+  'home.hunt.all_found':     'Все найдены',
+  'home.hunt.found_of':      '{found} из {total} найдено · {pct}%',
+  'home.hunt.scanned_of':    '{found}/{total} отсканировано · {remaining} осталось',
+  'home.hunt.find_on_map':   'Найти QR-коды на карте',
+  'home.geo_per_code':       'GEO/шт',
+
+  // Promo QR sheet
+  'home.promo.availability': 'Доступность',
+  'home.promo.available':    '{n} доступно',
+  'home.promo.exhausted':    'Закончилось',
+  'home.promo.claimed_of':   '{claimed} из {total} забрано',
+  'home.promo.get_reward':   'Получить награду',
 };
 
 const uz = {
@@ -1048,6 +1067,25 @@ const uz = {
   'home.open_maps':              "Google Xaritada ochish",
   'home.load_err':               "Kampaniyalarni yuklab bo'lmadi",
   'home.retry':                  "Qayta urinish",
+
+  'home.platform_promo':     'Platforma aksiyasi',
+
+  // GeoHunt sheet
+  'home.hunt.reward_label':  'Kod uchun mukofot',
+  'home.hunt.progress':      'Jarayon',
+  'home.hunt.remaining':     '{n} qoldi',
+  'home.hunt.all_found':     'Barchasi topildi',
+  'home.hunt.found_of':      '{found}/{total} topildi · {pct}%',
+  'home.hunt.scanned_of':    '{found}/{total} skanerlandi · {remaining} qoldi',
+  'home.hunt.find_on_map':   "Xaritada QR-kodlarni topish",
+  'home.geo_per_code':       'GEO/ta',
+
+  // Promo QR sheet
+  'home.promo.availability': 'Mavjudlik',
+  'home.promo.available':    '{n} mavjud',
+  'home.promo.exhausted':    'Tugadi',
+  'home.promo.claimed_of':   '{claimed}/{total} olindi',
+  'home.promo.get_reward':   'Mukofot olish',
 };
 
 const en = {
@@ -1557,6 +1595,25 @@ const en = {
   'home.open_maps':              'Open in Google Maps',
   'home.load_err':               'Failed to load campaigns',
   'home.retry':                  'Retry',
+
+  'home.platform_promo':     'Platform offer',
+
+  // GeoHunt sheet
+  'home.hunt.reward_label':  'Reward per code',
+  'home.hunt.progress':      'Progress',
+  'home.hunt.remaining':     '{n} remaining',
+  'home.hunt.all_found':     'All found',
+  'home.hunt.found_of':      '{found} of {total} found · {pct}%',
+  'home.hunt.scanned_of':    '{found}/{total} scanned · {remaining} remaining',
+  'home.hunt.find_on_map':   'Find QR codes on map',
+  'home.geo_per_code':       'GEO/ea',
+
+  // Promo QR sheet
+  'home.promo.availability': 'Availability',
+  'home.promo.available':    '{n} available',
+  'home.promo.exhausted':    'Exhausted',
+  'home.promo.claimed_of':   '{claimed} of {total} claimed',
+  'home.promo.get_reward':   'Get reward',
 };
 
 export const translations = { ru, uz, en };

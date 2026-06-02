@@ -248,6 +248,7 @@ function SkeletonRow() {
 // ── Campaign detail sheet ─────────────────────────────────────────────────────
 function GeoHuntSheet({ hunt, onClose }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [pressed, setPressed] = useState(false);
   const remaining = hunt.total_codes - hunt.claimed_codes;
   const pct = hunt.total_codes > 0 ? Math.round((hunt.claimed_codes / hunt.total_codes) * 100) : 0;
@@ -288,7 +289,7 @@ function GeoHuntSheet({ hunt, onClose }) {
             border: `1px solid ${C.goldGl}`,
             borderRadius: 20, padding: '18px', textAlign: 'center', marginBottom: 12,
           }}>
-            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Награда за код</div>
+            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{t('home.hunt.reward_label')}</div>
             <div style={{ fontSize: 44, fontWeight: 600, color: C.gold, lineHeight: 1, fontFamily: FF.display }}>
               +{formatGeo(hunt.reward_per_code)}
               <span style={{ fontSize: 16, fontWeight: 600, color: C.t3, marginLeft: 8 }}>GEO</span>
@@ -297,15 +298,15 @@ function GeoHuntSheet({ hunt, onClose }) {
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: `0.5px solid ${C.b1}`, borderRadius: 16, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>Прогресс</div>
+              <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{t('home.hunt.progress')}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: remaining > 0 ? C.gold : C.t3 }}>
-                {remaining > 0 ? `${remaining} осталось` : 'Все найдены'}
+                {remaining > 0 ? t('home.hunt.remaining', { n: remaining }) : t('home.hunt.all_found')}
               </div>
             </div>
             <div style={{ height: 6, background: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
               <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${C.gold},${C.geo})`, borderRadius: 3, transition: `width 0.5s ${EASE_OUT}` }} />
             </div>
-            <div style={{ fontSize: 12, color: C.t3, marginTop: 8 }}>{hunt.claimed_codes} из {hunt.total_codes} найдено · {pct}%</div>
+            <div style={{ fontSize: 12, color: C.t3, marginTop: 8 }}>{t('home.hunt.found_of', { found: hunt.claimed_codes, total: hunt.total_codes, pct })}</div>
           </div>
 
           <button
@@ -328,7 +329,7 @@ function GeoHuntSheet({ hunt, onClose }) {
             }}
           >
             <MapPin size={15} color={C.gold} strokeWidth={2} />
-            Найти QR-коды на карте
+            {t('home.hunt.find_on_map')}
           </button>
           <button onClick={onClose} style={{
             width: '100%', background: 'rgba(255,255,255,0.04)',
@@ -336,7 +337,7 @@ function GeoHuntSheet({ hunt, onClose }) {
             fontSize: 14, fontWeight: 600, color: C.t2, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}>
-            Закрыть
+            {t('home.close')}
           </button>
         </div>
       </div>
@@ -346,6 +347,7 @@ function GeoHuntSheet({ hunt, onClose }) {
 
 function PromoSheet({ promo, userPos, onClose }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [pressed, setPressed] = useState(false);
   const rr = PROMO_RARITY[promo.rarity] || PROMO_RARITY.common;
   const dist = userPos && promo.lat && promo.lng
@@ -394,7 +396,7 @@ function PromoSheet({ promo, userPos, onClose }) {
             border: `1px solid ${rr.color}28`,
             borderRadius: 20, padding: '18px', textAlign: 'center', marginBottom: 12,
           }}>
-            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Награда</div>
+            <div style={{ fontSize: 10, color: C.t3, marginBottom: 8, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>{t('home.reward')}</div>
             <div style={{ fontSize: 44, fontWeight: 600, color: rr.color, lineHeight: 1, fontFamily: FF.display }}>
               +{formatGeo(promo.reward_amount)}
               <span style={{ fontSize: 16, fontWeight: 600, color: C.t3, marginLeft: 8 }}>GEO</span>
@@ -403,15 +405,15 @@ function PromoSheet({ promo, userPos, onClose }) {
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: `0.5px solid ${C.b1}`, borderRadius: 16, padding: '14px 16px', marginBottom: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>Доступность</div>
+              <div style={{ fontSize: 10, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>{t('home.promo.availability')}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: available > 0 ? C.green : C.red }}>
-                {available > 0 ? `${available} доступно` : 'Закончилось'}
+                {available > 0 ? t('home.promo.available', { n: available }) : t('home.promo.exhausted')}
               </div>
             </div>
             <div style={{ height: 6, background: 'rgba(255,255,255,0.07)', borderRadius: 3 }}>
               <div style={{ height: '100%', width: `${pct}%`, background: rr.color, borderRadius: 3, transition: `width 0.5s ${EASE_OUT}` }} />
             </div>
-            <div style={{ fontSize: 12, color: C.t3, marginTop: 8 }}>{promo.claims_count} из {promo.max_claims} забрано</div>
+            <div style={{ fontSize: 12, color: C.t3, marginTop: 8 }}>{t('home.promo.claimed_of', { claimed: promo.claims_count, total: promo.max_claims })}</div>
           </div>
 
           {available > 0 && (
@@ -435,7 +437,7 @@ function PromoSheet({ promo, userPos, onClose }) {
               }}
             >
               <Gift size={15} strokeWidth={2} />
-              Получить награду
+              {t('home.promo.get_reward')}
             </button>
           )}
           {promo.lat && promo.lng && (
@@ -457,7 +459,7 @@ function PromoSheet({ promo, userPos, onClose }) {
             fontSize: 14, fontWeight: 600, color: C.t2, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}>
-            Закрыть
+            {t('home.close')}
           </button>
         </div>
       </div>
@@ -942,6 +944,7 @@ export default function Home() {
   const [selected,       setSelected]       = useState(null);
   const [userPos,        setUserPos]        = useState(null);
   const [pressedSort,    setPressedSort]    = useState(false);
+  const [distanceActive, setDistanceActive] = useState(false);
   const [pressedMap,     setPressedMap]     = useState(false);
   const [logoImgErr,     setLogoImgErr]     = useState(false);
   const [featFilter,     setFeatFilter]     = useState('all');
@@ -1021,18 +1024,18 @@ export default function Home() {
   }, []);
 
   const displayed = (() => {
-    if (!userPos) return campaigns;
+    if (!distanceActive || !userPos) return campaigns;
     return [...campaigns]
       .map(c => ({ ...c, dist: c.lat && c.lng ? haversineMeters(userPos, { lat: +c.lat, lng: +c.lng }) : Infinity }))
       .sort((a, b) => a.dist - b.dist);
   })();
 
   const sortedPromoQrs = useMemo(() => {
-    if (!userPos) return promoQrs;
+    if (!distanceActive || !userPos) return promoQrs;
     return [...promoQrs]
       .map(p => ({ ...p, dist: p.lat && p.lng ? haversineMeters(userPos, { lat: +p.lat, lng: +p.lng }) : Infinity }))
       .sort((a, b) => a.dist - b.dist);
-  }, [promoQrs, userPos]);
+  }, [promoQrs, userPos, distanceActive]);
 
   const featuredCount = platformPromos.length + geohunts.length + sortedPromoQrs.length;
   const hasContent    = displayed.length + featuredCount > 0;
@@ -1156,7 +1159,7 @@ export default function Home() {
             pointerEvents: 'none', zIndex: 0,
           }} />
           <button
-            onClick={() => getGeoPos().then(p => setUserPos(p)).catch(() => {})}
+            onClick={() => { setDistanceActive(true); getGeoPos().then(p => setUserPos(p)).catch(() => {}); }}
             onTouchStart={() => setPressedSort(true)}
             onTouchEnd={() => setPressedSort(false)}
             onMouseDown={() => setPressedSort(true)}
@@ -1168,7 +1171,7 @@ export default function Home() {
               background: 'linear-gradient(135deg,#D48A52 0%,#C97B47 55%,#B36835 100%)',
               color: '#0A0E14', border: 'none', borderRadius: 16, height: 52,
               fontSize: 14, fontWeight: 800, cursor: 'pointer', letterSpacing: -0.2,
-              boxShadow: userPos
+              boxShadow: distanceActive
                 ? '0 3px 18px rgba(201,123,71,0.45), 0 1px 0 rgba(255,255,255,0.20) inset'
                 : '0 3px 18px rgba(201,123,71,0.25), 0 1px 0 rgba(255,255,255,0.14) inset',
               WebkitTapHighlightColor: 'transparent',
@@ -1178,7 +1181,7 @@ export default function Home() {
                 : `transform 180ms ${EASE_SPR}`,
             }}
           >
-            {userPos
+            {distanceActive
               ? <CheckCircle size={16} strokeWidth={2.5} />
               : <Compass size={16} strokeWidth={2.5} />}
             {t('home.sorted') || 'По расстоянию'}
@@ -1265,10 +1268,10 @@ export default function Home() {
                   iconColor={C.gold} iconBg={C.goldFt} iconBorder={C.goldGl}
                   gradStart="rgba(232,192,104,0.10)"
                   title={h.title}
-                  subtitle={`${h.claimed_codes}/${h.total_codes} отсканировано · ${h.total_codes - h.claimed_codes} осталось`}
+                  subtitle={t('home.hunt.scanned_of', { found: h.claimed_codes, total: h.total_codes, remaining: h.total_codes - h.claimed_codes })}
                   badge="GEOHUNT"
                   rewardAmount={h.reward_per_code}
-                  rewardLabel="GEO/шт"
+                  rewardLabel={t('home.geo_per_code')}
                   rewardColor={C.gold}
                   onTap={() => setSelectedHunt(h)}
                 />
@@ -1280,7 +1283,7 @@ export default function Home() {
                   iconColor={C.green} iconBg={C.greenFt} iconBorder={C.greenGl}
                   gradStart="rgba(143,174,123,0.10)"
                   title={p.title}
-                  subtitle={p.channel_username || 'Акция платформы'}
+                  subtitle={p.channel_username || t('home.platform_promo')}
                   badge="PLATFORM"
                   rewardAmount={p.reward_amount}
                   rewardColor={C.green}
@@ -1297,9 +1300,11 @@ export default function Home() {
                     iconColor={rr.color} iconBg={`${rr.color}18`} iconBorder={`${rr.color}30`}
                     gradStart={`${rr.color}0E`}
                     title={p.title}
-                    subtitle={p.dist != null
-                      ? `${formatDistance(p.dist)} · ${p.max_claims - p.claims_count > 0 ? `${p.max_claims - p.claims_count} доступно` : 'Закончилось'}`
-                      : (p.max_claims - p.claims_count > 0 ? `${p.max_claims - p.claims_count} доступно` : 'Закончилось')}
+                    subtitle={(() => {
+                    const avail = p.max_claims - p.claims_count;
+                    const availStr = avail > 0 ? t('home.promo.available', { n: avail }) : t('home.promo.exhausted');
+                    return p.dist != null ? `${formatDistance(p.dist)} · ${availStr}` : availStr;
+                  })()}
                     badge={rr.label}
                     rewardAmount={p.reward_amount}
                     rewardColor={rr.color}

@@ -12,7 +12,7 @@ router.get('/api/promos/active', async (_req, res) => {
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('promo_campaigns')
-    .select('id, title, description, reward_amount, rarity, max_claims, claims_count, expires_at, lat, lng')
+    .select('id, title, description, reward_amount, rarity, max_claims, claims_count, expires_at, lat, lng, token')
     .eq('active', true)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order('created_at', { ascending: false });
