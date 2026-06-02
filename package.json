@@ -6,7 +6,10 @@
   "type": "commonjs",
   "scripts": {
     "start": "node start.js",
-    "generate-qr": "node scripts/generate-qr.js"
+    "build:admin": "cd admin && npm install && npm run build",
+    "generate-qr": "node scripts/generate-qr.js",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.38.0",
@@ -18,6 +21,7 @@
     "qrcode": "^1.5.1"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "wrangler": "^4.97.0"
   }
 }

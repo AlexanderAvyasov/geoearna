@@ -1699,8 +1699,9 @@ export default function Admin() {
   const loadBusiness = useCallback(() => {
     apiFetch('/api/admin/business')
       .then(async r => {
-        if (r.status === 404 || r.status === 403) { setNotOwner(true); return; }
+        if (!r.ok) { setNotOwner(true); return; }
         const d = await r.json();
+        if (!d.business) { setNotOwner(true); return; }
         setBusiness(d.business);
       })
       .catch(() => setNotOwner(true))
@@ -1780,6 +1781,8 @@ export default function Admin() {
       </div>
     );
   }
+
+  if (!business) return null;
 
   return (
     <div style={{ background: C.bg, minHeight: '100vh', animation: 'pageEnter 0.4s ease both' }}>
