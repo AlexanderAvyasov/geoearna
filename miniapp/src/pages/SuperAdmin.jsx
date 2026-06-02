@@ -3038,6 +3038,161 @@ function GeoHuntCodesSheet({ hunt, onClose }) {
   );
 }
 
+// ─── Retention Tab ────────────────────────────────────────────────────────────
+
+const RARITY_COLOR = { common: '#6B7280', rare: '#3B82F6', epic: '#A855F7', legendary: '#F59E0B' };
+
+function RetentionRing({ rate, color }) {
+  const r = 28, circ = 2 * Math.PI * r;
+  const filled = circ * (rate / 100);
+  return (
+    <svg width={72} height={72} style={{ transform: 'rotate(-90deg)' }}>
+      <circle cx={36} cy={36} r={r} fill="none" stroke={`${color}22`} strokeWidth={7} />
+      <circle cx={36} cy={36} r={r} fill="none" stroke={color} strokeWidth={7}
+        strokeDasharray={`${filled} ${circ - filled}`} strokeLinecap="round"
+        style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+    </svg>
+  );
+}
+
+function RetentionCard({ label, rate, color, total, returning, extra }) {
+  return (
+    <div style={{ ...cardBase, border: `1px solid ${color}30`, padding: '16px', borderRadius: 16, marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+          <RetentionRing rate={rate} color={color} />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontWeight: 900, fontSize: 16, color }}>{rate}%</span>
+          </div>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 800, fontSize: 15, color: C.t1, marginBottom: 6 }}>{label}</div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.t1 }}>{total}</div>
+              <div style={{ fontSize: 10, color: C.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Всего юзеров</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color }}>{returning}</div>
+              <div style={{ fontSize: 10, color: C.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>Вернулись</div>
+            </div>
+            {extra && <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.t2 }}>{extra.value}</div>
+              <div style={{ fontSize: 10, color: C.t3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>{extra.label}</div>
+            </div>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RetentionTab() {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  function load() {
+    setLoading(true);
+    saFetch('/api/superadmin/retention')
+      .then(d => setData(d))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }
+  useEffect(load, []);
+
+  if (loading) return <div style={{ padding: 32, textAlign: 'center' }}><Loader2 size={28} color={SA_COLOR} style={{ animation: 'spin 1s linear infinite' }} /></div>;
+  if (!data) return <div style={{ padding: 32, textAlign: 'center', color: C.t3 }}>Нет данных</div>;
+
+  const { promoQr, geoHunt } = data;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: C.t1 }}>Удержание пользователей</div>
+        <button onClick={load} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+          <RefreshCw size={15} color={C.t3} />
+        </button>
+      </div>
+
+      <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>Promo QR</div>
+      <RetentionCard
+        label="Повторные посетители промо"
+        rate={promoQr.retentionRate}
+        color="#F59E0B"
+        total={promoQr.totalUsers}
+        returning={promoQr.multiPromoUsers}
+        extra={{ value: promoQr.multiClaimUsers, label: '≥2 клейма' }}
+      />
+
+      {promoQr.perPromo.length > 0 && (
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
+          {promoQr.perPromo.map((p, i) => (
+            <div key={p.id} style={{
+              padding: '11px 14px',
+              borderBottom: i < promoQr.perPromo.length - 1 ? `1px solid ${C.b0}` : 'none',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 9, fontWeight: 700, color: RARITY_COLOR[p.rarity] || C.t3, textTransform: 'uppercase', letterSpacing: 0.5, background: `${RARITY_COLOR[p.rarity] || C.t3}18`, padding: '2px 6px', borderRadius: 4 }}>{p.rarity}</span>
+                  {!p.active && <span style={{ fontSize: 9, fontWeight: 700, color: C.t3, background: `${C.t3}18`, padding: '2px 6px', borderRadius: 4 }}>неакт.</span>}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: C.t1 }}>{p.uniqueUsers} <span style={{ color: C.t3, fontWeight: 400 }}>юз.</span></div>
+                <div style={{ fontSize: 11, color: p.returningUsers > 0 ? '#F59E0B' : C.t3 }}>
+                  {p.returningUsers} повт. · ×{p.avgClaims}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: C.t3, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>GeoHunt</div>
+      <RetentionCard
+        label="Участники ≥2 охот"
+        rate={geoHunt.retentionRate}
+        color="#10B981"
+        total={geoHunt.totalUsers}
+        returning={geoHunt.multiHuntUsers}
+        extra={{ value: geoHunt.avgCodesPerUser, label: 'кодов / юзер' }}
+      />
+
+      {geoHunt.perHunt.length > 0 && (
+        <div style={{ ...cardBase, border: `1px solid ${C.b1}`, borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
+          {geoHunt.perHunt.map((h, i) => {
+            const pct = h.totalCodes > 0 ? Math.round((h.claimedCodes / h.totalCodes) * 100) : 0;
+            return (
+              <div key={h.id} style={{
+                padding: '11px 14px',
+                borderBottom: i < geoHunt.perHunt.length - 1 ? `1px solid ${C.b0}` : 'none',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    {!h.active && <span style={{ fontSize: 9, fontWeight: 700, color: C.t3, background: `${C.t3}18`, padding: '2px 6px', borderRadius: 4 }}>неакт.</span>}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.t1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: 4 }}>{h.title}</div>
+                  <div style={{ height: 4, background: `${C.b1}`, borderRadius: 2 }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: '#10B981', borderRadius: 2, transition: 'width 0.4s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: C.t3, marginTop: 3 }}>{h.claimedCodes}/{h.totalCodes} кодов · {pct}%</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: C.t1 }}>{h.uniqueUsers} <span style={{ color: C.t3, fontWeight: 400 }}>юз.</span></div>
+                  <div style={{ fontSize: 11, color: C.t3 }}>×{h.avgCodes} кодов</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GeoHuntTab() {
   const [hunts,      setHunts]      = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -3851,6 +4006,7 @@ const TABS = [
   { key: 'gamification',  label: 'Геймиф.',    Icon: Trophy          },
   { key: 'promo',         label: 'Promo QR',   Icon: QrCode          },
   { key: 'geohunt',       label: 'GeoHunt',    Icon: Target          },
+  { key: 'retention',     label: 'Удержание',  Icon: TrendingUp      },
   { key: 'support',       label: 'Поддержка',  Icon: MessageCircle   },
   { key: 'system',        label: 'Система',    Icon: Settings        },
 ];
@@ -3937,6 +4093,7 @@ export default function SuperAdmin() {
         {tab === 'support'      && <SupportTab />}
         {tab === 'system'       && <SystemTab />}
         {tab === 'applications' && <ApplicationsTab />}
+        {tab === 'retention'    && <RetentionTab />}
       </div>
     </div>
   );

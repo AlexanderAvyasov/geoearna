@@ -1500,4 +1500,101 @@ router.post('/api/superadmin/business-applications/:id/reject', ...SA, async (re
   }
 });
 
+// ── Retention metrics ────────────────────────────────────────────────────────
+
+router.get('/api/superadmin/retention', ...SA, async (req, res) => {
+  try {
+    const [
+      { data: promoClaims },
+      { data: promos },
+      { data: ghCodes },
+      { data: hunts },
+    ] = await Promise.all([
+      supabase.from('promo_claims').select('user_id, promo_id'),
+      supabase.from('promo_campaigns').select('id, title, rarity, claims_count, max_claims, active'),
+      supabase.from('geohunt_codes').select('used_by, hunt_id').not('used_by', 'is', null),
+      supabase.from('geohunts').select('id, title, total_codes, claimed_codes, active'),
+    ]);
+
+    // Promo QR: per-user aggregation
+    const promoByUser = {};
+    for (const c of promoClaims || []) {
+      if (!promoByUser[c.user_id]) promoByUser[c.user_id] = { total: 0, promos: new Set() };
+      promoByUser[c.user_id].total++;
+      promoByUser[c.user_id].promos.add(c.promo_id);
+    }
+    const promoTotalUsers   = Object.keys(promoByUser).length;
+    const promoMultiPromo   = Object.values(promoByUser).filter(u => u.promos.size >= 2).length;
+    const promoMultiClaim   = Object.values(promoByUser).filter(u => u.total >= 2).length;
+
+    // Per-promo stats
+    const byPromo = {};
+    for (const c of promoClaims || []) {
+      if (!byPromo[c.promo_id]) byPromo[c.promo_id] = {};
+      byPromo[c.promo_id][c.user_id] = (byPromo[c.promo_id][c.user_id] || 0) + 1;
+    }
+    const promoStats = (promos || []).map(p => {
+      const userMap       = byPromo[p.id] || {};
+      const uniqueUsers   = Object.keys(userMap).length;
+      const returningUsers = Object.values(userMap).filter(n => n >= 2).length;
+      return {
+        id: p.id, title: p.title, rarity: p.rarity,
+        claims: p.claims_count, maxClaims: p.max_claims, active: p.active,
+        uniqueUsers, returningUsers,
+        avgClaims: uniqueUsers > 0 ? (p.claims_count / uniqueUsers).toFixed(1) : '0',
+      };
+    });
+
+    // GeoHunt: per-user aggregation
+    const ghByUser = {};
+    for (const c of ghCodes || []) {
+      if (!ghByUser[c.used_by]) ghByUser[c.used_by] = { hunts: new Set(), codes: 0 };
+      ghByUser[c.used_by].hunts.add(c.hunt_id);
+      ghByUser[c.used_by].codes++;
+    }
+    const ghTotalUsers    = Object.keys(ghByUser).length;
+    const ghMultiHunt     = Object.values(ghByUser).filter(u => u.hunts.size >= 2).length;
+    const ghAvgCodes      = ghTotalUsers > 0
+      ? (Object.values(ghByUser).reduce((s, u) => s + u.codes, 0) / ghTotalUsers).toFixed(1)
+      : '0';
+
+    // Per-hunt stats
+    const byHunt = {};
+    for (const c of ghCodes || []) {
+      if (!byHunt[c.hunt_id]) byHunt[c.hunt_id] = {};
+      byHunt[c.hunt_id][c.used_by] = (byHunt[c.hunt_id][c.used_by] || 0) + 1;
+    }
+    const huntStats = (hunts || []).map(h => {
+      const userMap     = byHunt[h.id] || {};
+      const uniqueUsers = Object.keys(userMap).length;
+      const avgCodes    = uniqueUsers > 0 ? (h.claimed_codes / uniqueUsers).toFixed(1) : '0';
+      return {
+        id: h.id, title: h.title, active: h.active,
+        totalCodes: h.total_codes, claimedCodes: h.claimed_codes,
+        uniqueUsers, avgCodes,
+      };
+    });
+
+    return res.json({
+      promoQr: {
+        totalUsers:      promoTotalUsers,
+        multiPromoUsers: promoMultiPromo,   // scanned ≥2 different promos
+        multiClaimUsers: promoMultiClaim,   // claimed same or any promo ≥2 times
+        retentionRate:   promoTotalUsers > 0 ? Math.round((promoMultiPromo / promoTotalUsers) * 100) : 0,
+        perPromo:        promoStats,
+      },
+      geoHunt: {
+        totalUsers:    ghTotalUsers,
+        multiHuntUsers: ghMultiHunt,        // hunted in ≥2 different hunts
+        avgCodesPerUser: ghAvgCodes,
+        retentionRate: ghTotalUsers > 0 ? Math.round((ghMultiHunt / ghTotalUsers) * 100) : 0,
+        perHunt:       huntStats,
+      },
+    });
+  } catch (err) {
+    console.error('GET /api/superadmin/retention', err);
+    return res.status(500).json({ error: 'INTERNAL_ERROR' });
+  }
+});
+
 module.exports = router;
