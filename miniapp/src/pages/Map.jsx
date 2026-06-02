@@ -257,7 +257,7 @@ export default function MapPage() {
     map.setView([userPos.lat, userPos.lng], 14);
   }, [userPos, mapReady]);
 
-  // Campaign markers
+  // Campaign + Promo QR markers
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -294,7 +294,38 @@ export default function MapPage() {
       marker.on('click', () => setSelected(c));
       markersRef.current.push(marker);
     });
-  }, [campaigns, mapReady]);
+
+    const RARITY_COLORS = { common: '#9CA3AF', rare: '#60A5FA', epic: '#C084FC', legendary: '#FBBF24' };
+    promoQrs.forEach((p, idx) => {
+      if (!p.lat || !p.lng) return;
+      const delay = (campaigns.length + idx) * 60;
+      const color = RARITY_COLORS[p.rarity] || RARITY_COLORS.common;
+      const icon = L.divIcon({
+        html: `<div style="
+          position:relative;
+          display:flex;align-items:center;justify-content:center;
+          animation:markerPop 0.4s cubic-bezier(0.22,1,0.36,1) ${delay}ms both;
+        ">
+          <div style="position:absolute;width:44px;height:44px;border-radius:50%;border:1px solid ${color}60;animation:radarPing 2.5s ease-out ${delay}ms infinite;pointer-events:none;"></div>
+          <div style="
+            background:rgba(8,16,24,0.92);
+            color:${color};padding:5px 10px;border-radius:8px;
+            font-size:12px;font-weight:700;white-space:nowrap;
+            border:1px solid ${color}50;
+            box-shadow:0 4px 16px rgba(0,0,0,0.4);
+            font-family:'Inter',sans-serif;
+            letter-spacing:0.2px;
+            position:relative;z-index:1;
+          ">◆ +${formatGeo(p.reward_amount)} GEO</div>
+        </div>`,
+        className: '',
+        iconSize: [100, 30],
+        iconAnchor: [50, 15],
+      });
+
+      markersRef.current.push(L.marker([+p.lat, +p.lng], { icon }).addTo(map));
+    });
+  }, [campaigns, promoQrs, mapReady]);
 
   const nearby = (() => {
     const withCoords = campaigns.filter(c => c.lat && c.lng);
